@@ -11,7 +11,7 @@ export default function ContactsScreen() {
 
       <View style={styles.emptyState}>
         <View style={styles.iconWrap}>
-          <Ionicons name="people" size={40} color="#085041" />
+          <Ionicons name="people" size={40} color="#0B5563" />
         </View>
         <Text style={styles.emptyTitle}>No contacts yet</Text>
         <Text style={styles.emptyText}>
@@ -32,7 +32,7 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 16,
     borderRadius: 12,
-    backgroundColor: '#085041',
+    backgroundColor: '#0B5563',
   },
   addText: { fontSize: 18, fontWeight: '700', color: '#FFFFFF' },
   emptyState: { alignItems: 'center', paddingVertical: 48 },
@@ -40,11 +40,11 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 44,
-    backgroundColor: '#E1F5EE',
+    backgroundColor: '#E1F2F4',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
   },
-  emptyTitle: { fontSize: 22, fontWeight: '700', color: '#04342C', marginBottom: 8 },
-  emptyText: { fontSize: 16, color: '#0F6E56', textAlign: 'center', lineHeight: 26, paddingHorizontal: 20 },
+  emptyTitle: { fontSize: 22, fontWeight: '700', color: '#052E36', marginBottom: 8 },
+  emptyText: { fontSize: 16, color: '#0E6B78', textAlign: 'center', lineHeight: 26, paddingHorizontal: 20 },
 });

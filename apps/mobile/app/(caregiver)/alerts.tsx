@@ -6,7 +6,7 @@ export default function AlertsScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.emptyState}>
         <View style={styles.iconWrap}>
-          <Ionicons name="notifications" size={40} color="#085041" />
+          <Ionicons name="notifications" size={40} color="#0B5563" />
         </View>
         <Text style={styles.emptyTitle}>No alerts</Text>
         <Text style={styles.emptyText}>
@@ -25,11 +25,11 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 44,
-    backgroundColor: '#E1F5EE',
+    backgroundColor: '#E1F2F4',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
   },
-  emptyTitle: { fontSize: 22, fontWeight: '700', color: '#04342C', marginBottom: 8 },
-  emptyText: { fontSize: 16, color: '#0F6E56', textAlign: 'center', lineHeight: 26, paddingHorizontal: 20 },
+  emptyTitle: { fontSize: 22, fontWeight: '700', color: '#052E36', marginBottom: 8 },
+  emptyText: { fontSize: 16, color: '#0E6B78', textAlign: 'center', lineHeight: 26, paddingHorizontal: 20 },
 });

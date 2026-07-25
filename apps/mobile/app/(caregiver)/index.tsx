@@ -13,7 +13,7 @@ export default function CaregiverDashboard() {
       {/* Elder status card */}
       <View style={styles.statusCard}>
         <View style={styles.statusIconWrap}>
-          <Ionicons name="person" size={26} color="#085041" />
+          <Ionicons name="person" size={26} color="#0B5563" />
         </View>
         <View style={styles.statusInfo}>
           <Text style={styles.elderName}>Your Elder</Text>
@@ -30,9 +30,9 @@ export default function CaregiverDashboard() {
         {quickActions.map(({ icon, family, label }) => (
           <TouchableOpacity key={label} style={styles.quickAction}>
             {family === 'mci' ? (
-              <MaterialCommunityIcons name={icon as any} size={24} color="#085041" />
+              <MaterialCommunityIcons name={icon as any} size={24} color="#0B5563" />
             ) : (
-              <Ionicons name={icon as any} size={24} color="#085041" />
+              <Ionicons name={icon as any} size={24} color="#0B5563" />
             )}
             <Text style={styles.quickLabel}>{label}</Text>
           </TouchableOpacity>
@@ -76,30 +76,30 @@ const styles = StyleSheet.create({
     gap: 16,
     padding: 20,
     borderRadius: 16,
-    backgroundColor: '#E1F5EE',
+    backgroundColor: '#E1F2F4',
     borderWidth: 1,
-    borderColor: '#9FE1CB',
+    borderColor: '#A8DCE3',
   },
   statusIconWrap: {
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#9FE1CB',
+    backgroundColor: '#A8DCE3',
     alignItems: 'center',
     justifyContent: 'center',
   },
   statusInfo: { flex: 1 },
-  elderName: { fontSize: 20, fontWeight: '700', color: '#04342C' },
-  statusText: { fontSize: 15, color: '#0F6E56', marginTop: 2 },
+  elderName: { fontSize: 20, fontWeight: '700', color: '#052E36' },
+  statusText: { fontSize: 15, color: '#0E6B78', marginTop: 2 },
   callButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#085041',
+    backgroundColor: '#0B5563',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#04342C' },
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#052E36' },
   quickActions: { flexDirection: 'row', gap: 12 },
   quickAction: {
     flex: 1,
@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
     borderColor: '#DAD7CE',
     gap: 8,
   },
-  quickLabel: { fontSize: 13, fontWeight: '600', color: '#04342C', textAlign: 'center' },
+  quickLabel: { fontSize: 13, fontWeight: '600', color: '#052E36', textAlign: 'center' },
   summaryCard: {
     padding: 20,
     borderRadius: 16,
@@ -124,9 +124,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
   },
-  summaryLabel: { fontSize: 15, fontWeight: '600', color: '#04342C' },
-  summaryValue: { fontSize: 15, color: '#0F6E56' },
-  divider: { height: 1, backgroundColor: '#E1F5EE', marginVertical: 4 },
+  summaryLabel: { fontSize: 15, fontWeight: '600', color: '#052E36' },
+  summaryValue: { fontSize: 15, color: '#0E6B78' },
+  divider: { height: 1, backgroundColor: '#E1F2F4', marginVertical: 4 },
   emptyActivity: {
     padding: 24,
     borderRadius: 12,
@@ -135,5 +135,5 @@ const styles = StyleSheet.create({
     borderColor: '#DAD7CE',
     alignItems: 'center',
   },
-  emptyText: { fontSize: 15, color: '#0F6E56', textAlign: 'center', lineHeight: 24 },
+  emptyText: { fontSize: 15, color: '#0E6B78', textAlign: 'center', lineHeight: 24 },
 });

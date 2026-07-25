@@ -7,17 +7,11 @@
     "orientation": "portrait",
     "scheme": "ec",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "icon": "./assets/icon.png",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#085041"
-    },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#085041"
+        "backgroundColor": "#0B5563"
       },
       "package": "com.eccellere.ec",
       "permissions": [
@@ -38,6 +32,14 @@
     "plugins": [
       "expo-router",
       [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#0B5563"
+        }
+      ],
+      [
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "EC needs your location to share with family during emergencies."
@@ -46,7 +48,7 @@
       [
         "expo-notifications",
         {
-          "color": "#085041"
+          "color": "#0B5563"
         }
       ]
     ],

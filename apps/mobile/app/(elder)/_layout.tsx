@@ -4,7 +4,7 @@ export default function ElderLayout() {
   return (
     <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: '#085041' },
+        headerStyle: { backgroundColor: '#0B5563' },
         headerTintColor: '#FFFFFF',
         headerTitleStyle: { fontWeight: 'bold', fontSize: 24 },
         contentStyle: { backgroundColor: '#F8F7F3' },

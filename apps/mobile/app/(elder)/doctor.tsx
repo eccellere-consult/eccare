@@ -16,9 +16,9 @@ export default function DoctorScreen() {
         <TouchableOpacity key={title} style={styles.actionCard} activeOpacity={0.7}>
           <View style={styles.iconWrap}>
             {family === 'mci' ? (
-              <MaterialCommunityIcons name={icon as any} size={26} color="#085041" />
+              <MaterialCommunityIcons name={icon as any} size={26} color="#0B5563" />
             ) : (
-              <Ionicons name={icon as any} size={26} color="#085041" />
+              <Ionicons name={icon as any} size={26} color="#0B5563" />
             )}
           </View>
           <View style={styles.actionText}>
@@ -34,7 +34,7 @@ export default function DoctorScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8F7F3' },
   content: { padding: 20, gap: 16 },
-  heading: { fontSize: 28, fontWeight: '700', color: '#04342C', marginBottom: 8 },
+  heading: { fontSize: 28, fontWeight: '700', color: '#052E36', marginBottom: 8 },
   actionCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -50,11 +50,11 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#E1F5EE',
+    backgroundColor: '#E1F2F4',
     alignItems: 'center',
     justifyContent: 'center',
   },
   actionText: { flex: 1 },
-  actionTitle: { fontSize: 20, fontWeight: '700', color: '#04342C' },
-  actionDesc: { fontSize: 16, color: '#0F6E56', marginTop: 2 },
+  actionTitle: { fontSize: 20, fontWeight: '700', color: '#052E36' },
+  actionDesc: { fontSize: 16, color: '#0E6B78', marginTop: 2 },
 });

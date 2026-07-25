@@ -1,9 +1,9 @@
 export const colors = {
   primary: {
-    main: '#085041',
-    dark: '#04342C',
-    light: '#E1F5EE',
-    tint: '#9FE1CB',
+    main: '#0B5563',
+    dark: '#052E36',
+    light: '#E1F2F4',
+    tint: '#A8DCE3',
   },
   accent: {
     main: '#854F0B',
@@ -23,8 +23,8 @@ export const colors = {
   },
   background: '#F8F7F3',
   surface: '#FFFFFF',
-  text: '#04342C',
-  textSecondary: '#0F6E56',
+  text: '#052E36',
+  textSecondary: '#0E6B78',
   border: '#DAD7CE',
   disabled: '#CFD8DC',
 } as const;

@@ -10,7 +10,7 @@ export default function MedicineScreen() {
       {/* Placeholder reminder card */}
       <View style={styles.reminderCard}>
         <View style={styles.iconWrap}>
-          <MaterialCommunityIcons name="pill" size={28} color="#085041" />
+          <MaterialCommunityIcons name="pill" size={28} color="#0B5563" />
         </View>
         <View style={styles.reminderInfo}>
           <Text style={styles.medicineName}>No reminders yet</Text>
@@ -26,8 +26,8 @@ export default function MedicineScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8F7F3' },
   content: { padding: 20 },
-  heading: { fontSize: 28, fontWeight: '700', color: '#04342C' },
-  hint: { fontSize: 18, color: '#0F6E56', marginTop: 4, marginBottom: 24 },
+  heading: { fontSize: 28, fontWeight: '700', color: '#052E36' },
+  hint: { fontSize: 18, color: '#0E6B78', marginTop: 4, marginBottom: 24 },
   reminderCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -42,11 +42,11 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#E1F5EE',
+    backgroundColor: '#E1F2F4',
     alignItems: 'center',
     justifyContent: 'center',
   },
   reminderInfo: { flex: 1, gap: 4 },
-  medicineName: { fontSize: 20, fontWeight: '700', color: '#04342C' },
-  medicineDetail: { fontSize: 16, color: '#0F6E56' },
+  medicineName: { fontSize: 20, fontWeight: '700', color: '#052E36' },
+  medicineDetail: { fontSize: 16, color: '#0E6B78' },
 });

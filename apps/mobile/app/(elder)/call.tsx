@@ -10,7 +10,7 @@ export default function CallScreen() {
       {/* Placeholder — will be populated from API */}
       <View style={styles.emptyState}>
         <View style={styles.emptyIconWrap}>
-          <Ionicons name="people" size={40} color="#085041" />
+          <Ionicons name="people" size={40} color="#0B5563" />
         </View>
         <Text style={styles.emptyText}>
           No family contacts added yet.{'\n'}Ask your family to set this up for you.
@@ -23,17 +23,17 @@ export default function CallScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8F7F3' },
   content: { padding: 20 },
-  heading: { fontSize: 28, fontWeight: '700', color: '#04342C' },
-  hint: { fontSize: 18, color: '#0F6E56', marginTop: 4, marginBottom: 24 },
+  heading: { fontSize: 28, fontWeight: '700', color: '#052E36' },
+  hint: { fontSize: 18, color: '#0E6B78', marginTop: 4, marginBottom: 24 },
   emptyState: { alignItems: 'center', paddingVertical: 48 },
   emptyIconWrap: {
     width: 88,
     height: 88,
     borderRadius: 44,
-    backgroundColor: '#E1F5EE',
+    backgroundColor: '#E1F2F4',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
   },
-  emptyText: { fontSize: 18, color: '#0F6E56', textAlign: 'center', lineHeight: 28 },
+  emptyText: { fontSize: 18, color: '#0E6B78', textAlign: 'center', lineHeight: 28 },
 });

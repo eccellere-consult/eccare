@@ -4,11 +4,11 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 const colors = {
   bg: '#F8F7F3',
-  tileBg: '#E1F5EE',
-  avatarBg: '#9FE1CB',
-  iconColor: '#085041',
-  titleColor: '#04342C',
-  subtitleColor: '#0F6E56',
+  tileBg: '#E1F2F4',
+  avatarBg: '#A8DCE3',
+  iconColor: '#0B5563',
+  titleColor: '#052E36',
+  subtitleColor: '#0E6B78',
   emergencyBg: '#A32D2D',
   emergencyText: '#FCEBEB',
   speakBg: '#854F0B',

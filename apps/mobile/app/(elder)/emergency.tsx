@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 18,
-    color: '#0F6E56',
+    color: '#0E6B78',
     textAlign: 'center',
     marginTop: 8,
     marginBottom: 40,
@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
   },
   reassurance: {
     fontSize: 18,
-    color: '#0F6E56',
+    color: '#0E6B78',
     textAlign: 'center',
     marginTop: 40,
     lineHeight: 28,

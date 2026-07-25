@@ -5,11 +5,11 @@ export default function CaregiverLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerStyle: { backgroundColor: '#085041' },
+        headerStyle: { backgroundColor: '#0B5563' },
         headerTintColor: '#FFFFFF',
         headerTitleStyle: { fontWeight: 'bold', fontSize: 20 },
-        tabBarStyle: { backgroundColor: '#FFFFFF', borderTopColor: '#E1F5EE', height: 64 },
-        tabBarActiveTintColor: '#085041',
+        tabBarStyle: { backgroundColor: '#FFFFFF', borderTopColor: '#E1F2F4', height: 64 },
+        tabBarActiveTintColor: '#0B5563',
         tabBarInactiveTintColor: '#B0BEC5',
         tabBarLabelStyle: { fontSize: 14, fontWeight: '600' },
       }}

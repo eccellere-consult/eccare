@@ -128,19 +128,19 @@ const styles = StyleSheet.create({
   logo: {
     fontSize: 64,
     fontWeight: '900',
-    color: '#085041',
+    color: '#0B5563',
     textAlign: 'center',
   },
   tagline: {
     fontSize: 22,
-    color: '#0F6E56',
+    color: '#0E6B78',
     textAlign: 'center',
     marginBottom: 48,
   },
   heading: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#04342C',
+    color: '#052E36',
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 34,
@@ -154,17 +154,17 @@ const styles = StyleSheet.create({
   countryCode: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#04342C',
+    color: '#052E36',
     paddingVertical: 14,
     paddingHorizontal: 16,
-    backgroundColor: '#E1F5EE',
+    backgroundColor: '#E1F2F4',
     borderRadius: 12,
   },
   phoneInput: {
     flex: 1,
     fontSize: 24,
     fontWeight: '600',
-    color: '#04342C',
+    color: '#052E36',
     borderWidth: 1,
     borderColor: '#DAD7CE',
     borderRadius: 12,
@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
   otpInput: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#04342C',
+    color: '#052E36',
     borderWidth: 1,
     borderColor: '#DAD7CE',
     borderRadius: 12,
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   button: {
-    backgroundColor: '#085041',
+    backgroundColor: '#0B5563',
     borderRadius: 16,
     paddingVertical: 18,
     alignItems: 'center',
@@ -200,5 +200,5 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   backLink: { marginTop: 20, alignItems: 'center' },
-  backText: { fontSize: 18, color: '#085041', fontWeight: '600' },
+  backText: { fontSize: 18, color: '#0B5563', fontWeight: '600' },
 });
