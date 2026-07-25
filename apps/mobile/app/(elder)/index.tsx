@@ -1,42 +1,41 @@
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { colors } from '@ec/design-tokens';
 
 const actions = [
   {
     route: '/(elder)/call' as const,
     title: 'Call Family',
     emoji: '📞',
-    color: colors.primary.main,
-    bg: colors.primary.light,
+    color: '#00796B',
+    bg: '#E0F2F1',
   },
   {
     route: '/(elder)/medicine' as const,
     title: 'Medicine',
     emoji: '💊',
-    color: colors.success.main,
-    bg: colors.success.light,
+    color: '#2E7D32',
+    bg: '#E8F5E9',
   },
   {
     route: '/(elder)/doctor' as const,
     title: 'Doctor',
     emoji: '🩺',
-    color: colors.primary.main,
-    bg: colors.primary.light,
+    color: '#00796B',
+    bg: '#E0F2F1',
   },
   {
     route: '/(elder)/food' as const,
     title: 'Food',
     emoji: '🍽️',
-    color: colors.accent.main,
-    bg: colors.accent.light,
+    color: '#F57F17',
+    bg: '#FFF8E1',
   },
   {
     route: '/(elder)/emergency' as const,
     title: 'Need Help',
     emoji: '🆘',
-    color: colors.accent.dark,
-    bg: colors.accent.light,
+    color: '#F9A825',
+    bg: '#FFF8E1',
   },
 ];
 
