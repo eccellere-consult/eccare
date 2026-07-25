@@ -1,43 +1,33 @@
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+
+const colors = {
+  bg: '#F8F7F3',
+  tileBg: '#E1F5EE',
+  avatarBg: '#9FE1CB',
+  iconColor: '#085041',
+  titleColor: '#04342C',
+  subtitleColor: '#0F6E56',
+  emergencyBg: '#A32D2D',
+  emergencyText: '#FCEBEB',
+  speakBg: '#854F0B',
+  speakText: '#FAEEDA',
+};
 
 const actions = [
-  {
-    route: '/(elder)/call' as const,
-    title: 'Call Family',
-    emoji: '📞',
-    color: '#00796B',
-    bg: '#E0F2F1',
-  },
-  {
-    route: '/(elder)/medicine' as const,
-    title: 'Medicine',
-    emoji: '💊',
-    color: '#2E7D32',
-    bg: '#E8F5E9',
-  },
-  {
-    route: '/(elder)/doctor' as const,
-    title: 'Doctor',
-    emoji: '🩺',
-    color: '#00796B',
-    bg: '#E0F2F1',
-  },
-  {
-    route: '/(elder)/food' as const,
-    title: 'Food',
-    emoji: '🍽️',
-    color: '#F57F17',
-    bg: '#FFF8E1',
-  },
-  {
-    route: '/(elder)/emergency' as const,
-    title: 'Need Help',
-    emoji: '🆘',
-    color: '#F9A825',
-    bg: '#FFF8E1',
-  },
+  { route: '/(elder)/call' as const, title: 'Call Family', icon: 'call' as const },
+  { route: '/(elder)/medicine' as const, title: 'Medicine', icon: 'pill' as const },
+  { route: '/(elder)/doctor' as const, title: 'Doctor', icon: 'stethoscope' as const },
+  { route: '/(elder)/food' as const, title: 'Food', icon: 'restaurant' as const },
 ];
+
+function TileIcon({ name, size, color }: { name: string; size: number; color: string }) {
+  if (name === 'pill' || name === 'stethoscope') {
+    return <MaterialCommunityIcons name={name} size={size} color={color} />;
+  }
+  return <Ionicons name={name as any} size={size} color={color} />;
+}
 
 export default function ElderHome() {
   const router = useRouter();
@@ -45,36 +35,43 @@ export default function ElderHome() {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.greeting}>Hello</Text>
-        <Text style={styles.subtitle}>What do you need?</Text>
+        <View style={styles.header}>
+          <View style={styles.avatar}>
+            <Ionicons name="person" size={22} color={colors.iconColor} />
+          </View>
+          <View>
+            <Text style={styles.greeting}>Hello</Text>
+            <Text style={styles.subtitle}>What do you need?</Text>
+          </View>
+        </View>
 
         <View style={styles.grid}>
-          {actions.map(({ route, title, emoji, color, bg }) => (
+          {actions.map(({ route, title, icon }) => (
             <TouchableOpacity
               key={route}
-              style={[styles.actionCard, { backgroundColor: bg, borderColor: color }]}
+              style={styles.actionCard}
               activeOpacity={0.7}
               onPress={() => router.push(route)}
               accessibilityRole="button"
               accessibilityLabel={title}
             >
-              <Text style={styles.actionEmoji}>{emoji}</Text>
-              <Text style={[styles.actionTitle, { color }]}>{title}</Text>
+              <TileIcon name={icon} size={34} color={colors.iconColor} />
+              <Text style={styles.actionTitle}>{title}</Text>
             </TouchableOpacity>
           ))}
         </View>
-      </ScrollView>
 
-      {/* Floating Emergency SOS Button */}
-      <TouchableOpacity
-        style={styles.sosButton}
-        activeOpacity={0.8}
-        onPress={() => router.push('/(elder)/emergency')}
-        accessibilityRole="button"
-        accessibilityLabel="Emergency SOS"
-      >
-        <Text style={styles.sosText}>SOS</Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.emergencyBar}
+          activeOpacity={0.8}
+          onPress={() => router.push('/(elder)/emergency')}
+          accessibilityRole="button"
+          accessibilityLabel="Need help now"
+        >
+          <Ionicons name="warning" size={26} color={colors.emergencyText} />
+          <Text style={styles.emergencyText}>Need Help Now</Text>
+        </TouchableOpacity>
+      </ScrollView>
 
       {/* Floating Voice Button */}
       <TouchableOpacity
@@ -83,7 +80,7 @@ export default function ElderHome() {
         accessibilityRole="button"
         accessibilityLabel="Speak to EC"
       >
-        <Text style={styles.voiceEmoji}>🎤</Text>
+        <Ionicons name="mic" size={24} color={colors.speakText} />
         <Text style={styles.voiceLabel}>Speak</Text>
       </TouchableOpacity>
     </View>
@@ -93,89 +90,98 @@ export default function ElderHome() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFF8F0',
+    backgroundColor: colors.bg,
   },
   content: {
     padding: 20,
-    paddingBottom: 160,
+    paddingBottom: 120,
   },
-  greeting: {
-    fontSize: 36,
-    fontWeight: '700',
-    color: '#212121',
-  },
-  subtitle: {
-    fontSize: 22,
-    color: '#546E7A',
-    marginTop: 4,
-    marginBottom: 24,
-  },
-  grid: {
-    gap: 16,
-  },
-  actionCard: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-    padding: 20,
-    borderRadius: 20,
-    borderWidth: 2,
-    minHeight: 80,
+    gap: 14,
+    marginBottom: 24,
   },
-  actionEmoji: {
-    fontSize: 36,
-  },
-  actionTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-  },
-  sosButton: {
-    position: 'absolute',
-    bottom: 100,
-    right: 20,
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#C62828',
+  avatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: colors.avatarBg,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 8,
-    shadowColor: '#C62828',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
   },
-  sosText: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#FFFFFF',
+  greeting: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: colors.titleColor,
+  },
+  subtitle: {
+    fontSize: 18,
+    color: colors.subtitleColor,
+    marginTop: 2,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+    marginBottom: 16,
+  },
+  actionCard: {
+    flexBasis: '46%',
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: colors.tileBg,
+    borderRadius: 20,
+    paddingVertical: 28,
+    paddingHorizontal: 12,
+    minHeight: 120,
+  },
+  actionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.titleColor,
+    textAlign: 'center',
+  },
+  emergencyBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    backgroundColor: colors.emergencyBg,
+    borderRadius: 20,
+    minHeight: 72,
+    paddingVertical: 16,
+  },
+  emergencyText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.emergencyText,
   },
   voiceButton: {
     position: 'absolute',
     bottom: 24,
     alignSelf: 'center',
     left: '50%',
-    marginLeft: -50,
-    width: 100,
+    marginLeft: -55,
+    width: 110,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#00796B',
+    backgroundColor: colors.speakBg,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 8,
     elevation: 6,
-    shadowColor: '#004D40',
+    shadowColor: colors.speakBg,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
   },
-  voiceEmoji: {
-    fontSize: 24,
-  },
   voiceLabel: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.speakText,
   },
 });

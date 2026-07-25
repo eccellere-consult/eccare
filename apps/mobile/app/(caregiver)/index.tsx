@@ -1,35 +1,42 @@
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+
+const quickActions = [
+  { icon: 'pill', family: 'mci' as const, label: 'Add Medicine' },
+  { icon: 'calendar', family: 'ion' as const, label: 'Book Appointment' },
+  { icon: 'document-text', family: 'ion' as const, label: 'Health Note' },
+];
 
 export default function CaregiverDashboard() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Elder status card */}
       <View style={styles.statusCard}>
-        <Text style={styles.statusEmoji}>👤</Text>
+        <View style={styles.statusIconWrap}>
+          <Ionicons name="person" size={26} color="#085041" />
+        </View>
         <View style={styles.statusInfo}>
           <Text style={styles.elderName}>Your Elder</Text>
           <Text style={styles.statusText}>No alerts today</Text>
         </View>
         <TouchableOpacity style={styles.callButton} accessibilityLabel="Call elder">
-          <Text style={styles.callEmoji}>📞</Text>
+          <Ionicons name="call" size={20} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
 
       {/* Quick actions */}
       <Text style={styles.sectionTitle}>Quick Actions</Text>
       <View style={styles.quickActions}>
-        <TouchableOpacity style={styles.quickAction}>
-          <Text style={styles.quickEmoji}>💊</Text>
-          <Text style={styles.quickLabel}>Add Medicine</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.quickAction}>
-          <Text style={styles.quickEmoji}>📅</Text>
-          <Text style={styles.quickLabel}>Book Appointment</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.quickAction}>
-          <Text style={styles.quickEmoji}>📝</Text>
-          <Text style={styles.quickLabel}>Health Note</Text>
-        </TouchableOpacity>
+        {quickActions.map(({ icon, family, label }) => (
+          <TouchableOpacity key={label} style={styles.quickAction}>
+            {family === 'mci' ? (
+              <MaterialCommunityIcons name={icon as any} size={24} color="#085041" />
+            ) : (
+              <Ionicons name={icon as any} size={24} color="#085041" />
+            )}
+            <Text style={styles.quickLabel}>{label}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {/* Today's summary */}
@@ -47,7 +54,7 @@ export default function CaregiverDashboard() {
         <View style={styles.divider} />
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>SOS Alerts</Text>
-          <Text style={[styles.summaryValue, { color: '#2E7D32' }]}>All clear</Text>
+          <Text style={[styles.summaryValue, { color: '#3B6D11' }]}>All clear</Text>
         </View>
       </View>
 
@@ -61,7 +68,7 @@ export default function CaregiverDashboard() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFF8F0' },
+  container: { flex: 1, backgroundColor: '#F8F7F3' },
   content: { padding: 20, gap: 20 },
   statusCard: {
     flexDirection: 'row',
@@ -69,24 +76,30 @@ const styles = StyleSheet.create({
     gap: 16,
     padding: 20,
     borderRadius: 16,
-    backgroundColor: '#E0F2F1',
-    borderWidth: 2,
-    borderColor: '#00796B',
+    backgroundColor: '#E1F5EE',
+    borderWidth: 1,
+    borderColor: '#9FE1CB',
   },
-  statusEmoji: { fontSize: 40 },
+  statusIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#9FE1CB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   statusInfo: { flex: 1 },
-  elderName: { fontSize: 22, fontWeight: '700', color: '#212121' },
-  statusText: { fontSize: 16, color: '#546E7A', marginTop: 2 },
+  elderName: { fontSize: 20, fontWeight: '700', color: '#04342C' },
+  statusText: { fontSize: 15, color: '#0F6E56', marginTop: 2 },
   callButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#00796B',
+    backgroundColor: '#085041',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  callEmoji: { fontSize: 22 },
-  sectionTitle: { fontSize: 20, fontWeight: '700', color: '#212121' },
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#04342C' },
   quickActions: { flexDirection: 'row', gap: 12 },
   quickAction: {
     flex: 1,
@@ -95,33 +108,32 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#B0BEC5',
+    borderColor: '#DAD7CE',
     gap: 8,
   },
-  quickEmoji: { fontSize: 28 },
-  quickLabel: { fontSize: 14, fontWeight: '600', color: '#212121', textAlign: 'center' },
+  quickLabel: { fontSize: 13, fontWeight: '600', color: '#04342C', textAlign: 'center' },
   summaryCard: {
     padding: 20,
     borderRadius: 16,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#B0BEC5',
+    borderColor: '#DAD7CE',
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 8,
   },
-  summaryLabel: { fontSize: 16, fontWeight: '600', color: '#212121' },
-  summaryValue: { fontSize: 16, color: '#546E7A' },
-  divider: { height: 1, backgroundColor: '#E0F2F1', marginVertical: 4 },
+  summaryLabel: { fontSize: 15, fontWeight: '600', color: '#04342C' },
+  summaryValue: { fontSize: 15, color: '#0F6E56' },
+  divider: { height: 1, backgroundColor: '#E1F5EE', marginVertical: 4 },
   emptyActivity: {
     padding: 24,
     borderRadius: 12,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#B0BEC5',
+    borderColor: '#DAD7CE',
     alignItems: 'center',
   },
-  emptyText: { fontSize: 16, color: '#546E7A', textAlign: 'center', lineHeight: 24 },
+  emptyText: { fontSize: 15, color: '#0F6E56', textAlign: 'center', lineHeight: 24 },
 });

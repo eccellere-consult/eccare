@@ -3,12 +3,19 @@ import { Redirect } from 'expo-router';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
+const SKIP_AUTH_FOR_PREVIEW = true;
+
 export default function Index() {
   const [checking, setChecking] = useState(true);
   const [loggedIn, setLoggedIn] = useState(false);
   const [role, setRole] = useState<string>('elder');
 
   useEffect(() => {
+    if (SKIP_AUTH_FOR_PREVIEW) {
+      setLoggedIn(true);
+      setChecking(false);
+      return;
+    }
     async function check() {
       try {
         const token = await SecureStore.getItemAsync('token');

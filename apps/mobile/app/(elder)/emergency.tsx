@@ -1,5 +1,6 @@
 import { View, Text, TouchableOpacity, StyleSheet, Alert, Vibration } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function EmergencyScreen() {
   function handleSOS() {
@@ -38,7 +39,7 @@ export default function EmergencyScreen() {
         accessibilityRole="button"
         accessibilityLabel="Send Emergency SOS Alert"
       >
-        <Text style={styles.sosEmoji}>🆘</Text>
+        <Ionicons name="warning" size={56} color="#FCEBEB" />
         <Text style={styles.sosText}>SOS</Text>
         <Text style={styles.sosHint}>Tap to send alert</Text>
       </TouchableOpacity>
@@ -53,55 +54,52 @@ export default function EmergencyScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFF8F0',
+    backgroundColor: '#F8F7F3',
     padding: 20,
     alignItems: 'center',
   },
   heading: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#C62828',
+    color: '#A32D2D',
     marginTop: 20,
   },
   subtitle: {
-    fontSize: 20,
-    color: '#546E7A',
+    fontSize: 18,
+    color: '#0F6E56',
     textAlign: 'center',
     marginTop: 8,
     marginBottom: 40,
-    lineHeight: 30,
+    lineHeight: 28,
   },
   sosButton: {
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: '#C62828',
+    backgroundColor: '#A32D2D',
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 12,
-    shadowColor: '#B71C1C',
+    shadowColor: '#791F1F',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.5,
     shadowRadius: 12,
   },
-  sosEmoji: {
-    fontSize: 48,
-  },
   sosText: {
-    fontSize: 36,
+    fontSize: 32,
     fontWeight: '900',
-    color: '#FFFFFF',
+    color: '#FCEBEB',
     marginTop: 4,
   },
   sosHint: {
-    fontSize: 16,
-    color: '#FFFFFF',
+    fontSize: 15,
+    color: '#FCEBEB',
     opacity: 0.9,
     marginTop: 4,
   },
   reassurance: {
     fontSize: 18,
-    color: '#546E7A',
+    color: '#0F6E56',
     textAlign: 'center',
     marginTop: 40,
     lineHeight: 28,

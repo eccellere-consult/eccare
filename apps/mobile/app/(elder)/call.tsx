@@ -1,13 +1,7 @@
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function CallScreen() {
-  function handleCall(name: string, phone: string) {
-    Alert.alert(`Call ${name}?`, `Dial ${phone}`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Yes, Call', onPress: () => Linking.openURL(`tel:${phone}`) },
-    ]);
-  }
-
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.heading}>Your Family</Text>
@@ -15,7 +9,9 @@ export default function CallScreen() {
 
       {/* Placeholder — will be populated from API */}
       <View style={styles.emptyState}>
-        <Text style={styles.emptyEmoji}>👨‍👩‍👧‍👦</Text>
+        <View style={styles.emptyIconWrap}>
+          <Ionicons name="people" size={40} color="#085041" />
+        </View>
         <Text style={styles.emptyText}>
           No family contacts added yet.{'\n'}Ask your family to set this up for you.
         </Text>
@@ -25,11 +21,19 @@ export default function CallScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFF8F0' },
+  container: { flex: 1, backgroundColor: '#F8F7F3' },
   content: { padding: 20 },
-  heading: { fontSize: 28, fontWeight: '700', color: '#212121' },
-  hint: { fontSize: 20, color: '#546E7A', marginTop: 4, marginBottom: 24 },
+  heading: { fontSize: 28, fontWeight: '700', color: '#04342C' },
+  hint: { fontSize: 18, color: '#0F6E56', marginTop: 4, marginBottom: 24 },
   emptyState: { alignItems: 'center', paddingVertical: 48 },
-  emptyEmoji: { fontSize: 64, marginBottom: 16 },
-  emptyText: { fontSize: 20, color: '#546E7A', textAlign: 'center', lineHeight: 30 },
+  emptyIconWrap: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: '#E1F5EE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emptyText: { fontSize: 18, color: '#0F6E56', textAlign: 'center', lineHeight: 28 },
 });

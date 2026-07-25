@@ -8,12 +8,16 @@
     "scheme": "ec",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "icon": "./assets/icon.png",
     "splash": {
-      "backgroundColor": "#00796B"
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#085041"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#00796B"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#085041"
       },
       "package": "com.eccellere.ec",
       "permissions": [
@@ -42,7 +46,7 @@
       [
         "expo-notifications",
         {
-          "color": "#00796B"
+          "color": "#085041"
         }
       ]
     ],

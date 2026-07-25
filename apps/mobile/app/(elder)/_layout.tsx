@@ -4,10 +4,10 @@ export default function ElderLayout() {
   return (
     <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: '#00796B' },
+        headerStyle: { backgroundColor: '#085041' },
         headerTintColor: '#FFFFFF',
         headerTitleStyle: { fontWeight: 'bold', fontSize: 24 },
-        contentStyle: { backgroundColor: '#FFF8F0' },
+        contentStyle: { backgroundColor: '#F8F7F3' },
       }}
     >
       <Stack.Screen name="index" options={{ title: 'EC' }} />

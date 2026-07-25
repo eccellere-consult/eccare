@@ -123,24 +123,24 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFF8F0' },
+  container: { flex: 1, backgroundColor: '#F8F7F3' },
   content: { flex: 1, justifyContent: 'center', padding: 24 },
   logo: {
     fontSize: 64,
     fontWeight: '900',
-    color: '#00796B',
+    color: '#085041',
     textAlign: 'center',
   },
   tagline: {
     fontSize: 22,
-    color: '#546E7A',
+    color: '#0F6E56',
     textAlign: 'center',
     marginBottom: 48,
   },
   heading: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#212121',
+    color: '#04342C',
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 34,
@@ -154,19 +154,19 @@ const styles = StyleSheet.create({
   countryCode: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#212121',
+    color: '#04342C',
     paddingVertical: 14,
     paddingHorizontal: 16,
-    backgroundColor: '#E0F2F1',
+    backgroundColor: '#E1F5EE',
     borderRadius: 12,
   },
   phoneInput: {
     flex: 1,
     fontSize: 24,
     fontWeight: '600',
-    color: '#212121',
-    borderWidth: 2,
-    borderColor: '#B0BEC5',
+    color: '#04342C',
+    borderWidth: 1,
+    borderColor: '#DAD7CE',
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 16,
@@ -176,9 +176,9 @@ const styles = StyleSheet.create({
   otpInput: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#212121',
-    borderWidth: 2,
-    borderColor: '#B0BEC5',
+    color: '#04342C',
+    borderWidth: 1,
+    borderColor: '#DAD7CE',
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 24,
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   button: {
-    backgroundColor: '#00796B',
+    backgroundColor: '#085041',
     borderRadius: 16,
     paddingVertical: 18,
     alignItems: 'center',
@@ -200,5 +200,5 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   backLink: { marginTop: 20, alignItems: 'center' },
-  backText: { fontSize: 18, color: '#00796B', fontWeight: '600' },
+  backText: { fontSize: 18, color: '#085041', fontWeight: '600' },
 });
