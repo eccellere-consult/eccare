@@ -1,0 +1,243 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Users & Auth ───────────────────────────────────────────────
+
+model User {
+  id            String   @id @default(cuid())
+  phone         String   @unique
+  name          String
+  pinHash       String?
+  avatarUrl     String?
+  role          UserRole @default(elder)
+  language      String   @default("en")
+  fontSizePref  String   @default("xlarge")
+  highContrast  Boolean  @default(true)
+  voiceEnabled  Boolean  @default(true)
+  bloodGroup    String?
+  address       String?  @db.Text
+  city          String?
+  state         String?
+  pincode       String?
+  lat           Decimal? @db.Decimal(10, 7)
+  lng           Decimal? @db.Decimal(10, 7)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations as elder
+  medications        Medication[]
+  reminders          MedicationReminder[]
+  appointments       Appointment[]
+  healthNotes        HealthNote[]         @relation("HealthNoteUser")
+  sosEvents          SOSEvent[]
+  emergencyContacts  EmergencyContact[]
+  foodRequests       FoodRequest[]
+  mealReminders      MealReminder[]
+  voiceLogs          VoiceLog[]
+  deviceTokens       DeviceToken[]
+  elderRelations     FamilyRelation[]     @relation("ElderRelations")
+  caregiverRelations FamilyRelation[]     @relation("CaregiverRelations")
+  healthNotesCreated HealthNote[]         @relation("HealthNoteCreator")
+  sosAcknowledged    SOSEvent[]           @relation("SOSAcknowledger")
+  foodHandled        FoodRequest[]        @relation("FoodHandler")
+
+  @@index([phone])
+  @@index([role])
+}
+
+enum UserRole {
+  elder
+  caregiver
+  admin
+}
+
+model FamilyRelation {
+  id               String       @id @default(cuid())
+  elderUserId      String
+  caregiverUserId  String
+  relationship     String
+  canViewHealth    Boolean      @default(true)
+  canManageMeds    Boolean      @default(false)
+  receivesSos      Boolean      @default(true)
+  receivesCheckin  Boolean      @default(true)
+  inviteStatus     InviteStatus @default(pending)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  elderUser     User @relation("ElderRelations", fields: [elderUserId], references: [id], onDelete: Cascade)
+  caregiverUser User @relation("CaregiverRelations", fields: [caregiverUserId], references: [id], onDelete: Cascade)
+
+  @@unique([elderUserId, caregiverUserId])
+}
+
+enum InviteStatus {
+  pending
+  accepted
+  declined
+}
+
+model EmergencyContact {
+  id           String  @id @default(cuid())
+  userId       String
+  name         String
+  phone        String
+  relationship String
+  callOrder    Int     @default(1)
+  notifyOnSos  Boolean @default(true)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model DeviceToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  platform  String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── Health & Medicine ──────────────────────────────────────────
+
+model Medication {
+  id               String   @id @default(cuid())
+  userId           String
+  name             String
+  dosage           String
+  frequency        String
+  timeSlots        Json
+  instructions     String?  @db.Text
+  prescribingDoctor String?
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reminders MedicationReminder[]
+
+  @@index([userId, isActive])
+}
+
+model MedicationReminder {
+  id           String         @id @default(cuid())
+  medicationId String
+  userId       String
+  scheduledAt  DateTime
+  status       ReminderStatus @default(pending)
+  takenAt      DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  medication Medication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, scheduledAt])
+}
+
+enum ReminderStatus {
+  pending
+  taken
+  missed
+  snoozed
+}
+
+model Appointment {
+  id         String            @id @default(cuid())
+  userId     String
+  doctorName String
+  hospital   String?
+  specialty  String?
+  datetime   DateTime
+  notes      String?           @db.Text
+  status     AppointmentStatus @default(upcoming)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, datetime])
+}
+
+enum AppointmentStatus {
+  upcoming
+  completed
+  cancelled
+}
+
+model HealthNote {
+  id          String   @id @default(cuid())
+  userId      String
+  createdById String
+  content     String   @db.Text
+  createdAt   DateTime @default(now())
+
+  user      User @relation("HealthNoteUser", fields: [userId], references: [id], onDelete: Cascade)
+  createdBy User @relation("HealthNoteCreator", fields: [createdById], references: [id], onDelete: Cascade)
+}
+
+// ─── Emergency & Safety ─────────────────────────────────────────
+
+model SOSEvent {
+  id             String    @id @default(cuid())
+  userId         String
+  triggerType    String
+  lat            Decimal?  @db.Decimal(10, 7)
+  lng            Decimal?  @db.Decimal(10, 7)
+  address        String?   @db.Text
+  status         String    @default("triggered")
+  acknowledgedBy String?
+  createdAt      DateTime  @default(now())
+  resolvedAt     DateTime?
+
+  user         User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  acknowledger User? @relation("SOSAcknowledger", fields: [acknowledgedBy], references: [id])
+
+  @@index([userId, status])
+}
+
+// ─── Food ───────────────────────────────────────────────────────
+
+model FoodRequest {
+  id          String   @id @default(cuid())
+  userId      String
+  requestType String
+  notes       String?  @db.Text
+  status      String   @default("requested")
+  handledBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user    User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  handler User? @relation("FoodHandler", fields: [handledBy], references: [id])
+}
+
+model MealReminder {
+  id       String  @id @default(cuid())
+  userId   String
+  mealType String
+  time     String
+  isActive Boolean @default(true)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── Voice ──────────────────────────────────────────────────────
+
+model VoiceLog {
+  id           String   @id @default(cuid())
+  userId       String
+  transcript   String   @db.Text
+  intent       String
+  responseText String   @db.Text
+  actionTaken  String
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

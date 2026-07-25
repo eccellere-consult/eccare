@@ -1,0 +1,29 @@
+{
+  "name": "ec",
+  "private": true,
+  "description": "EC — Just Easy. A senior-friendly care companion for elders and their families.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "turbo run dev --filter=@ec/api",
+    "dev:mobile": "turbo run dev --filter=@ec/mobile",
+    "build": "turbo run build",
+    "build:api": "turbo run build --filter=@ec/api",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "db:push": "cd apps/api && npx prisma db push",
+    "db:generate": "cd apps/api && npx prisma generate",
+    "db:studio": "cd apps/api && npx prisma studio",
+    "clean": "turbo run clean"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0",
+    "typescript": "^5.8.0"
+  },
+  "packageManager": "npm@11.11.0",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
