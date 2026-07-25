@@ -1,8 +1,44 @@
-import { View, Text, TouchableOpacity, StyleSheet, Alert, Vibration } from 'react-native';
+import { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, Vibration, ActivityIndicator } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
+import { api } from '../../lib/api';
 
 export default function EmergencyScreen() {
+  const [sending, setSending] = useState(false);
+
+  async function getLocationSafely(): Promise<{ lat?: number; lng?: number }> {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') return {};
+      const position = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+      return { lat: position.coords.latitude, lng: position.coords.longitude };
+    } catch {
+      return {};
+    }
+  }
+
+  async function sendSOS() {
+    setSending(true);
+    try {
+      const { lat, lng } = await getLocationSafely();
+      await api.post('/emergency/sos', { triggerType: 'manual', lat, lng });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Help is coming', 'Your family has been notified. Stay calm.');
+    } catch (err) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(
+        'Could not send alert',
+        err instanceof Error ? err.message : 'Please check your connection and try again.',
+      );
+    } finally {
+      setSending(false);
+    }
+  }
+
   function handleSOS() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     Vibration.vibrate([0, 200, 100, 200]);
@@ -12,15 +48,7 @@ export default function EmergencyScreen() {
       'This will notify all your family members and emergency contacts with your location.',
       [
         { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Yes, Send SOS',
-          style: 'destructive',
-          onPress: () => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            Alert.alert('Help is coming', 'Your family has been notified. Stay calm.');
-            // TODO: Call POST /api/v1/emergency/sos with GPS location
-          },
-        },
+        { text: 'Yes, Send SOS', style: 'destructive', onPress: sendSOS },
       ],
     );
   }
@@ -36,12 +64,19 @@ export default function EmergencyScreen() {
         style={styles.sosButton}
         activeOpacity={0.8}
         onPress={handleSOS}
+        disabled={sending}
         accessibilityRole="button"
         accessibilityLabel="Send Emergency SOS Alert"
       >
-        <Ionicons name="warning" size={56} color="#FCEBEB" />
-        <Text style={styles.sosText}>SOS</Text>
-        <Text style={styles.sosHint}>Tap to send alert</Text>
+        {sending ? (
+          <ActivityIndicator size="large" color="#FCEBEB" />
+        ) : (
+          <>
+            <Ionicons name="warning" size={56} color="#FCEBEB" />
+            <Text style={styles.sosText}>SOS</Text>
+            <Text style={styles.sosHint}>Tap to send alert</Text>
+          </>
+        )}
       </TouchableOpacity>
 
       <Text style={styles.reassurance}>

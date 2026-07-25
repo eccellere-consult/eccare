@@ -1,10 +1,21 @@
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function ContactsScreen() {
+  function handleAddPress() {
+    Alert.alert(
+      'Coming soon',
+      'Linking your account to an elder is not set up yet. Once family linking is available, you\'ll be able to manage their contacts here.',
+    );
+  }
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <TouchableOpacity style={styles.addButton} accessibilityLabel="Add emergency contact">
+      <TouchableOpacity
+        style={styles.addButton}
+        onPress={handleAddPress}
+        accessibilityLabel="Add emergency contact"
+      >
         <Ionicons name="add" size={22} color="#FFFFFF" />
         <Text style={styles.addText}>Add Emergency Contact</Text>
       </TouchableOpacity>

@@ -1,8 +1,9 @@
 import * as SecureStore from 'expo-secure-store';
+import Constants from 'expo-constants';
 
-const BASE_URL = __DEV__
-  ? 'http://10.0.2.2:3000/api/v1'
-  : 'https://eccare.in/api/v1';
+const configuredUrl = Constants.expoConfig?.extra?.apiUrl as string | undefined;
+
+const BASE_URL = configuredUrl || (__DEV__ ? 'http://10.0.2.2:4000/api/v1' : 'https://eccare.in/api/v1');
 
 async function getToken(): Promise<string | null> {
   return SecureStore.getItemAsync('token');
@@ -22,10 +23,11 @@ async function request(path: string, options: RequestInit = {}) {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `Request failed: ${res.status}`);
+    throw new Error(body?.error?.message || body?.error || `Request failed: ${res.status}`);
   }
 
-  return res.json();
+  const json = await res.json();
+  return json.data !== undefined ? json.data : json;
 }
 
 export const api = {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthUser } from '@/lib/auth';
+import { sendPushToTokens } from '@/lib/fcm';
 import { z } from 'zod';
 
 const schema = z.object({
@@ -27,6 +28,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const elder = await prisma.user.findUnique({ where: { id: auth.userId } });
+
   const sosEvent = await prisma.sOSEvent.create({
     data: {
       userId: auth.userId,
@@ -42,11 +45,24 @@ export async function POST(req: NextRequest) {
   });
   const familyCaregivers = await prisma.familyRelation.findMany({
     where: { elderUserId: auth.userId, receivesSos: true, inviteStatus: 'accepted' },
-    include: { caregiverUser: true },
+    include: { caregiverUser: { include: { deviceTokens: true } } },
   });
 
-  // TODO: Send push notifications via FCM to caregiver devices
-  // TODO: Send SMS to emergency contacts
+  const caregiverTokens = familyCaregivers.flatMap((rel) =>
+    rel.caregiverUser.deviceTokens.map((dt) => dt.token),
+  );
+
+  const pushResult = await sendPushToTokens(caregiverTokens, {
+    title: `${elder?.name ?? 'Your family member'} needs help`,
+    body:
+      parsed.data.lat && parsed.data.lng
+        ? 'Emergency alert triggered. Location shared — open EC to see details.'
+        : 'Emergency alert triggered. Open EC to see details.',
+    channelId: 'emergency',
+    data: { type: 'sos', sosEventId: sosEvent.id },
+  });
+
+  // TODO: Send SMS to emergency contacts once an SMS provider is chosen
 
   return NextResponse.json({
     success: true,
@@ -54,6 +70,7 @@ export async function POST(req: NextRequest) {
       sosEvent,
       notifiedContacts: contacts.length,
       notifiedCaregivers: familyCaregivers.length,
+      pushSent: pushResult.sent,
     },
   });
 }

@@ -21,8 +21,7 @@ interface VoiceResult {
 }
 
 export async function processVoice(transcript: string): Promise<VoiceResult> {
-  const data = await api.post('/voice/process', { transcript });
-  return data.result;
+  return api.post('/voice/process', { transcript });
 }
 
 export function speak(text: string): Promise<void> {
@@ -32,7 +31,7 @@ export function speak(text: string): Promise<void> {
       rate: 0.85,
       pitch: 1.0,
       onDone: resolve,
-      onError: resolve,
+      onError: () => resolve(),
     });
   });
 }

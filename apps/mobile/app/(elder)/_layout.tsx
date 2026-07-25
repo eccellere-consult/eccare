@@ -16,6 +16,7 @@ export default function ElderLayout() {
       <Stack.Screen name="doctor" options={{ title: 'Doctor' }} />
       <Stack.Screen name="food" options={{ title: 'Food' }} />
       <Stack.Screen name="emergency" options={{ title: 'Emergency' }} />
+      <Stack.Screen name="add-contact" options={{ title: 'Add Contact' }} />
     </Stack>
   );
 }
