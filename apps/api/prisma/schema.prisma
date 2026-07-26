@@ -11,7 +11,9 @@ datasource db {
 
 model User {
   id            String   @id @default(cuid())
-  phone         String   @unique
+  phone         String?  @unique
+  email         String?  @unique
+  passwordHash  String?
   name          String
   pinHash       String?
   avatarUrl     String?
@@ -55,6 +57,7 @@ enum UserRole {
   elder
   caregiver
   admin
+  provider
 }
 
 model FamilyRelation {
@@ -240,4 +243,33 @@ model VoiceLog {
   createdAt    DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── Admin: Backlog / Kanban ─────────────────────────────────────
+
+model BacklogItem {
+  id          String          @id @default(cuid())
+  title       String
+  description String?         @db.Text
+  status      BacklogStatus   @default(backlog)
+  priority    BacklogPriority @default(medium)
+  position    Int             @default(0)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([status, position])
+}
+
+enum BacklogStatus {
+  backlog
+  todo
+  in_progress
+  review
+  done
+}
+
+enum BacklogPriority {
+  low
+  medium
+  high
 }

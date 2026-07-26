@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthUser } from '@/lib/auth';
+import { canAccessElder } from '@/lib/family-access';
 import { z } from 'zod';
 
 const createSchema = z.object({
@@ -22,6 +23,13 @@ export async function GET(req: NextRequest) {
   }
 
   const elderUserId = req.nextUrl.searchParams.get('elderUserId') || auth.userId;
+
+  if (!(await canAccessElder(auth.userId, elderUserId))) {
+    return NextResponse.json(
+      { success: false, error: { code: 'FORBIDDEN', message: "You don't have access to this elder's contacts." } },
+      { status: 403 },
+    );
+  }
 
   const contacts = await prisma.emergencyContact.findMany({
     where: { userId: elderUserId },
@@ -51,6 +59,13 @@ export async function POST(req: NextRequest) {
 
   // Allow caregivers to add contacts for their linked elders
   const targetUserId = parsed.data.elderUserId || auth.userId;
+
+  if (!(await canAccessElder(auth.userId, targetUserId))) {
+    return NextResponse.json(
+      { success: false, error: { code: 'FORBIDDEN', message: "You don't have access to this elder's contacts." } },
+      { status: 403 },
+    );
+  }
 
   const contact = await prisma.emergencyContact.create({
     data: {

@@ -1,12 +1,14 @@
+import './globals.css';
+
 export const metadata = {
-  title: 'EC API',
-  description: 'EC — Just Easy. Backend API.',
+  title: 'EC — Just Easy.',
+  description: 'A calm, senior-friendly care companion for elders and their families.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className="font-sans antialiased">{children}</body>
     </html>
   );
 }

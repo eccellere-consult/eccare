@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthUser } from '@/lib/auth';
+import { canAccessElder } from '@/lib/family-access';
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await getAuthUser(req);
@@ -17,6 +18,13 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     return NextResponse.json(
       { success: false, error: { code: 'NOT_FOUND', message: 'Contact not found.' } },
       { status: 404 },
+    );
+  }
+
+  if (!(await canAccessElder(auth.userId, contact.userId))) {
+    return NextResponse.json(
+      { success: false, error: { code: 'FORBIDDEN', message: "You don't have access to this contact." } },
+      { status: 403 },
     );
   }
 

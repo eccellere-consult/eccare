@@ -84,8 +84,24 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  const elderUserId = req.nextUrl.searchParams.get('elderUserId');
+
+  let targetUserId = auth.userId;
+  if (elderUserId && elderUserId !== auth.userId) {
+    const relation = await prisma.familyRelation.findUnique({
+      where: { elderUserId_caregiverUserId: { elderUserId, caregiverUserId: auth.userId } },
+    });
+    if (!relation || relation.inviteStatus !== 'accepted') {
+      return NextResponse.json(
+        { success: false, error: { code: 'FORBIDDEN', message: "You don't have access to this elder's history." } },
+        { status: 403 },
+      );
+    }
+    targetUserId = elderUserId;
+  }
+
   const events = await prisma.sOSEvent.findMany({
-    where: { userId: auth.userId },
+    where: { userId: targetUserId },
     orderBy: { createdAt: 'desc' },
     take: 20,
   });

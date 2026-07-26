@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { createToken } from '@/lib/auth';
+import { createToken, setSessionCookie } from '@/lib/auth';
 import { z } from 'zod';
 
 const schema = z.object({
@@ -45,8 +45,10 @@ export async function POST(req: NextRequest) {
 
   const token = await createToken(user.id, user.role);
 
-  return NextResponse.json({
+  const res = NextResponse.json({
     success: true,
     data: { user, token },
   });
+  setSessionCookie(res, token);
+  return res;
 }
