@@ -1,0 +1,17 @@
+# Enable rewrite engine
+RewriteEngine On
+
+# Prevent directory listing
+Options -Indexes
+
+# Allow specific static files
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Proxy all requests to Node.js app
+RewriteRule ^(.*)$ http://localhost:4000/$1 [P,L]
+
+# Add trailing slash if needed
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_URI} !(.*)/$
+RewriteRule ^(.*)$ http://localhost:4000/$1/ [P,L]
