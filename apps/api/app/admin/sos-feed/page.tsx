@@ -3,6 +3,8 @@ import { prisma } from '@/lib/db';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminSosFeedPage() {
   const events = await prisma.sOSEvent.findMany({
     orderBy: { createdAt: 'desc' },

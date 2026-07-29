@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/db';
 import { KanbanBoard } from './kanban-board';
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminBacklogPage() {
   const items = await prisma.backlogItem.findMany({ orderBy: [{ status: 'asc' }, { position: 'asc' }] });
 
