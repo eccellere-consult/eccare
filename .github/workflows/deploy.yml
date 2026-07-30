@@ -1,0 +1,74 @@
+name: Deploy to Hostinger
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web app
+        run: npm run build:api
+
+      - name: Package standalone build
+        run: |
+          cd apps/api
+          rm -rf .next/standalone/apps/api/.next/static
+          cp -r .next/static .next/standalone/apps/api/.next/static
+          rm -f .next/standalone/apps/api/.env
+          cd .next/standalone
+          tar -czf ../../deploy.tar.gz apps node_modules package.json
+
+      - name: Write production .env
+        run: |
+          cat > apps/api/.env.deploy <<EOF
+          DATABASE_URL="${{ secrets.PROD_DATABASE_URL }}"
+          JWT_SECRET="${{ secrets.PROD_JWT_SECRET }}"
+          NODE_ENV="production"
+          ANTHROPIC_API_KEY="${{ secrets.PROD_ANTHROPIC_API_KEY }}"
+          FCM_PROJECT_ID="${{ secrets.PROD_FCM_PROJECT_ID }}"
+          FCM_PRIVATE_KEY="${{ secrets.PROD_FCM_PRIVATE_KEY }}"
+          FCM_CLIENT_EMAIL="${{ secrets.PROD_FCM_CLIENT_EMAIL }}"
+          EOF
+
+      - name: Upload build + env to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HOSTINGER_SSH_HOST }}
+          port: ${{ secrets.HOSTINGER_SSH_PORT }}
+          username: ${{ secrets.HOSTINGER_SSH_USER }}
+          password: ${{ secrets.HOSTINGER_SSH_PASSWORD }}
+          source: "apps/api/deploy.tar.gz,apps/api/.env.deploy"
+          target: "~/"
+          strip_components: 2
+
+      - name: Extract, install env, and restart
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOSTINGER_SSH_HOST }}
+          port: ${{ secrets.HOSTINGER_SSH_PORT }}
+          username: ${{ secrets.HOSTINGER_SSH_USER }}
+          password: ${{ secrets.HOSTINGER_SSH_PASSWORD }}
+          script: |
+            set -e
+            cd ~/domains/eccare.in/public_html
+            rm -rf apps/api
+            tar -xzf ~/deploy.tar.gz
+            mv ~/.env.deploy apps/api/.env
+            mkdir -p apps/api/tmp
+            rm -f ~/deploy.tar.gz
+            touch apps/api/tmp/restart.txt
+            echo "Deploy complete"
