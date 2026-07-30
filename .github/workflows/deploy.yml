@@ -32,30 +32,18 @@ jobs:
           cd .next/standalone
           tar -czf ../../deploy.tar.gz apps node_modules package.json
 
-      - name: Write production .env
-        run: |
-          cat > apps/api/.env.deploy <<EOF
-          DATABASE_URL="${{ secrets.PROD_DATABASE_URL }}"
-          JWT_SECRET="${{ secrets.PROD_JWT_SECRET }}"
-          NODE_ENV="production"
-          ANTHROPIC_API_KEY="${{ secrets.PROD_ANTHROPIC_API_KEY }}"
-          FCM_PROJECT_ID="${{ secrets.PROD_FCM_PROJECT_ID }}"
-          FCM_PRIVATE_KEY="${{ secrets.PROD_FCM_PRIVATE_KEY }}"
-          FCM_CLIENT_EMAIL="${{ secrets.PROD_FCM_CLIENT_EMAIL }}"
-          EOF
-
-      - name: Upload build + env to server
+      - name: Upload build to server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.HOSTINGER_SSH_HOST }}
           port: ${{ secrets.HOSTINGER_SSH_PORT }}
           username: ${{ secrets.HOSTINGER_SSH_USER }}
           password: ${{ secrets.HOSTINGER_SSH_PASSWORD }}
-          source: "apps/api/deploy.tar.gz,apps/api/.env.deploy"
+          source: "apps/api/deploy.tar.gz"
           target: "~/"
           strip_components: 2
 
-      - name: Extract, install env, and restart
+      - name: Extract and restart
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.HOSTINGER_SSH_HOST }}
@@ -67,7 +55,6 @@ jobs:
             cd ~/domains/eccare.in/public_html
             rm -rf apps/api
             tar -xzf ~/deploy.tar.gz
-            mv ~/.env.deploy apps/api/.env
             mkdir -p apps/api/tmp
             rm -f ~/deploy.tar.gz
             touch apps/api/tmp/restart.txt
