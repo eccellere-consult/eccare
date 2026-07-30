@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Alert, Vibration, ActivityInd
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
+import { colors, spacing } from '@ec/design-tokens';
 import { api } from '../../lib/api';
 
 export default function EmergencyScreen() {
@@ -69,10 +70,10 @@ export default function EmergencyScreen() {
         accessibilityLabel="Send Emergency SOS Alert"
       >
         {sending ? (
-          <ActivityIndicator size="large" color="#FCEBEB" />
+          <ActivityIndicator size="large" color={colors.emergency.light} />
         ) : (
           <>
-            <Ionicons name="warning" size={56} color="#FCEBEB" />
+            <Ionicons name="warning" size={56} color={colors.emergency.light} />
             <Text style={styles.sosText}>SOS</Text>
             <Text style={styles.sosHint}>Tap to send alert</Text>
           </>
@@ -89,33 +90,33 @@ export default function EmergencyScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F7F3',
-    padding: 20,
+    backgroundColor: colors.background,
+    padding: spacing.xl,
     alignItems: 'center',
   },
   heading: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#A32D2D',
-    marginTop: 20,
+    color: colors.emergency.main,
+    marginTop: spacing.xl,
   },
   subtitle: {
     fontSize: 18,
-    color: '#0E6B78',
+    color: colors.textSecondary,
     textAlign: 'center',
-    marginTop: 8,
-    marginBottom: 40,
+    marginTop: spacing.sm,
+    marginBottom: spacing['4xl'],
     lineHeight: 28,
   },
   sosButton: {
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: '#A32D2D',
+    backgroundColor: colors.emergency.main,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 12,
-    shadowColor: '#791F1F',
+    shadowColor: colors.emergency.dark,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.5,
     shadowRadius: 12,
@@ -123,21 +124,21 @@ const styles = StyleSheet.create({
   sosText: {
     fontSize: 32,
     fontWeight: '900',
-    color: '#FCEBEB',
-    marginTop: 4,
+    color: colors.emergency.light,
+    marginTop: spacing.xs,
   },
   sosHint: {
     fontSize: 15,
-    color: '#FCEBEB',
+    color: colors.emergency.light,
     opacity: 0.9,
-    marginTop: 4,
+    marginTop: spacing.xs,
   },
   reassurance: {
     fontSize: 18,
-    color: '#0E6B78',
+    color: colors.textSecondary,
     textAlign: 'center',
-    marginTop: 40,
+    marginTop: spacing['4xl'],
     lineHeight: 28,
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.xl,
   },
 });

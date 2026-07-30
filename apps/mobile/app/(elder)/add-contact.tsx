@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
+import { colors, spacing, borderRadius } from '@ec/design-tokens';
 import { api } from '../../lib/api';
 
 export default function AddContactScreen() {
@@ -42,7 +43,7 @@ export default function AddContactScreen() {
           value={name}
           onChangeText={setName}
           placeholder="Priya Sharma"
-          placeholderTextColor="#B0BEC5"
+          placeholderTextColor={colors.disabled}
           autoFocus
         />
 
@@ -53,7 +54,7 @@ export default function AddContactScreen() {
           onChangeText={setPhone}
           keyboardType="phone-pad"
           placeholder="9876543210"
-          placeholderTextColor="#B0BEC5"
+          placeholderTextColor={colors.disabled}
         />
 
         <Text style={styles.label}>Relationship</Text>
@@ -62,7 +63,7 @@ export default function AddContactScreen() {
           value={relationship}
           onChangeText={setRelationship}
           placeholder="Daughter"
-          placeholderTextColor="#B0BEC5"
+          placeholderTextColor={colors.disabled}
         />
 
         <TouchableOpacity
@@ -79,30 +80,30 @@ export default function AddContactScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F7F3' },
-  content: { padding: 24, gap: 8 },
-  label: { fontSize: 18, fontWeight: '700', color: '#052E36', marginTop: 16, marginBottom: 8 },
+  container: { flex: 1, backgroundColor: colors.background },
+  content: { padding: spacing['2xl'], gap: spacing.sm },
+  label: { fontSize: 18, fontWeight: '700', color: colors.text, marginTop: spacing.lg, marginBottom: spacing.sm },
   input: {
     fontSize: 20,
-    color: '#052E36',
+    color: colors.text,
     borderWidth: 1,
-    borderColor: '#DAD7CE',
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    backgroundColor: '#FFFFFF',
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.surface,
   },
   button: {
-    backgroundColor: '#0B5563',
-    borderRadius: 16,
-    paddingVertical: 18,
+    backgroundColor: colors.primary.main,
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.xl,
     alignItems: 'center',
-    marginTop: 32,
+    marginTop: spacing['3xl'],
   },
   buttonDisabled: { opacity: 0.6 },
   buttonText: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.surface,
   },
 });

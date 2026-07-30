@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getAuthUser } from '@/lib/auth';
+import { getAuthUser, toSafeUser } from '@/lib/auth';
 
 export async function GET(
   req: NextRequest,
@@ -66,7 +66,7 @@ export async function GET(
   return NextResponse.json({
     success: true,
     data: {
-      elder,
+      elder: elder ? toSafeUser(elder) : null,
       recentSos,
       todayReminders,
       medications,

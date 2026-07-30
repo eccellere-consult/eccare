@@ -1,59 +1,54 @@
 import { useEffect, useState } from 'react';
 import { Redirect } from 'expo-router';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
+import { colors } from '@ec/design-tokens';
+import { api } from '../lib/api';
+import { getPinUserId, getStoredToken, logout } from '../lib/auth';
 
-const SKIP_AUTH_FOR_PREVIEW = true;
+type Destination = 'checking' | 'pin-login' | 'login' | 'elder' | 'caregiver';
 
 export default function Index() {
-  const [checking, setChecking] = useState(true);
-  const [loggedIn, setLoggedIn] = useState(false);
-  const [role, setRole] = useState<string>('elder');
+  const [destination, setDestination] = useState<Destination>('checking');
 
   useEffect(() => {
-    if (SKIP_AUTH_FOR_PREVIEW) {
-      setLoggedIn(true);
-      setChecking(false);
-      return;
-    }
     async function check() {
-      try {
-        const token = await SecureStore.getItemAsync('token');
-        if (token) {
-          const raw = await SecureStore.getItemAsync('user');
-          if (raw) {
-            const user = JSON.parse(raw);
-            setRole(user.role || 'elder');
-          }
-          setLoggedIn(true);
-        }
-      } catch {
-        // not logged in
+      const pinUserId = await getPinUserId();
+      if (pinUserId) {
+        setDestination('pin-login');
+        return;
       }
-      setChecking(false);
+
+      const token = await getStoredToken();
+      if (!token) {
+        setDestination('login');
+        return;
+      }
+
+      try {
+        const user = await api.get('/auth/me');
+        setDestination(user.role === 'caregiver' ? 'caregiver' : 'elder');
+      } catch {
+        await logout();
+        setDestination('login');
+      }
     }
     check();
   }, []);
 
-  if (checking) {
+  if (destination === 'checking') {
     return (
       <View style={styles.loader}>
-        <ActivityIndicator size="large" color="#00796B" />
+        <ActivityIndicator size="large" color={colors.primary.main} />
       </View>
     );
   }
 
-  if (!loggedIn) {
-    return <Redirect href="/(auth)/login" />;
-  }
-
-  if (role === 'caregiver') {
-    return <Redirect href="/(caregiver)" />;
-  }
-
+  if (destination === 'pin-login') return <Redirect href="/(auth)/pin-login" />;
+  if (destination === 'login') return <Redirect href="/(auth)/login" />;
+  if (destination === 'caregiver') return <Redirect href="/(caregiver)" />;
   return <Redirect href="/(elder)" />;
 }
 
 const styles = StyleSheet.create({
-  loader: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFF8F0' },
+  loader: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
 });

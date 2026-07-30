@@ -1,6 +1,6 @@
 import type { FontSizePreference } from '@ec/design-tokens';
 
-export type UserRole = 'elder' | 'caregiver' | 'admin';
+export type UserRole = 'elder' | 'caregiver' | 'admin' | 'provider';
 
 export type Relationship =
   | 'son'
@@ -15,7 +15,8 @@ export type Relationship =
 
 export interface User {
   id: string;
-  phone: string;
+  phone?: string;
+  email?: string;
   name: string;
   avatarUrl?: string;
   role: UserRole;

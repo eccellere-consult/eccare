@@ -1,47 +1,23 @@
-import { Tabs } from 'expo-router';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useEffect } from 'react';
+import { Stack } from 'expo-router';
+import { colors } from '@ec/design-tokens';
+import { registerForPushNotifications } from '../../lib/notifications';
 
 export default function CaregiverLayout() {
+  useEffect(() => {
+    registerForPushNotifications();
+  }, []);
+
   return (
-    <Tabs
+    <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: '#0B5563' },
-        headerTintColor: '#FFFFFF',
+        headerStyle: { backgroundColor: colors.primary.main },
+        headerTintColor: colors.surface,
         headerTitleStyle: { fontWeight: 'bold', fontSize: 20 },
-        tabBarStyle: { backgroundColor: '#FFFFFF', borderTopColor: '#E1F2F4', height: 64 },
-        tabBarActiveTintColor: '#0B5563',
-        tabBarInactiveTintColor: '#B0BEC5',
-        tabBarLabelStyle: { fontSize: 14, fontWeight: '600' },
+        contentStyle: { backgroundColor: colors.background },
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Dashboard',
-          tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="alerts"
-        options={{
-          title: 'Alerts',
-          tabBarIcon: ({ color, size }) => <Ionicons name="notifications" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="reminders"
-        options={{
-          title: 'Reminders',
-          tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="pill" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="contacts"
-        options={{
-          title: 'Contacts',
-          tabBarIcon: ({ color, size }) => <Ionicons name="people" size={size} color={color} />,
-        }}
-      />
-    </Tabs>
+      <Stack.Screen name="index" options={{ title: 'EC Companion' }} />
+    </Stack>
   );
 }
