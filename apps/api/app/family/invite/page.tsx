@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 
 export default function InviteElderPage() {
   const router = useRouter();
-  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [relationship, setRelationship] = useState('');
   const [loading, setLoading] = useState(false);
@@ -20,8 +20,8 @@ export default function InviteElderPage() {
     e.preventDefault();
     setError('');
 
-    if (phone.replace(/\D/g, '').length < 10 || !name.trim() || !relationship.trim()) {
-      setError('Please fill in all fields with a valid 10-digit phone number.');
+    if (!/^\S+@\S+\.\S+$/.test(email) || !name.trim() || !relationship.trim()) {
+      setError('Please fill in all fields with a valid email address.');
       return;
     }
 
@@ -31,7 +31,7 @@ export default function InviteElderPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ elderPhone: `+91${phone}`, elderName: name, relationship }),
+        body: JSON.stringify({ elderEmail: email, elderName: name, relationship }),
       });
       const json = await res.json();
       if (!res.ok || !json.success) {
@@ -65,20 +65,14 @@ export default function InviteElderPage() {
               <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Raj Sharma" />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="phone">Elder's phone number</Label>
-              <div className="flex gap-2">
-                <span className="flex h-11 items-center rounded-xl bg-primary-50 px-3 font-semibold text-primary-900">
-                  +91
-                </span>
-                <Input
-                  id="phone"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="9876543210"
-                  inputMode="numeric"
-                  maxLength={10}
-                />
-              </div>
+              <Label htmlFor="email">Elder's email address</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="raj.sharma@example.com"
+              />
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="relationship">Your relationship to them</Label>

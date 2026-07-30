@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getAuthUser } from '@/lib/auth';
+import { getAuthUser, toSafeUser } from '@/lib/auth';
 import { z } from 'zod';
 
 const schema = z.object({
@@ -40,5 +40,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     include: { caregiverUser: true },
   });
 
-  return NextResponse.json({ success: true, data: updated });
+  return NextResponse.json(
+    { success: true, data: { ...updated, caregiverUser: toSafeUser(updated.caregiverUser) } },
+  );
 }

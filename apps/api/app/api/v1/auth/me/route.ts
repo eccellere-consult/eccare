@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getAuthUser } from '@/lib/auth';
+import { getAuthUser, toSafeUser } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
   const auth = await getAuthUser(req);
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  return NextResponse.json({ success: true, data: user });
+  return NextResponse.json({ success: true, data: toSafeUser(user) });
 }
 
 export async function PUT(req: NextRequest) {
@@ -54,5 +54,5 @@ export async function PUT(req: NextRequest) {
     },
   });
 
-  return NextResponse.json({ success: true, data: user });
+  return NextResponse.json({ success: true, data: toSafeUser(user) });
 }

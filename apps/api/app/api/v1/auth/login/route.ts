@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { createToken, comparePassword, setSessionCookie } from '@/lib/auth';
+import { createToken, comparePassword, setSessionCookie, toSafeUser } from '@/lib/auth';
 import { z } from 'zod';
 
 const schema = z.object({
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
   }
 
   const token = await createToken(user.id, user.role);
-  const res = NextResponse.json({ success: true, data: { user, token } });
+  const res = NextResponse.json({ success: true, data: { user: toSafeUser(user), token } });
   setSessionCookie(res, token);
   return res;
 }

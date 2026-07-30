@@ -29,95 +29,7 @@ async function api(path: string, body: unknown) {
   return json.data;
 }
 
-function OtpLogin({ onSuccess }: { onSuccess: (role: string) => void }) {
-  const [step, setStep] = useState<'phone' | 'otp'>('phone');
-  const [phone, setPhone] = useState('');
-  const [otp, setOtp] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  async function sendOtp() {
-    setError('');
-    if (phone.replace(/\D/g, '').length < 10) {
-      setError('Please enter a valid 10-digit phone number.');
-      return;
-    }
-    setLoading(true);
-    try {
-      await api('/auth/send-otp', { phone: `+91${phone}` });
-      setStep('otp');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not send OTP.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function verifyOtp() {
-    setError('');
-    setLoading(true);
-    try {
-      const data = await api('/auth/verify-otp', { phone: `+91${phone}`, otp });
-      onSuccess(data.user.role);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Incorrect OTP.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <div className="flex flex-col gap-4">
-      {step === 'phone' ? (
-        <>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="phone">Phone number</Label>
-            <div className="flex gap-2">
-              <span className="flex h-11 items-center rounded-xl bg-primary-50 px-3 font-semibold text-primary-900">
-                +91
-              </span>
-              <Input
-                id="phone"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="9876543210"
-                inputMode="numeric"
-                maxLength={10}
-              />
-            </div>
-          </div>
-          {error && <p className="text-sm text-danger-600">{error}</p>}
-          <Button onClick={sendOtp} disabled={loading} size="lg">
-            {loading ? 'Sending...' : 'Send OTP'}
-          </Button>
-        </>
-      ) : (
-        <>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="otp">Enter the code sent to +91 {phone}</Label>
-            <Input
-              id="otp"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value)}
-              placeholder="123456"
-              inputMode="numeric"
-              maxLength={6}
-            />
-          </div>
-          {error && <p className="text-sm text-danger-600">{error}</p>}
-          <Button onClick={verifyOtp} disabled={loading} size="lg">
-            {loading ? 'Verifying...' : 'Verify'}
-          </Button>
-          <Button variant="link" onClick={() => { setStep('phone'); setOtp(''); setError(''); }}>
-            Change phone number
-          </Button>
-        </>
-      )}
-    </div>
-  );
-}
-
-function PasswordLogin({ onSuccess }: { onSuccess: (role: string) => void }) {
+function SignInForm({ onSuccess }: { onSuccess: (role: string) => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -154,11 +66,83 @@ function PasswordLogin({ onSuccess }: { onSuccess: (role: string) => void }) {
   );
 }
 
+function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void }) {
+  const [role, setRole] = useState<'elder' | 'caregiver'>('elder');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  async function register() {
+    setError('');
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const data = await api('/auth/register', { name, email, password, role });
+      onSuccess(data.user.role);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not create account.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
+        <Label>I am</Label>
+        <div className="flex h-12 items-center rounded-xl bg-primary-50 p-1">
+          <button
+            type="button"
+            onClick={() => setRole('elder')}
+            className={cn(
+              'flex-1 rounded-lg py-2 text-sm font-semibold transition-colors',
+              role === 'elder' ? 'bg-surface text-primary-900 shadow-sm' : 'text-primary-900/70',
+            )}
+          >
+            An elder
+          </button>
+          <button
+            type="button"
+            onClick={() => setRole('caregiver')}
+            className={cn(
+              'flex-1 rounded-lg py-2 text-sm font-semibold transition-colors',
+              role === 'caregiver' ? 'bg-surface text-primary-900 shadow-sm' : 'text-primary-900/70',
+            )}
+          >
+            A family member
+          </button>
+        </div>
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="reg-name">Full name</Label>
+        <Input id="reg-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="reg-email">Email</Label>
+        <Input id="reg-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="reg-password">Password</Label>
+        <Input id="reg-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" />
+      </div>
+      {error && <p className="text-sm text-danger-600">{error}</p>}
+      <Button onClick={register} disabled={loading} size="lg">
+        {loading ? 'Creating account...' : 'Create account'}
+      </Button>
+    </div>
+  );
+}
+
 function LoginPageContent() {
   const router = useRouter();
   const params = useSearchParams();
 
-  const [mode, setMode] = useState<'phone' | 'password'>('phone');
+  const [view, setView] = useState<'signin' | 'register'>('signin');
 
   function handleSuccess(role: string) {
     const next = params.get('next');
@@ -176,33 +160,21 @@ function LoginPageContent() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Sign in</CardTitle>
-            <CardDescription>Choose how you'd like to sign in.</CardDescription>
+            <CardTitle>{view === 'signin' ? 'Sign in' : 'Create your account'}</CardTitle>
+            <CardDescription>
+              {view === 'signin' ? 'Welcome back.' : 'For elders and family members. Takes a minute.'}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="mb-6 flex h-12 items-center rounded-xl bg-primary-50 p-1">
-              <button
-                type="button"
-                onClick={() => setMode('phone')}
-                className={cn(
-                  'flex-1 rounded-lg py-2 text-sm font-semibold transition-colors',
-                  mode === 'phone' ? 'bg-surface text-primary-900 shadow-sm' : 'text-primary-900/70',
-                )}
-              >
-                Elder / Family
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode('password')}
-                className={cn(
-                  'flex-1 rounded-lg py-2 text-sm font-semibold transition-colors',
-                  mode === 'password' ? 'bg-surface text-primary-900 shadow-sm' : 'text-primary-900/70',
-                )}
-              >
-                Admin / Provider
-              </button>
-            </div>
-            {mode === 'phone' ? <OtpLogin onSuccess={handleSuccess} /> : <PasswordLogin onSuccess={handleSuccess} />}
+            {view === 'signin' ? <SignInForm onSuccess={handleSuccess} /> : <CreateAccountForm onSuccess={handleSuccess} />}
+
+            <button
+              type="button"
+              onClick={() => setView(view === 'signin' ? 'register' : 'signin')}
+              className="mt-6 w-full text-center text-sm font-semibold text-primary-600 hover:underline"
+            >
+              {view === 'signin' ? "New here? Create an account" : 'Already have an account? Sign in'}
+            </button>
           </CardContent>
         </Card>
       </div>
