@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking, Alert, ActivityIndicator, RefreshControl } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { colors, spacing, borderRadius } from '@ec/design-tokens';
 import { api } from '../../lib/api';
 
 interface Contact {
@@ -64,7 +65,7 @@ export default function CallScreen() {
   if (loading) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color="#0B5563" />
+        <ActivityIndicator size="large" color={colors.primary.main} />
       </View>
     );
   }
@@ -89,7 +90,7 @@ export default function CallScreen() {
       {contacts.length === 0 ? (
         <View style={styles.emptyState}>
           <View style={styles.emptyIconWrap}>
-            <Ionicons name="people" size={40} color="#0B5563" />
+            <Ionicons name="people" size={40} color={colors.primary.main} />
           </View>
           <Text style={styles.emptyText}>
             No family contacts added yet.{'\n'}Ask your family to set this up for you.
@@ -115,7 +116,7 @@ export default function CallScreen() {
                 <Text style={styles.contactRelation}>{contact.relationship}</Text>
               </View>
               <View style={styles.callIconWrap}>
-                <Ionicons name="call" size={22} color="#FFFFFF" />
+                <Ionicons name="call" size={22} color={colors.surface} />
               </View>
             </TouchableOpacity>
           ))}
@@ -129,7 +130,7 @@ export default function CallScreen() {
         accessibilityRole="button"
         accessibilityLabel="Add a family contact"
       >
-        <Ionicons name="add" size={22} color="#0B5563" />
+        <Ionicons name="add" size={22} color={colors.primary.main} />
         <Text style={styles.addButtonText}>Add a Contact</Text>
       </TouchableOpacity>
     </ScrollView>
@@ -137,51 +138,51 @@ export default function CallScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F7F3' },
+  container: { flex: 1, backgroundColor: colors.background },
   centered: { justifyContent: 'center', alignItems: 'center' },
-  content: { padding: 20 },
-  heading: { fontSize: 28, fontWeight: '700', color: '#052E36' },
-  hint: { fontSize: 18, color: '#0E6B78', marginTop: 4, marginBottom: 24 },
-  emptyState: { alignItems: 'center', paddingVertical: 48 },
+  content: { padding: spacing.xl },
+  heading: { fontSize: 28, fontWeight: '700', color: colors.text },
+  hint: { fontSize: 18, color: colors.textSecondary, marginTop: spacing.xs, marginBottom: spacing['2xl'] },
+  emptyState: { alignItems: 'center', paddingVertical: spacing['4xl'] },
   emptyIconWrap: {
     width: 88,
     height: 88,
     borderRadius: 44,
-    backgroundColor: '#E1F2F4',
+    backgroundColor: colors.primary.light,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
-  emptyText: { fontSize: 18, color: '#0E6B78', textAlign: 'center', lineHeight: 28 },
-  list: { gap: 14 },
+  emptyText: { fontSize: 18, color: colors.textSecondary, textAlign: 'center', lineHeight: 28 },
+  list: { gap: spacing.lg },
   contactCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-    padding: 16,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
+    gap: spacing.lg,
+    padding: spacing.lg,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#DAD7CE',
+    borderColor: colors.border,
     minHeight: 80,
   },
   contactAvatar: {
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#E1F2F4',
+    backgroundColor: colors.primary.light,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  contactInitial: { fontSize: 22, fontWeight: '700', color: '#0B5563' },
+  contactInitial: { fontSize: 22, fontWeight: '700', color: colors.primary.main },
   contactInfo: { flex: 1 },
-  contactName: { fontSize: 20, fontWeight: '700', color: '#052E36' },
-  contactRelation: { fontSize: 15, color: '#0E6B78', marginTop: 2 },
+  contactName: { fontSize: 20, fontWeight: '700', color: colors.text },
+  contactRelation: { fontSize: 15, color: colors.textSecondary, marginTop: 2 },
   callIconWrap: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#0B5563',
+    backgroundColor: colors.primary.main,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -189,13 +190,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    marginTop: 20,
-    padding: 16,
-    borderRadius: 14,
+    gap: spacing.sm,
+    marginTop: spacing.xl,
+    padding: spacing.lg,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: '#0B5563',
+    borderColor: colors.primary.main,
     borderStyle: 'dashed',
   },
-  addButtonText: { fontSize: 17, fontWeight: '700', color: '#0B5563' },
+  addButtonText: { fontSize: 17, fontWeight: '700', color: colors.primary.main },
 });

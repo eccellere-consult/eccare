@@ -1,35 +1,15 @@
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-
-const colors = {
-  bg: '#F8F7F3',
-  tileBg: '#E1F2F4',
-  avatarBg: '#A8DCE3',
-  iconColor: '#0B5563',
-  titleColor: '#052E36',
-  subtitleColor: '#0E6B78',
-  emergencyBg: '#A32D2D',
-  emergencyText: '#FCEBEB',
-  ambulanceBg: '#FCEBEB',
-  ambulanceBorder: '#A32D2D',
-  ambulanceText: '#A32D2D',
-  speakBg: '#854F0B',
-  speakText: '#FAEEDA',
-  mutedBg: '#EDEBE4',
-  mutedIcon: '#8A897F',
-  mutedText: '#5C5B54',
-  badgeBg: '#DAD7CE',
-  badgeText: '#5C5B54',
-};
+import { colors, spacing, borderRadius } from '@ec/design-tokens';
 
 const AMBULANCE_NUMBER = '108';
 
 const actions = [
   { route: '/(elder)/call' as const, title: 'Call Family', icon: 'call' as const },
+  { route: '/(elder)/dial-pad' as const, title: 'Dial Pad', icon: 'keypad' as const },
   { route: '/(elder)/medicine' as const, title: 'Medicine', icon: 'pill' as const },
-  { route: '/(elder)/doctor' as const, title: 'Doctor', icon: 'stethoscope' as const },
-  { route: '/(elder)/food' as const, title: 'Food', icon: 'restaurant' as const },
+  { route: '/(elder)/speak' as const, title: 'Speak to EC', icon: 'mic' as const },
 ];
 
 const comingSoon = [
@@ -39,7 +19,7 @@ const comingSoon = [
 ];
 
 function TileIcon({ name, size, color }: { name: string; size: number; color: string }) {
-  if (name === 'pill' || name === 'stethoscope') {
+  if (name === 'pill') {
     return <MaterialCommunityIcons name={name} size={size} color={color} />;
   }
   return <Ionicons name={name as any} size={size} color={color} />;
@@ -64,7 +44,7 @@ export default function ElderHome() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <View style={styles.avatar}>
-            <Ionicons name="person" size={22} color={colors.iconColor} />
+            <Ionicons name="person" size={22} color={colors.primary.main} />
           </View>
           <View>
             <Text style={styles.greeting}>Hello</Text>
@@ -82,7 +62,7 @@ export default function ElderHome() {
               accessibilityRole="button"
               accessibilityLabel={title}
             >
-              <TileIcon name={icon} size={34} color={colors.iconColor} />
+              <TileIcon name={icon} size={34} color={colors.primary.main} />
               <Text style={styles.actionTitle}>{title}</Text>
             </TouchableOpacity>
           ))}
@@ -95,7 +75,7 @@ export default function ElderHome() {
           accessibilityRole="button"
           accessibilityLabel="Need help now"
         >
-          <Ionicons name="warning" size={26} color={colors.emergencyText} />
+          <Ionicons name="warning" size={26} color={colors.emergency.light} />
           <Text style={styles.emergencyText}>Need Help Now</Text>
         </TouchableOpacity>
 
@@ -106,7 +86,7 @@ export default function ElderHome() {
           accessibilityRole="button"
           accessibilityLabel="Call ambulance"
         >
-          <MaterialCommunityIcons name="ambulance" size={24} color={colors.ambulanceText} />
+          <MaterialCommunityIcons name="ambulance" size={24} color={colors.emergency.main} />
           <Text style={styles.ambulanceText}>Call Ambulance</Text>
         </TouchableOpacity>
 
@@ -121,7 +101,7 @@ export default function ElderHome() {
               accessibilityRole="button"
               accessibilityLabel={`${title}, coming soon`}
             >
-              <Ionicons name={icon} size={26} color={colors.mutedIcon} />
+              <Ionicons name={icon} size={26} color={colors.disabled} />
               <Text style={styles.comingSoonTitle}>{title}</Text>
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>Soon</Text>
@@ -130,17 +110,6 @@ export default function ElderHome() {
           ))}
         </View>
       </ScrollView>
-
-      {/* Floating Voice Button */}
-      <TouchableOpacity
-        style={styles.voiceButton}
-        activeOpacity={0.8}
-        accessibilityRole="button"
-        accessibilityLabel="Speak to EC"
-      >
-        <Ionicons name="mic" size={24} color={colors.speakText} />
-        <Text style={styles.voiceLabel}>Speak</Text>
-      </TouchableOpacity>
     </View>
   );
 }
@@ -148,155 +117,130 @@ export default function ElderHome() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: colors.background,
   },
   content: {
-    padding: 20,
-    paddingBottom: 120,
+    padding: spacing.xl,
+    paddingBottom: spacing['3xl'],
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    marginBottom: 24,
+    gap: spacing.md,
+    marginBottom: spacing['2xl'],
   },
   avatar: {
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: colors.avatarBg,
+    backgroundColor: colors.primary.tint,
     alignItems: 'center',
     justifyContent: 'center',
   },
   greeting: {
     fontSize: 28,
     fontWeight: '700',
-    color: colors.titleColor,
+    color: colors.text,
   },
   subtitle: {
     fontSize: 18,
-    color: colors.subtitleColor,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 16,
-    marginBottom: 16,
+    gap: spacing.lg,
+    marginBottom: spacing.lg,
   },
   actionCard: {
     flexBasis: '46%',
     flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-    backgroundColor: colors.tileBg,
-    borderRadius: 20,
-    paddingVertical: 28,
-    paddingHorizontal: 12,
+    gap: spacing.sm,
+    backgroundColor: colors.primary.light,
+    borderRadius: borderRadius.xl,
+    paddingVertical: spacing['2xl'],
+    paddingHorizontal: spacing.md,
     minHeight: 120,
   },
   actionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: colors.titleColor,
+    color: colors.text,
     textAlign: 'center',
   },
   emergencyBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
-    backgroundColor: colors.emergencyBg,
-    borderRadius: 20,
+    gap: spacing.md,
+    backgroundColor: colors.emergency.main,
+    borderRadius: borderRadius.xl,
     minHeight: 72,
-    paddingVertical: 16,
+    paddingVertical: spacing.lg,
   },
   emergencyText: {
     fontSize: 20,
     fontWeight: '700',
-    color: colors.emergencyText,
+    color: colors.emergency.light,
   },
   ambulanceBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-    backgroundColor: colors.ambulanceBg,
-    borderRadius: 16,
+    gap: spacing.sm,
+    backgroundColor: colors.emergency.light,
+    borderRadius: borderRadius.lg,
     borderWidth: 1.5,
-    borderColor: colors.ambulanceBorder,
+    borderColor: colors.emergency.main,
     minHeight: 56,
-    paddingVertical: 12,
-    marginTop: 12,
+    paddingVertical: spacing.md,
+    marginTop: spacing.md,
   },
   ambulanceText: {
     fontSize: 17,
     fontWeight: '700',
-    color: colors.ambulanceText,
+    color: colors.emergency.main,
   },
   sectionLabel: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.subtitleColor,
-    marginTop: 28,
-    marginBottom: 12,
+    color: colors.textSecondary,
+    marginTop: spacing['3xl'],
+    marginBottom: spacing.md,
   },
   comingSoonRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: spacing.md,
   },
   comingSoonCard: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    backgroundColor: colors.mutedBg,
-    borderRadius: 16,
-    paddingVertical: 18,
-    paddingHorizontal: 8,
+    gap: spacing.sm,
+    backgroundColor: colors.border,
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.sm,
     minHeight: 96,
   },
   comingSoonTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.mutedText,
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   badge: {
-    backgroundColor: colors.badgeBg,
+    backgroundColor: colors.disabled,
     borderRadius: 8,
-    paddingHorizontal: 8,
+    paddingHorizontal: spacing.sm,
     paddingVertical: 2,
   },
   badgeText: {
     fontSize: 11,
     fontWeight: '700',
-    color: colors.badgeText,
-  },
-  voiceButton: {
-    position: 'absolute',
-    bottom: 24,
-    alignSelf: 'center',
-    left: '50%',
-    marginLeft: -55,
-    width: 110,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.speakBg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    elevation: 6,
-    shadowColor: colors.speakBg,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-  },
-  voiceLabel: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.speakText,
+    color: colors.text,
   },
 });
