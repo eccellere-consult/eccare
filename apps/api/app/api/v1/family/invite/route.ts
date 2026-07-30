@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getAuthUser } from '@/lib/auth';
+import { getAuthUser, toSafeUser } from '@/lib/auth';
 import { z } from 'zod';
 
 const schema = z.object({
-  elderPhone: z.string().min(10).max(15),
+  elderEmail: z.string().email(),
   elderName: z.string().min(1),
   relationship: z.string().min(1),
 });
@@ -33,20 +33,20 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { elderPhone, elderName, relationship } = parsed.data;
+  const { elderEmail, elderName, relationship } = parsed.data;
 
   // Find the elder's account, or pre-create a placeholder that gets claimed
-  // automatically the first time they verify OTP with this phone number.
-  let elder = await prisma.user.findUnique({ where: { phone: elderPhone } });
+  // automatically the first time they register with this email address.
+  let elder = await prisma.user.findUnique({ where: { email: elderEmail } });
   if (!elder) {
     elder = await prisma.user.create({
-      data: { phone: elderPhone, name: elderName, role: 'elder' },
+      data: { email: elderEmail, name: elderName, role: 'elder' },
     });
   }
 
   if (elder.role !== 'elder') {
     return NextResponse.json(
-      { success: false, error: { code: 'NOT_AN_ELDER', message: 'This phone number is not registered as an elder.' } },
+      { success: false, error: { code: 'NOT_AN_ELDER', message: 'This email is not registered as an elder.' } },
       { status: 409 },
     );
   }
@@ -71,5 +71,8 @@ export async function POST(req: NextRequest) {
     include: { elderUser: true },
   });
 
-  return NextResponse.json({ success: true, data: relation }, { status: 201 });
+  return NextResponse.json(
+    { success: true, data: { ...relation, elderUser: toSafeUser(relation.elderUser) } },
+    { status: 201 },
+  );
 }

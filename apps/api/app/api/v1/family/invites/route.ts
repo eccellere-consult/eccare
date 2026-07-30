@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getAuthUser } from '@/lib/auth';
+import { getAuthUser, toSafeUser } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
   const auth = await getAuthUser(req);
@@ -17,5 +17,6 @@ export async function GET(req: NextRequest) {
     orderBy: { createdAt: 'desc' },
   });
 
-  return NextResponse.json({ success: true, data: invites });
+  const safeInvites = invites.map((i) => ({ ...i, caregiverUser: toSafeUser(i.caregiverUser) }));
+  return NextResponse.json({ success: true, data: safeInvites });
 }

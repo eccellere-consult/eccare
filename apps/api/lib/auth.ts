@@ -46,6 +46,14 @@ export function clearSessionCookie(res: NextResponse) {
   res.cookies.delete(SESSION_COOKIE);
 }
 
+/** Strips secret fields before a user record is ever sent to the client. */
+export function toSafeUser<T extends { passwordHash?: unknown; pinHash?: unknown }>(
+  user: T,
+): Omit<T, 'passwordHash' | 'pinHash'> {
+  const { passwordHash, pinHash, ...safe } = user;
+  return safe;
+}
+
 export async function getAuthUser(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
   const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
