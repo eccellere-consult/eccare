@@ -9,6 +9,8 @@ const ROLE_VARIANT = {
   provider: 'success',
 } as const;
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminUsersPage() {
   const users = await prisma.user.findMany({
     orderBy: { createdAt: 'desc' },

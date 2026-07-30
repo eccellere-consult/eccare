@@ -2,6 +2,8 @@ import { prisma } from '@/lib/db';
 import { getServerSession } from '@/lib/server-session';
 import { ElderHomeClient } from './elder-home-client';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ElderHome() {
   const session = await getServerSession();
 

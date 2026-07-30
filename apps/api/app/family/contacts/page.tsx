@@ -5,6 +5,8 @@ import { Card, CardContent, CardTitle, CardDescription } from '@/components/ui/c
 import { Button } from '@/components/ui/button';
 import { ContactsManager } from './contacts-manager';
 
+export const dynamic = 'force-dynamic';
+
 export default async function FamilyContactsPage() {
   const session = await getServerSession();
 
