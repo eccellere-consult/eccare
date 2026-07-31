@@ -6,6 +6,7 @@ import { z } from 'zod';
 const schema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
+  rememberMe: z.boolean().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -18,7 +19,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { email, password } = parsed.data;
+  const { email, password, rememberMe = true } = parsed.data;
 
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user || !user.passwordHash) {
@@ -38,6 +39,6 @@ export async function POST(req: NextRequest) {
 
   const token = await createToken(user.id, user.role);
   const res = NextResponse.json({ success: true, data: { user: toSafeUser(user), token } });
-  setSessionCookie(res, token);
+  setSessionCookie(res, token, rememberMe);
   return res;
 }

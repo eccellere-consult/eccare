@@ -32,14 +32,16 @@ async function api(path: string, body: unknown) {
 function SignInForm({ onSuccess }: { onSuccess: (role: string) => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  async function login() {
+  async function login(e: React.FormEvent) {
+    e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const data = await api('/auth/login', { email, password });
+      const data = await api('/auth/login', { email, password, rememberMe });
       onSuccess(data.user.role);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed.');
@@ -49,20 +51,44 @@ function SignInForm({ onSuccess }: { onSuccess: (role: string) => void }) {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    // A real <form onSubmit> (not just an onClick handler) is what lets browsers'
+    // native password managers detect this as a login and offer to save it.
+    <form onSubmit={login} className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
         <Label htmlFor="email">Email</Label>
-        <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+        <Input
+          id="email"
+          type="email"
+          autoComplete="username"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
+        />
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="password">Password</Label>
-        <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+        <Input
+          id="password"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
       </div>
+      <label className="flex items-center gap-2 text-sm text-text-secondary">
+        <input
+          type="checkbox"
+          checked={rememberMe}
+          onChange={(e) => setRememberMe(e.target.checked)}
+          className="h-5 w-5 rounded border-border pointer-coarse:h-6 pointer-coarse:w-6"
+        />
+        Remember me on this device
+      </label>
       {error && <p className="text-sm text-danger-600">{error}</p>}
-      <Button onClick={login} disabled={loading} size="lg">
+      <Button type="submit" disabled={loading} size="lg">
         {loading ? 'Signing in...' : 'Sign in'}
       </Button>
-    </div>
+    </form>
   );
 }
 
@@ -74,7 +100,8 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  async function register() {
+  async function register(e: React.FormEvent) {
+    e.preventDefault();
     setError('');
     if (password.length < 8) {
       setError('Password must be at least 8 characters.');
@@ -92,7 +119,7 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <form onSubmit={register} className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
         <Label>I am</Label>
         <div className="flex h-12 items-center rounded-xl bg-primary-50 p-1">
@@ -120,21 +147,41 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="reg-name">Full name</Label>
-        <Input id="reg-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
+        <Input
+          id="reg-name"
+          autoComplete="name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Your name"
+        />
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="reg-email">Email</Label>
-        <Input id="reg-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+        <Input
+          id="reg-email"
+          type="email"
+          autoComplete="username"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
+        />
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="reg-password">Password</Label>
-        <Input id="reg-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" />
+        <Input
+          id="reg-password"
+          type="password"
+          autoComplete="new-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="At least 8 characters"
+        />
       </div>
       {error && <p className="text-sm text-danger-600">{error}</p>}
-      <Button onClick={register} disabled={loading} size="lg">
+      <Button type="submit" disabled={loading} size="lg">
         {loading ? 'Creating account...' : 'Create account'}
       </Button>
-    </div>
+    </form>
   );
 }
 

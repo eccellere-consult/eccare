@@ -31,14 +31,24 @@ export async function comparePin(pin: string, hashed: string): Promise<boolean> 
 export const hashPassword = hashPin;
 export const comparePassword = comparePin;
 
-/** Sets the httpOnly session cookie used by the web app's middleware. Mobile ignores this and uses the Bearer token instead. */
-export function setSessionCookie(res: NextResponse, token: string) {
+/**
+ * Sets the httpOnly session cookie used by the web app's middleware. Mobile ignores
+ * this and uses the Bearer token instead.
+ *
+ * `persistent` (default true) controls whether the cookie survives closing the
+ * browser: true sets `maxAge` (30 days, matching the JWT's own expiry) so the device
+ * stays signed in; false omits `maxAge` entirely, making it a session cookie the
+ * browser discards on close. Defaulting to true favors staying signed in, since the
+ * primary users are elders for whom repeated re-authentication is a real burden, not
+ * just an inconvenience.
+ */
+export function setSessionCookie(res: NextResponse, token: string, persistent: boolean = true) {
   res.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
-    maxAge: SESSION_MAX_AGE,
+    ...(persistent ? { maxAge: SESSION_MAX_AGE } : {}),
   });
 }
 
