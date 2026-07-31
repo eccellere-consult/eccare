@@ -50,14 +50,16 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
   admin: {
     label: 'Admin',
     items: [
+      { label: 'Overview', href: '/admin', icon: LayoutDashboard },
       { label: 'Users', href: '/admin/users', icon: Users },
+      { label: 'Communities', href: '/admin/communities', icon: Building2 },
       { label: 'SOS Feed', href: '/admin/sos-feed', icon: AlertTriangle },
       { label: 'Backlog', href: '/admin/backlog', icon: Kanban },
     ],
   },
   provider: {
     label: 'Provider',
-    items: [{ label: 'Requests', href: '/provider', icon: LayoutDashboard }],
+    items: [{ label: 'Overview', href: '/provider', icon: LayoutDashboard }],
   },
 };
 
