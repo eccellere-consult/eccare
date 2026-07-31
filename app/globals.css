@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+@theme {
+  /* EC brand palette — carried over from packages/design-tokens */
+  --color-primary-50: #e1f2f4;
+  --color-primary-100: #a8dce3;
+  --color-primary-600: #0b5563;
+  --color-primary-900: #052e36;
+
+  --color-accent-50: #faeeda;
+  --color-accent-100: #fac775;
+  --color-accent-600: #854f0b;
+  --color-accent-900: #633806;
+
+  --color-danger-50: #fcebeb;
+  --color-danger-100: #f7c1c1;
+  --color-danger-600: #a32d2d;
+  --color-danger-900: #791f1f;
+
+  --color-success-50: #eaf3de;
+  --color-success-600: #3b6d11;
+
+  --color-bg: #f8f7f3;
+  --color-surface: #ffffff;
+  --color-text: #052e36;
+  --color-text-secondary: #0e6b78;
+  --color-border: #dad7ce;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  /* Coarse-pointer (touch monitor / tablet) gets larger default tap targets */
+  --spacing-tap: 2.75rem;
+  --spacing-tap-coarse: 3.5rem;
+}
+
+@custom-variant pointer-coarse (@media (pointer: coarse));
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
