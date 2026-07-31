@@ -8,13 +8,14 @@ const ROLE_HOME: Record<string, string> = {
   provider: '/provider',
 };
 
-const PROTECTED_PREFIXES = ['/elder', '/family', '/admin', '/provider', '/community'];
+const PROTECTED_PREFIXES = ['/elder', '/family', '/admin', '/provider', '/community', '/services'];
 
 /**
- * Which role a path is reserved for. `/community` deliberately returns null: it's
- * shared by elders and family members alike, so it requires a valid session but is
- * not locked to a single role. Membership itself is enforced per-request by the
- * community API routes (see lib/community-route.ts).
+ * Which role a path is reserved for. `/community` and `/services` deliberately
+ * return null: both are shared by elders and family members alike, so they require a
+ * valid session but are not locked to a single role. Community membership is
+ * enforced per-request by the community API routes (see lib/community-route.ts);
+ * `/services` has no per-request check because it's just curated outbound links.
  */
 function prefixRole(pathname: string): string | null {
   if (pathname.startsWith('/elder')) return 'elder';
@@ -60,5 +61,6 @@ export const config = {
     '/admin/:path*',
     '/provider/:path*',
     '/community/:path*',
+    '/services/:path*',
   ],
 };

@@ -15,6 +15,7 @@ import {
   UserPlus,
   Kanban,
   Building2,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -34,6 +35,7 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
       { label: 'Home', href: '/elder', icon: Home },
       { label: 'Contacts', href: '/elder/contacts', icon: Users },
       { label: 'Community', href: '/community', icon: Building2 },
+      { label: 'Services', href: '/services', icon: Sparkles },
       { label: 'Profile', href: '/elder/profile', icon: User },
     ],
   },
@@ -43,6 +45,7 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
       { label: 'Dashboard', href: '/family', icon: LayoutDashboard },
       { label: 'Contacts', href: '/family/contacts', icon: Users },
       { label: 'Community', href: '/community', icon: Building2 },
+      { label: 'Services', href: '/services', icon: Sparkles },
       { label: 'SOS History', href: '/family/sos-history', icon: AlertTriangle },
       { label: 'Invite Elder', href: '/family/invite', icon: UserPlus },
     ],
