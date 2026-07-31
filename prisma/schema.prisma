@@ -50,6 +50,20 @@ model User {
   sosAcknowledged    SOSEvent[]           @relation("SOSAcknowledger")
   foodHandled        FoodRequest[]        @relation("FoodHandler")
 
+  // Community
+  memberships         NeighborhoodMember[]
+  eventsCreated       CommunityEvent[]     @relation("EventCreator")
+  eventRsvps          CommunityEventRsvp[]
+  greetingsSent       Greeting[]           @relation("GreetingSender")
+  greetingsReceived   Greeting[]           @relation("GreetingRecipient")
+  listingsAdded       LocalListing[]       @relation("ListingCreator")
+  queriesRaised       CommitteeQuery[]     @relation("QueryAuthor")
+  queryReplies        CommitteeQueryReply[]
+  noticesCreated      Notice[]             @relation("NoticeCreator")
+  whatsAppGroupsAdded WhatsAppGroupLink[]  @relation("WhatsAppGroupCreator")
+  chatMessages        ChatMessage[]
+  notificationPrefs   NotificationPreference[]
+
   @@index([phone])
   @@index([role])
 }
@@ -197,13 +211,20 @@ model SOSEvent {
   address        String?   @db.Text
   status         String    @default("triggered")
   acknowledgedBy String?
+  // Set when the alert was raised as a community panic alert, so the neighbourhood's
+  // committee/security can see it too. Deliberately an optional field on the existing
+  // model rather than a parallel PanicAlert table — one emergency table keeps the
+  // admin SOS feed and any "was help sent?" audit complete by construction.
+  neighborhoodId String?
   createdAt      DateTime  @default(now())
   resolvedAt     DateTime?
 
-  user         User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  acknowledger User? @relation("SOSAcknowledger", fields: [acknowledgedBy], references: [id])
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  acknowledger User?         @relation("SOSAcknowledger", fields: [acknowledgedBy], references: [id])
+  neighborhood Neighborhood? @relation(fields: [neighborhoodId], references: [id], onDelete: SetNull)
 
   @@index([userId, status])
+  @@index([neighborhoodId, status])
 }
 
 // ─── Food ───────────────────────────────────────────────────────
@@ -273,4 +294,260 @@ enum BacklogPriority {
   low
   medium
   high
+}
+
+// ─── Community (Phase 1) ─────────────────────────────────────────
+// Modelled on Adda.io / MyGate. Everything here is scoped to a Neighborhood — there
+// are no open/global social surfaces, which keeps moderation tractable for what is
+// fundamentally an elder-safety product.
+
+model Neighborhood {
+  id          String   @id @default(cuid())
+  name        String
+  city        String?
+  pincode     String?
+  description String?  @db.Text
+  // Short human-shareable code so a resident can join without an admin doing manual
+  // linking for every household.
+  joinCode    String   @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members        NeighborhoodMember[]
+  events         CommunityEvent[]
+  greetings      Greeting[]
+  helplines      CommunityHelpline[]
+  listings       LocalListing[]
+  queries        CommitteeQuery[]
+  notices        Notice[]
+  whatsAppGroups WhatsAppGroupLink[]
+  messages       ChatMessage[]
+  sosEvents      SOSEvent[]
+
+  @@index([pincode])
+}
+
+enum NeighborhoodRole {
+  member
+  committee
+  admin
+}
+
+model NeighborhoodMember {
+  id              String           @id @default(cuid())
+  neighborhoodId  String
+  userId          String
+  role            NeighborhoodRole @default(member)
+  flatNumber      String?
+  // Residents can stay in the community but keep themselves out of the public
+  // directory — a privacy affordance both reference apps get wrong by default.
+  showInDirectory Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+
+  neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([neighborhoodId, userId])
+  @@index([neighborhoodId, role])
+}
+
+model CommunityEvent {
+  id             String   @id @default(cuid())
+  neighborhoodId String
+  title          String
+  description    String?  @db.Text
+  location       String?
+  startsAt       DateTime
+  endsAt         DateTime?
+  createdById    String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  neighborhood Neighborhood         @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  createdBy    User                 @relation("EventCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  rsvps        CommunityEventRsvp[]
+
+  @@index([neighborhoodId, startsAt])
+}
+
+enum RsvpStatus {
+  going
+  maybe
+  not_going
+}
+
+model CommunityEventRsvp {
+  id        String     @id @default(cuid())
+  eventId   String
+  userId    String
+  status    RsvpStatus @default(going)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  event CommunityEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+}
+
+/// "Drop a hello" — a deliberately tiny, low-pressure icebreaker between neighbours.
+model Greeting {
+  id             String   @id @default(cuid())
+  neighborhoodId String
+  fromUserId     String
+  toUserId       String
+  message        String?  @db.Text
+  readAt         DateTime?
+  createdAt      DateTime @default(now())
+
+  neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  fromUser     User         @relation("GreetingSender", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser       User         @relation("GreetingRecipient", fields: [toUserId], references: [id], onDelete: Cascade)
+
+  @@index([toUserId, createdAt])
+}
+
+/// Shared community helpline numbers (security gate, police, fire, ambulance).
+/// Distinct from the per-user EmergencyContact model, which is personal to an elder.
+model CommunityHelpline {
+  id             String   @id @default(cuid())
+  neighborhoodId String
+  label          String
+  phone          String
+  category       String   @default("general")
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+
+  @@index([neighborhoodId, sortOrder])
+}
+
+/// Vendors / local services directory. neighborhoodId is nullable so a listing can be
+/// area-wide rather than tied to one society.
+model LocalListing {
+  id             String   @id @default(cuid())
+  neighborhoodId String?
+  name           String
+  category       String
+  phone          String
+  address        String?  @db.Text
+  description    String?  @db.Text
+  addedById      String
+  verified       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  neighborhood Neighborhood? @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  addedBy      User          @relation("ListingCreator", fields: [addedById], references: [id], onDelete: Cascade)
+
+  @@index([neighborhoodId, category])
+}
+
+enum QueryType {
+  committee
+  helpdesk
+}
+
+enum QueryStatus {
+  open
+  in_progress
+  resolved
+  closed
+}
+
+/// One ticket system serving two entry points: queries raised to the management
+/// committee, and general help-desk requests. Distinguished by `type` rather than
+/// duplicated into two near-identical models.
+model CommitteeQuery {
+  id             String      @id @default(cuid())
+  neighborhoodId String
+  userId         String
+  type           QueryType   @default(committee)
+  subject        String
+  body           String      @db.Text
+  status         QueryStatus @default(open)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  neighborhood Neighborhood          @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  user         User                  @relation("QueryAuthor", fields: [userId], references: [id], onDelete: Cascade)
+  replies      CommitteeQueryReply[]
+
+  @@index([neighborhoodId, status])
+}
+
+model CommitteeQueryReply {
+  id        String   @id @default(cuid())
+  queryId   String
+  userId    String
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+
+  query CommitteeQuery @relation(fields: [queryId], references: [id], onDelete: Cascade)
+  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([queryId, createdAt])
+}
+
+/// Announcements from the committee to the whole neighbourhood.
+model Notice {
+  id             String   @id @default(cuid())
+  neighborhoodId String
+  title          String
+  body           String   @db.Text
+  pinned         Boolean  @default(false)
+  createdById    String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  createdBy    User         @relation("NoticeCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([neighborhoodId, pinned, createdAt])
+}
+
+/// Curated directory of community WhatsApp group invite links. Deliberately a link-out
+/// list, not an attempt to reimplement group messaging.
+model WhatsAppGroupLink {
+  id             String   @id @default(cuid())
+  neighborhoodId String
+  name           String
+  description    String?  @db.Text
+  inviteUrl      String   @db.Text
+  createdById    String
+  createdAt      DateTime @default(now())
+
+  neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  createdBy    User         @relation("WhatsAppGroupCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([neighborhoodId])
+}
+
+/// Community Buzz — chat scoped per-neighbourhood, never open DMs.
+model ChatMessage {
+  id             String   @id @default(cuid())
+  neighborhoodId String
+  senderId       String
+  body           String   @db.Text
+  createdAt      DateTime @default(now())
+
+  neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([neighborhoodId, createdAt])
+}
+
+model NotificationPreference {
+  id        String   @id @default(cuid())
+  userId    String
+  category  String
+  push      Boolean  @default(true)
+  email     Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, category])
 }
