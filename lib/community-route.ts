@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
+import { prisma } from '@/lib/db';
 import { getMembership, getPrimaryNeighborhoodId, type Membership } from '@/lib/community-access';
 
 type Guard =
@@ -38,7 +39,18 @@ export async function requireMembership(
     return fail('NO_COMMUNITY', "You haven't joined a community yet.", 404);
   }
 
-  const membership = await getMembership(auth.userId, neighborhoodId);
+  // Platform admins manage communities they haven't personally joined, so they don't
+  // have a NeighborhoodMember row to look up. Grant them the same authority as a
+  // community's own `admin`-role member instead of requiring a real membership row —
+  // but still confirm the neighborhood exists, so a bad id 404s instead of every
+  // downstream `findMany` silently returning an empty list.
+  let membership: Membership | null = auth.role === 'admin' ? { neighborhoodId, role: 'admin' } : null;
+  if (membership) {
+    const exists = await prisma.neighborhood.findUnique({ where: { id: neighborhoodId }, select: { id: true } });
+    if (!exists) return fail('NOT_FOUND', 'Community not found.', 404);
+  } else {
+    membership = await getMembership(auth.userId, neighborhoodId);
+  }
   if (!membership) {
     return fail('NOT_A_MEMBER', 'You are not a member of this community.', 403);
   }
