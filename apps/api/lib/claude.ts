@@ -142,7 +142,7 @@ export async function extractPrescriptionData(
   mediaType: string = 'image/jpeg',
 ): Promise<PrescriptionExtraction> {
   const message = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-5',
     max_tokens: 2048,
     system: PRESCRIPTION_EXTRACTION_PROMPT,
     messages: [

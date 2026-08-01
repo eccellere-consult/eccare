@@ -8,7 +8,7 @@
 - **Commits ahead:** 2 (prescription feature + seed fix)
 - **Structure:** Turborepo monorepo (`apps/api/`, `apps/mobile/`, `packages/`)
 - **Features:** 
-  - Prescription upload (Claude Sonnet 4 vision)
+  - Prescription upload (Claude Sonnet 5 vision)
   - Appointments CRUD
   - Health management UI
   - GitHub Actions CI/CD
@@ -103,7 +103,7 @@ git bundle create ../ec-local-backup-2026-08-01.bundle --all
 ```
 
 ### 2. Document What's Unique in Local
-- Prescription upload implementation (Claude Sonnet 4)
+- Prescription upload implementation (Claude Sonnet 5)
 - Seed script with password reset fix
 - Test users: elder@test.com, caregiver@test.com, admin@test.com
 - Family permissions integration
