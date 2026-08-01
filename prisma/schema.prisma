@@ -65,6 +65,7 @@ model User {
   whatsAppGroupsAdded WhatsAppGroupLink[]  @relation("WhatsAppGroupCreator")
   chatMessages        ChatMessage[]
   notificationPrefs   NotificationPreference[]
+  geriatricListings   GeriatricCareListing[]   @relation("GeriatricListingCreator")
 
   @@index([phone])
   @@index([role])
@@ -576,4 +577,40 @@ model NotificationPreference {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, category])
+}
+
+// ─── Geriatrics Care Directory ──────────────────────────────────
+
+enum GeriatricCareCategory {
+  self_help_group
+  ngo
+  palliative_care
+  physiotherapy
+  massage
+  yoga
+  meditation
+}
+
+model GeriatricCareListing {
+  id          String                @id @default(cuid())
+  name        String
+  category    GeriatricCareCategory
+  description String?               @db.Text
+  phone       String?
+  email       String?
+  website     String?
+  address     String?               @db.Text
+  city        String?
+  pincode     String?
+  contactName String?
+  isActive    Boolean               @default(true)
+  verified    Boolean               @default(false)
+  addedById   String
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  addedBy User @relation("GeriatricListingCreator", fields: [addedById], references: [id], onDelete: Cascade)
+
+  @@index([category, isActive])
+  @@index([city])
 }
