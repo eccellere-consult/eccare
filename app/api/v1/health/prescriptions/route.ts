@@ -70,6 +70,7 @@ export async function POST(req: NextRequest) {
       prescriptionDate: null,
       medications: [],
       notes: null,
+      nextVisitDate: null,
     };
 
     let aiProvider: string | undefined;
@@ -83,6 +84,8 @@ export async function POST(req: NextRequest) {
         'No AI provider configured. Please add medications manually.';
     }
 
+    // Nothing is committed to the medicine calendar yet — the caregiver reviews and
+    // edits the AI's reading first, then confirms via POST /prescriptions/[id]/confirm.
     const prescription = await prisma.prescription.create({
       data: {
         userId: guard.elderUserId,
@@ -100,50 +103,11 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const createdMeds = [];
-    if (extraction.medications.length > 0) {
-      for (const med of extraction.medications) {
-        const medication = await prisma.medication.create({
-          data: {
-            userId: guard.elderUserId,
-            prescriptionId: prescription.id,
-            name: med.name,
-            dosage: med.dosage,
-            frequency: med.frequency,
-            timeSlots: med.timeSlots,
-            instructions: med.instructions,
-            prescribingDoctor: extraction.doctorName,
-          },
-        });
-        createdMeds.push(medication);
-      }
-
-      const today = new Date().toISOString().split('T')[0];
-      for (const med of createdMeds) {
-        const slots = med.timeSlots as string[];
-        for (const slot of slots) {
-          const scheduledAt = new Date(`${today}T${slot}:00.000Z`);
-          const existing = await prisma.medicationReminder.findFirst({
-            where: { medicationId: med.id, scheduledAt },
-          });
-          if (!existing) {
-            await prisma.medicationReminder.create({
-              data: {
-                medicationId: med.id,
-                userId: guard.elderUserId,
-                scheduledAt,
-              },
-            });
-          }
-        }
-      }
-    }
-
     return ok(
       {
         prescription,
         extractedMedications: extraction.medications,
-        createdMedications: createdMeds.length,
+        nextVisitDate: extraction.nextVisitDate,
         aiProvider,
       },
       201,
