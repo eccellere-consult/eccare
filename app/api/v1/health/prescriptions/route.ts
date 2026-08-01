@@ -31,7 +31,13 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const formData = await req.formData();
+  let formData: FormData;
+  try {
+    formData = await req.formData();
+  } catch {
+    return fail('VALIDATION', 'Could not read the uploaded file.');
+  }
+
   const file = formData.get('file') as File | null;
   const elderUserId = formData.get('elderUserId') as string | null;
 
@@ -48,97 +54,103 @@ export async function POST(req: NextRequest) {
     return fail('FORBIDDEN', 'You need medication management permission.', 403);
   }
 
-  const bytes = await file.arrayBuffer();
-  const buffer = Buffer.from(bytes);
-  const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
-  const filename = `${guard.elderUserId}_${Date.now()}.${ext}`;
-  const filePath = `/uploads/prescriptions/${filename}`;
+  try {
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+    const filename = `${guard.elderUserId}_${Date.now()}.${ext}`;
+    const filePath = `/uploads/prescriptions/${filename}`;
 
-  await mkdir(UPLOAD_DIR, { recursive: true });
-  await writeFile(path.join(UPLOAD_DIR, filename), buffer);
+    await mkdir(UPLOAD_DIR, { recursive: true });
+    await writeFile(path.join(UPLOAD_DIR, filename), buffer);
 
-  let extraction: PrescriptionExtraction = {
-    doctorName: null,
-    hospitalName: null,
-    prescriptionDate: null,
-    medications: [],
-    notes: null,
-  };
+    let extraction: PrescriptionExtraction = {
+      doctorName: null,
+      hospitalName: null,
+      prescriptionDate: null,
+      medications: [],
+      notes: null,
+    };
 
-  let aiProvider: string | undefined;
-  if (isConfigured()) {
-    const base64 = buffer.toString('base64');
-    const result = await extractPrescription(base64, file.type as AllowedType);
-    aiProvider = result.provider;
-    extraction = result;
-  } else {
-    extraction.notes =
-      'No AI provider configured. Please add medications manually.';
-  }
-
-  const prescription = await prisma.prescription.create({
-    data: {
-      userId: guard.elderUserId,
-      uploadedById: guard.userId,
-      fileName: file.name,
-      filePath,
-      fileType: file.type,
-      extractedData: extraction as object,
-      doctorName: extraction.doctorName,
-      hospitalName: extraction.hospitalName,
-      prescriptionDate: extraction.prescriptionDate
-        ? new Date(extraction.prescriptionDate)
-        : null,
-      notes: extraction.notes,
-    },
-  });
-
-  const createdMeds = [];
-  if (extraction.medications.length > 0) {
-    for (const med of extraction.medications) {
-      const medication = await prisma.medication.create({
-        data: {
-          userId: guard.elderUserId,
-          prescriptionId: prescription.id,
-          name: med.name,
-          dosage: med.dosage,
-          frequency: med.frequency,
-          timeSlots: med.timeSlots,
-          instructions: med.instructions,
-          prescribingDoctor: extraction.doctorName,
-        },
-      });
-      createdMeds.push(medication);
+    let aiProvider: string | undefined;
+    if (isConfigured()) {
+      const base64 = buffer.toString('base64');
+      const result = await extractPrescription(base64, file.type as AllowedType);
+      aiProvider = result.provider;
+      extraction = result;
+    } else {
+      extraction.notes =
+        'No AI provider configured. Please add medications manually.';
     }
 
-    const today = new Date().toISOString().split('T')[0];
-    for (const med of createdMeds) {
-      const slots = med.timeSlots as string[];
-      for (const slot of slots) {
-        const scheduledAt = new Date(`${today}T${slot}:00.000Z`);
-        const existing = await prisma.medicationReminder.findFirst({
-          where: { medicationId: med.id, scheduledAt },
+    const prescription = await prisma.prescription.create({
+      data: {
+        userId: guard.elderUserId,
+        uploadedById: guard.userId,
+        fileName: file.name,
+        filePath,
+        fileType: file.type,
+        extractedData: extraction as object,
+        doctorName: extraction.doctorName,
+        hospitalName: extraction.hospitalName,
+        prescriptionDate: extraction.prescriptionDate
+          ? new Date(extraction.prescriptionDate)
+          : null,
+        notes: extraction.notes,
+      },
+    });
+
+    const createdMeds = [];
+    if (extraction.medications.length > 0) {
+      for (const med of extraction.medications) {
+        const medication = await prisma.medication.create({
+          data: {
+            userId: guard.elderUserId,
+            prescriptionId: prescription.id,
+            name: med.name,
+            dosage: med.dosage,
+            frequency: med.frequency,
+            timeSlots: med.timeSlots,
+            instructions: med.instructions,
+            prescribingDoctor: extraction.doctorName,
+          },
         });
-        if (!existing) {
-          await prisma.medicationReminder.create({
-            data: {
-              medicationId: med.id,
-              userId: guard.elderUserId,
-              scheduledAt,
-            },
+        createdMeds.push(medication);
+      }
+
+      const today = new Date().toISOString().split('T')[0];
+      for (const med of createdMeds) {
+        const slots = med.timeSlots as string[];
+        for (const slot of slots) {
+          const scheduledAt = new Date(`${today}T${slot}:00.000Z`);
+          const existing = await prisma.medicationReminder.findFirst({
+            where: { medicationId: med.id, scheduledAt },
           });
+          if (!existing) {
+            await prisma.medicationReminder.create({
+              data: {
+                medicationId: med.id,
+                userId: guard.elderUserId,
+                scheduledAt,
+              },
+            });
+          }
         }
       }
     }
-  }
 
-  return ok(
-    {
-      prescription,
-      extractedMedications: extraction.medications,
-      createdMedications: createdMeds.length,
-      aiProvider,
-    },
-    201,
-  );
+    return ok(
+      {
+        prescription,
+        extractedMedications: extraction.medications,
+        createdMedications: createdMeds.length,
+        aiProvider,
+      },
+      201,
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Upload failed unexpectedly.';
+    console.error('Prescription upload error:', message);
+    return fail('SERVER_ERROR', message, 500);
+  }
 }
