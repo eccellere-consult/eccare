@@ -1,22 +1,26 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Pill,
   CalendarDays,
   FileText,
   UtensilsCrossed,
   Check,
-  Clock,
-  XCircle,
   FileImage,
   Eye,
   Phone,
+  Sunrise,
+  Sun,
+  Sunset,
+  Moon,
+  Loader2,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { healthApi, useHealthData } from '@/lib/health-client';
+import { getSlotForDate, formatIstTime, SLOT_META, SLOT_ORDER, todayIST, type MedicineSlot } from '@/lib/medicine-slots';
 
 interface Medication {
   id: string;
@@ -78,15 +82,50 @@ interface EmergencyContact {
   relationship: string;
 }
 
-const STATUS_ICON: Record<string, typeof Check> = {
-  taken: Check,
-  missed: XCircle,
-  pending: Clock,
-  snoozed: Clock,
+const SLOT_ICON: Record<MedicineSlot, typeof Sunrise> = {
+  morning: Sunrise,
+  afternoon: Sun,
+  evening: Sunset,
+  night: Moon,
+};
+
+const SLOT_STYLE: Record<MedicineSlot, { card: string; iconWrap: string; icon: string; heading: string; sub: string; itemBorder: string }> = {
+  morning: {
+    card: 'border-accent-100 bg-accent-50',
+    iconWrap: 'bg-white',
+    icon: 'text-accent-600',
+    heading: 'text-accent-900',
+    sub: 'text-accent-600',
+    itemBorder: 'border-accent-100',
+  },
+  afternoon: {
+    card: 'border-primary-100 bg-primary-50',
+    iconWrap: 'bg-white',
+    icon: 'text-primary-600',
+    heading: 'text-primary-900',
+    sub: 'text-primary-600',
+    itemBorder: 'border-primary-100',
+  },
+  evening: {
+    card: 'border-accent-100 bg-accent-100',
+    iconWrap: 'bg-white/70',
+    icon: 'text-accent-900',
+    heading: 'text-accent-900',
+    sub: 'text-accent-900/70',
+    itemBorder: 'border-white/60',
+  },
+  night: {
+    card: 'border-primary-900 bg-primary-900',
+    iconWrap: 'bg-white/10',
+    icon: 'text-white',
+    heading: 'text-white',
+    sub: 'text-primary-100',
+    itemBorder: 'border-white/15',
+  },
 };
 
 export default function ElderHealthPage() {
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayIST();
 
   const meds = useHealthData<Medication[]>('/medications');
   const reminders = useHealthData<Reminder[]>(`/reminders?date=${today}`);
@@ -103,16 +142,20 @@ export default function ElderHealthPage() {
       .catch(() => {});
   }, []);
 
-  const [markingId, setMarkingId] = useState<string | null>(null);
+  const [confirmingSlot, setConfirmingSlot] = useState<MedicineSlot | null>(null);
+  const [slotError, setSlotError] = useState('');
   const [foodBusy, setFoodBusy] = useState(false);
 
-  async function markReminder(id: string, status: 'taken' | 'missed') {
-    setMarkingId(id);
+  async function confirmSlot(slot: MedicineSlot, reminderIds: string[]) {
+    setConfirmingSlot(slot);
+    setSlotError('');
     try {
-      await healthApi.patch(`/reminders/${id}`, { status });
+      await healthApi.post('/reminders/confirm-batch', { reminderIds });
       reminders.reload();
+    } catch (err) {
+      setSlotError(err instanceof Error ? err.message : 'Could not confirm. Please try again.');
     } finally {
-      setMarkingId(null);
+      setConfirmingSlot(null);
     }
   }
 
@@ -131,12 +174,13 @@ export default function ElderHealthPage() {
       <h1 className="text-2xl font-bold text-text">My health</h1>
       <p className="mt-1 text-text-secondary">Your medications, appointments, and care notes.</p>
 
-      {/* Today's reminders */}
+      {/* Today's medicine box — one compartment per time of day */}
       <section className="mt-6">
         <h2 className="flex items-center gap-2 text-lg font-bold text-text">
           <Pill className="h-5 w-5 text-primary-600" />
           Today&rsquo;s medicines
         </h2>
+
         {reminders.loading ? (
           <p className="mt-3 text-text-secondary">Loading…</p>
         ) : reminders.error ? (
@@ -145,34 +189,74 @@ export default function ElderHealthPage() {
           <Card className="mt-3"><CardContent className="py-8 text-center text-text-secondary">No medicines scheduled for today.</CardContent></Card>
         ) : (
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            {reminders.data?.map((r) => {
-              const Icon = STATUS_ICON[r.status] ?? Clock;
-              const time = new Date(r.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            {SLOT_ORDER.map((slot) => {
+              const items = (reminders.data ?? []).filter((r) => getSlotForDate(new Date(r.scheduledAt)) === slot);
+              if (items.length === 0) return null;
+
+              const pendingIds = items.filter((r) => r.status === 'pending').map((r) => r.id);
+              const allConfirmed = pendingIds.length === 0;
+              const style = SLOT_STYLE[slot];
+              const Icon = SLOT_ICON[slot];
+
               return (
-                <Card key={r.id}>
-                  <CardContent className="flex items-center gap-4 pt-6">
-                    <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${r.status === 'taken' ? 'bg-success-50' : r.status === 'missed' ? 'bg-danger-50' : 'bg-primary-50'}`}>
-                      <Icon className={`h-5 w-5 ${r.status === 'taken' ? 'text-success-600' : r.status === 'missed' ? 'text-danger-600' : 'text-primary-600'}`} />
+                <div key={slot} className={`rounded-2xl border-2 p-4 ${style.card}`}>
+                  <div className="flex items-center gap-3">
+                    <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${style.iconWrap}`}>
+                      <Icon className={`h-6 w-6 ${style.icon}`} />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="font-bold text-text">{r.medication.name} — {r.medication.dosage}</p>
-                      <p className="text-sm text-text-secondary">{time}{r.medication.instructions ? ` · ${r.medication.instructions}` : ''}</p>
+                      <p className={`text-lg font-extrabold ${style.heading}`}>{SLOT_META[slot].label}</p>
+                      <p className={`text-xs ${style.sub}`}>{SLOT_META[slot].range}</p>
                     </div>
-                    {r.status === 'pending' && (
-                      <Button
-                        size="sm"
-                        disabled={markingId === r.id}
-                        onClick={() => markReminder(r.id, 'taken')}
-                      >
-                        Taken
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
+                    <Badge variant="muted" className="shrink-0 bg-white/80 text-text">
+                      {items.length} medicine{items.length === 1 ? '' : 's'}
+                    </Badge>
+                  </div>
+
+                  <div className="mt-3 flex flex-col gap-2">
+                    {items.map((r) => (
+                      <div key={r.id} className={`flex items-center gap-3 rounded-xl border bg-white/60 px-3 py-2 ${style.itemBorder}`}>
+                        <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${r.status === 'taken' ? 'bg-success-50' : 'bg-white'}`}>
+                          {r.status === 'taken' && <Check className="h-4 w-4 text-success-600" />}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-semibold text-text">{r.medication.name} — {r.medication.dosage}</p>
+                          {r.medication.instructions && (
+                            <p className="truncate text-xs text-text-secondary">{r.medication.instructions}</p>
+                          )}
+                        </div>
+                        <span className="shrink-0 text-xs font-semibold text-text-secondary">
+                          By {formatIstTime(new Date(r.scheduledAt))}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {allConfirmed ? (
+                    <div className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-success-50 py-2.5 text-sm font-bold text-success-600">
+                      <Check className="h-4 w-4" /> All confirmed for {SLOT_META[slot].label.toLowerCase()}
+                    </div>
+                  ) : (
+                    <Button
+                      className="mt-3 w-full"
+                      disabled={confirmingSlot === slot}
+                      onClick={() => confirmSlot(slot, pendingIds)}
+                    >
+                      {confirmingSlot === slot ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" /> Confirming…
+                        </>
+                      ) : (
+                        `Confirm ${pendingIds.length} taken`
+                      )}
+                    </Button>
+                  )}
+                </div>
               );
             })}
           </div>
         )}
+        {slotError && <p className="mt-2 text-sm text-danger-600">{slotError}</p>}
         {(meds.data?.length ?? 0) > 0 && (reminders.data?.length ?? 0) === 0 && !reminders.loading && (
           <p className="mt-2 text-sm text-text-secondary">
             You have {meds.data?.length} active medicine{meds.data?.length === 1 ? '' : 's'}, but no reminders were generated for today.
