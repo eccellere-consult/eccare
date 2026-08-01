@@ -97,6 +97,8 @@ export default function FamilyHealthPage({
   const [uploadResult, setUploadResult] = useState<{
     createdMedications: number;
     extractedMedications: { name: string; dosage: string }[];
+    notes: string | null;
+    aiProvider: string | null;
   } | null>(null);
 
   // Med form
@@ -123,7 +125,16 @@ export default function FamilyHealthPage({
         body: formData,
       });
       const text = await res.text();
-      let json: { success?: boolean; data?: { createdMedications: number; extractedMedications: { name: string; dosage: string }[] }; error?: { message: string } };
+      let json: {
+        success?: boolean;
+        data?: {
+          createdMedications: number;
+          extractedMedications: { name: string; dosage: string }[];
+          aiProvider?: string;
+          prescription?: { notes: string | null };
+        };
+        error?: { message: string };
+      };
       try {
         json = JSON.parse(text);
       } catch {
@@ -135,6 +146,8 @@ export default function FamilyHealthPage({
       setUploadResult({
         createdMedications: json.data?.createdMedications ?? 0,
         extractedMedications: json.data?.extractedMedications ?? [],
+        notes: json.data?.prescription?.notes ?? null,
+        aiProvider: json.data?.aiProvider ?? null,
       });
       prescriptions.reload();
       meds.reload();
@@ -292,9 +305,19 @@ export default function FamilyHealthPage({
         )}
 
         {uploadResult && (
-          <Card className="mt-3 border-success-200 bg-success-50">
+          <Card
+            className={`mt-3 ${
+              uploadResult.createdMedications > 0
+                ? 'border-success-200 bg-success-50'
+                : 'border-danger-200 bg-danger-50'
+            }`}
+          >
             <CardContent className="py-4">
-              <p className="font-semibold text-success-900">
+              <p
+                className={`font-semibold ${
+                  uploadResult.createdMedications > 0 ? 'text-success-900' : 'text-danger-900'
+                }`}
+              >
                 {uploadResult.createdMedications > 0
                   ? `Found ${uploadResult.createdMedications} medication${uploadResult.createdMedications === 1 ? '' : 's'} and added to the calendar.`
                   : 'Prescription saved. No medications could be extracted — please add them manually below.'}
@@ -307,6 +330,14 @@ export default function FamilyHealthPage({
                     </li>
                   ))}
                 </ul>
+              )}
+              {uploadResult.notes && (
+                <p className="mt-2 text-sm text-danger-700">
+                  <span className="font-semibold">Details:</span> {uploadResult.notes}
+                </p>
+              )}
+              {uploadResult.aiProvider && (
+                <p className="mt-1 text-xs text-text-secondary">AI provider: {uploadResult.aiProvider}</p>
               )}
             </CardContent>
           </Card>
