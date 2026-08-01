@@ -199,7 +199,7 @@ export default function ElderHealthPage() {
               const Icon = SLOT_ICON[slot];
 
               return (
-                <div key={slot} className={`rounded-2xl border-2 p-4 ${style.card}`}>
+                <div key={slot} className={`min-w-0 rounded-2xl border-2 p-4 ${style.card}`}>
                   <div className="flex items-center gap-3">
                     <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${style.iconWrap}`}>
                       <Icon className={`h-6 w-6 ${style.icon}`} />
@@ -213,9 +213,9 @@ export default function ElderHealthPage() {
                     </Badge>
                   </div>
 
-                  <div className="mt-3 flex flex-col gap-2">
+                  <div className="mt-3 flex min-w-0 flex-col gap-2">
                     {items.map((r) => (
-                      <div key={r.id} className={`flex items-center gap-3 rounded-xl border bg-white/60 px-3 py-2 ${style.itemBorder}`}>
+                      <div key={r.id} className={`flex min-w-0 items-center gap-3 rounded-xl border bg-white/60 px-3 py-2 ${style.itemBorder}`}>
                         <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${r.status === 'taken' ? 'bg-success-50' : 'bg-white'}`}>
                           {r.status === 'taken' && <Check className="h-4 w-4 text-success-600" />}
                         </span>

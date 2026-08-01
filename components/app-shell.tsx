@@ -61,6 +61,7 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
       { label: 'Communities', href: '/admin/communities', icon: Building2 },
       { label: 'SOS Feed', href: '/admin/sos-feed', icon: AlertTriangle },
       { label: 'Backlog', href: '/admin/backlog', icon: Kanban },
+      { label: 'Quotes', href: '/admin/quotes', icon: Sparkles },
     ],
   },
   provider: {
