@@ -16,9 +16,12 @@ export interface PrescriptionExtraction {
   prescriptionDate: string | null;
   medications: ExtractedMedication[];
   notes: string | null;
+  nextVisitDate: string | null;
 }
 
-const EXTRACTION_PROMPT = `You are a medical prescription reader for an elder care platform. Extract structured medication data from this prescription image.
+// Today's date is injected so the model can resolve relative follow-ups (e.g. "review after 2 weeks") to an absolute date.
+function buildExtractionPrompt(today: string): string {
+  return `You are a medical prescription reader for an elder care platform. Extract structured medication data from this prescription image. Today's date is ${today}.
 
 Return ONLY a valid JSON object with this exact shape:
 {
@@ -35,16 +38,19 @@ Return ONLY a valid JSON object with this exact shape:
       "duration": "e.g. 30 days, 2 weeks" or null
     }
   ],
-  "notes": "Any other relevant notes from the prescription" or null
+  "notes": "Any other relevant notes from the prescription" or null,
+  "nextVisitDate": "YYYY-MM-DD" or null
 }
 
 Rules:
 - timeSlots must be in 24-hour "HH:MM" format
 - For "once daily" use ["08:00"], "twice daily" use ["08:00", "20:00"], "three times daily" use ["08:00", "14:00", "20:00"]
 - If a time is specified (e.g. "at bedtime"), use the appropriate time like ["21:00"]
-- If the image is not a prescription or is unreadable, return: {"doctorName":null,"hospitalName":null,"prescriptionDate":null,"medications":[],"notes":"Could not read prescription. Please upload a clearer image."}
+- If the image is not a prescription or is unreadable, return: {"doctorName":null,"hospitalName":null,"prescriptionDate":null,"medications":[],"notes":"Could not read prescription. Please upload a clearer image.","nextVisitDate":null}
 - Extract ALL medications listed, do not skip any
-- Be accurate with dosage and frequency — these affect patient safety`;
+- Be accurate with dosage and frequency — these affect patient safety
+- If the prescription mentions a follow-up/review/next visit (e.g. "review after 2 weeks", "come back on 15/09"), resolve it to an absolute "YYYY-MM-DD" date using today's date and put it in nextVisitDate. If no follow-up is mentioned, use null`;
+}
 
 const FALLBACK_RESULT: PrescriptionExtraction = {
   doctorName: null,
@@ -52,6 +58,7 @@ const FALLBACK_RESULT: PrescriptionExtraction = {
   prescriptionDate: null,
   medications: [],
   notes: 'AI could not parse the prescription. Please try a clearer photo.',
+  nextVisitDate: null,
 };
 
 function parseExtraction(text: string): PrescriptionExtraction {
@@ -61,6 +68,7 @@ function parseExtraction(text: string): PrescriptionExtraction {
   try {
     const parsed = JSON.parse(jsonMatch[0]) as PrescriptionExtraction;
     if (!Array.isArray(parsed.medications)) parsed.medications = [];
+    if (parsed.nextVisitDate === undefined) parsed.nextVisitDate = null;
     return parsed;
   } catch {
     return { ...FALLBACK_RESULT, notes: 'AI returned invalid data. Please try again.' };
@@ -82,7 +90,7 @@ async function extractWithAnthropic(
         role: 'user',
         content: [
           { type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } },
-          { type: 'text', text: EXTRACTION_PROMPT },
+          { type: 'text', text: buildExtractionPrompt(new Date().toISOString().split('T')[0]) },
         ],
       },
     ],
@@ -105,7 +113,7 @@ async function extractWithOpenAI(
         role: 'user',
         content: [
           { type: 'image_url', image_url: { url: dataUrl, detail: 'high' } },
-          { type: 'text', text: EXTRACTION_PROMPT },
+          { type: 'text', text: buildExtractionPrompt(new Date().toISOString().split('T')[0]) },
         ],
       },
     ],
@@ -131,7 +139,7 @@ async function extractWithGrok(
         role: 'user',
         content: [
           { type: 'image_url', image_url: { url: dataUrl, detail: 'high' } },
-          { type: 'text', text: EXTRACTION_PROMPT },
+          { type: 'text', text: buildExtractionPrompt(new Date().toISOString().split('T')[0]) },
         ],
       },
     ],

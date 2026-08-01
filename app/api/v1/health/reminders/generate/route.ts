@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { requireHealthAccess, ok, fail } from '@/lib/health-access';
+import { localTimeToUtcDate } from '@/lib/medicine-slots';
 
 const generateSchema = z.object({
   medicationId: z.string().min(1),
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
   const created = [];
 
   for (const slot of slots) {
-    const scheduledAt = new Date(`${parsed.data.date}T${slot}:00.000Z`);
+    const scheduledAt = localTimeToUtcDate(parsed.data.date, slot);
 
     const existing = await prisma.medicationReminder.findFirst({
       where: { medicationId: parsed.data.medicationId, scheduledAt },
