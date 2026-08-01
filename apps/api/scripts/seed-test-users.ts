@@ -9,7 +9,12 @@ async function createTestUsers() {
     const elderPasswordHash = await bcrypt.hash('elder123', 10);
     const elder = await prisma.user.upsert({
       where: { email: 'elder@test.com' },
-      update: {},
+      update: {
+        passwordHash: elderPasswordHash,
+        name: 'Test Elder',
+        role: 'elder',
+        phone: '+919876543210',
+      },
       create: {
         email: 'elder@test.com',
         passwordHash: elderPasswordHash,
@@ -24,7 +29,12 @@ async function createTestUsers() {
     const caregiverPasswordHash = await bcrypt.hash('caregiver123', 10);
     const caregiver = await prisma.user.upsert({
       where: { email: 'caregiver@test.com' },
-      update: {},
+      update: {
+        passwordHash: caregiverPasswordHash,
+        name: 'Test Caregiver',
+        role: 'caregiver',
+        phone: '+919876543211',
+      },
       create: {
         email: 'caregiver@test.com',
         passwordHash: caregiverPasswordHash,
@@ -61,7 +71,11 @@ async function createTestUsers() {
     const adminPasswordHash = await bcrypt.hash('admin123', 10);
     const admin = await prisma.user.upsert({
       where: { email: 'admin@test.com' },
-      update: {},
+      update: {
+        passwordHash: adminPasswordHash,
+        name: 'Test Admin',
+        role: 'admin',
+      },
       create: {
         email: 'admin@test.com',
         passwordHash: adminPasswordHash,
