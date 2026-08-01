@@ -122,13 +122,19 @@ export default function FamilyHealthPage({
         credentials: 'include',
         body: formData,
       });
-      const json = await res.json();
+      const text = await res.text();
+      let json: { success?: boolean; data?: { createdMedications: number; extractedMedications: { name: string; dosage: string }[] }; error?: { message: string } };
+      try {
+        json = JSON.parse(text);
+      } catch {
+        throw new Error(`Server error (${res.status}). Please try again.`);
+      }
       if (!res.ok || !json.success) {
         throw new Error(json?.error?.message || 'Upload failed.');
       }
       setUploadResult({
-        createdMedications: json.data.createdMedications,
-        extractedMedications: json.data.extractedMedications,
+        createdMedications: json.data?.createdMedications ?? 0,
+        extractedMedications: json.data?.extractedMedications ?? [],
       });
       prescriptions.reload();
       meds.reload();
