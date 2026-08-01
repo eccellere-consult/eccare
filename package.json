@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 4000",
-    "build": "prisma db push --skip-generate && next build",
+    "build": "prisma db push --skip-generate && node scripts/fix-med-permissions.mjs && next build",
     "start": "node server.js",
     "typecheck": "tsc --noEmit",
     "lint": "next lint",

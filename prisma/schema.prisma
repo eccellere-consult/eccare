@@ -84,7 +84,7 @@ model FamilyRelation {
   caregiverUserId  String
   relationship     String
   canViewHealth    Boolean      @default(true)
-  canManageMeds    Boolean      @default(false)
+  canManageMeds    Boolean      @default(true)
   receivesSos      Boolean      @default(true)
   receivesCheckin  Boolean      @default(true)
   inviteStatus     InviteStatus @default(pending)
