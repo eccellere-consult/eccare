@@ -1,61 +1,49 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
-import { getAuthUser } from '@/lib/auth';
+import { NextRequest } from 'next/server';
 import { z } from 'zod';
+import { prisma } from '@/lib/db';
+import { requireHealthAccess, ok, fail } from '@/lib/health-access';
 
 const createSchema = z.object({
-  name: z.string().min(1),
-  dosage: z.string().min(1),
-  frequency: z.string(),
-  timeSlots: z.array(z.string()),
-  instructions: z.string().optional(),
-  prescribingDoctor: z.string().optional(),
+  elderUserId: z.string().optional(),
+  name: z.string().min(1).max(200),
+  dosage: z.string().min(1).max(100),
+  frequency: z.string().min(1).max(100),
+  timeSlots: z.array(z.string()).min(1),
+  instructions: z.string().max(1000).optional(),
+  prescribingDoctor: z.string().max(200).optional(),
 });
 
 export async function GET(req: NextRequest) {
-  const auth = await getAuthUser(req);
-  if (!auth) {
-    return NextResponse.json(
-      { success: false, error: { code: 'UNAUTHORIZED', message: 'Please log in.' } },
-      { status: 401 },
-    );
-  }
+  const guard = await requireHealthAccess(req);
+  if (guard instanceof Response) return guard;
+
+  const showInactive = req.nextUrl.searchParams.get('all') === '1';
 
   const medications = await prisma.medication.findMany({
-    where: { userId: auth.userId, isActive: true },
-    orderBy: { createdAt: 'desc' },
+    where: { userId: guard.elderUserId, ...(showInactive ? {} : { isActive: true }) },
+    orderBy: [{ isActive: 'desc' }, { name: 'asc' }],
   });
 
-  return NextResponse.json({ success: true, data: medications });
+  return ok(medications);
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await getAuthUser(req);
-  if (!auth) {
-    return NextResponse.json(
-      { success: false, error: { code: 'UNAUTHORIZED', message: 'Please log in.' } },
-      { status: 401 },
-    );
-  }
-
   const body = await req.json();
-  const parsed = createSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { success: false, error: { code: 'INVALID_INPUT', message: 'Please fill in all required fields.' } },
-      { status: 400 },
-    );
+  const guard = await requireHealthAccess(req, body.elderUserId);
+  if (guard instanceof Response) return guard;
+
+  if (guard.role === 'caregiver' && !guard.canManageMeds) {
+    return fail('FORBIDDEN', 'You do not have medication management permission for this elder.', 403);
   }
 
-  // Allow caregivers to add meds for their linked elders
-  const targetUserId = body.elderUserId || auth.userId;
+  const parsed = createSchema.safeParse(body);
+  if (!parsed.success) return fail('VALIDATION', parsed.error.issues[0].message);
+
+  const { elderUserId: _, ...data } = parsed.data;
 
   const medication = await prisma.medication.create({
-    data: {
-      userId: targetUserId,
-      ...parsed.data,
-    },
+    data: { ...data, userId: guard.elderUserId },
   });
 
-  return NextResponse.json({ success: true, data: medication }, { status: 201 });
+  return ok(medication, 201);
 }

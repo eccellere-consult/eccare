@@ -16,6 +16,7 @@ import {
   Kanban,
   Building2,
   Sparkles,
+  HeartPulse,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -34,6 +35,7 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
     items: [
       { label: 'Home', href: '/elder', icon: Home },
       { label: 'Contacts', href: '/elder/contacts', icon: Users },
+      { label: 'Health', href: '/elder/health', icon: HeartPulse },
       { label: 'Community', href: '/community', icon: Building2 },
       { label: 'Services', href: '/services', icon: Sparkles },
       { label: 'Profile', href: '/elder/profile', icon: User },
@@ -43,6 +45,7 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
     label: 'Family',
     items: [
       { label: 'Dashboard', href: '/family', icon: LayoutDashboard },
+      { label: 'Health', href: '/family/health', icon: HeartPulse },
       { label: 'Contacts', href: '/family/contacts', icon: Users },
       { label: 'Community', href: '/community', icon: Building2 },
       { label: 'Services', href: '/services', icon: Sparkles },

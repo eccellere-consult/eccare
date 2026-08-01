@@ -1,30 +1,23 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getAuthUser } from '@/lib/auth';
+import { requireHealthAccess, ok } from '@/lib/health-access';
 
 export async function GET(req: NextRequest) {
-  const auth = await getAuthUser(req);
-  if (!auth) {
-    return NextResponse.json(
-      { success: false, error: { code: 'UNAUTHORIZED', message: 'Please log in.' } },
-      { status: 401 },
-    );
-  }
+  const guard = await requireHealthAccess(req);
+  if (guard instanceof Response) return guard;
 
-  const url = new URL(req.url);
-  const date = url.searchParams.get('date') || new Date().toISOString().split('T')[0];
-
+  const date = req.nextUrl.searchParams.get('date') || new Date().toISOString().split('T')[0];
   const startOfDay = new Date(`${date}T00:00:00.000Z`);
   const endOfDay = new Date(`${date}T23:59:59.999Z`);
 
   const reminders = await prisma.medicationReminder.findMany({
     where: {
-      userId: auth.userId,
+      userId: guard.elderUserId,
       scheduledAt: { gte: startOfDay, lte: endOfDay },
     },
-    include: { medication: true },
+    include: { medication: { select: { name: true, dosage: true, instructions: true } } },
     orderBy: { scheduledAt: 'asc' },
   });
 
-  return NextResponse.json({ success: true, data: reminders });
+  return ok(reminders);
 }
