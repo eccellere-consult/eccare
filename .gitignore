@@ -22,6 +22,10 @@ prisma/*.db
 *.swp
 *.swo
 
+# Uploaded files (keep .gitkeep)
+public/uploads/prescriptions/*
+!public/uploads/prescriptions/.gitkeep
+
 # OS
 .DS_Store
 Thumbs.db

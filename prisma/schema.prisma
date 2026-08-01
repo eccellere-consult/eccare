@@ -49,6 +49,8 @@ model User {
   healthNotesCreated HealthNote[]         @relation("HealthNoteCreator")
   sosAcknowledged    SOSEvent[]           @relation("SOSAcknowledger")
   foodHandled        FoodRequest[]        @relation("FoodHandler")
+  prescriptions      Prescription[]       @relation("PrescriptionUser")
+  prescriptionsUploaded Prescription[]    @relation("PrescriptionUploader")
 
   // Community
   memberships         NeighborhoodMember[]
@@ -63,6 +65,7 @@ model User {
   whatsAppGroupsAdded WhatsAppGroupLink[]  @relation("WhatsAppGroupCreator")
   chatMessages        ChatMessage[]
   notificationPrefs   NotificationPreference[]
+  geriatricListings   GeriatricCareListing[]   @relation("GeriatricListingCreator")
 
   @@index([phone])
   @@index([role])
@@ -127,6 +130,7 @@ model DeviceToken {
 model Medication {
   id               String   @id @default(cuid())
   userId           String
+  prescriptionId   String?
   name             String
   dosage           String
   frequency        String
@@ -137,8 +141,9 @@ model Medication {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  reminders MedicationReminder[]
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prescription Prescription?        @relation("PrescriptionMeds", fields: [prescriptionId], references: [id], onDelete: SetNull)
+  reminders    MedicationReminder[]
 
   @@index([userId, isActive])
 }
@@ -198,6 +203,28 @@ model HealthNote {
 
   user      User @relation("HealthNoteUser", fields: [userId], references: [id], onDelete: Cascade)
   createdBy User @relation("HealthNoteCreator", fields: [createdById], references: [id], onDelete: Cascade)
+}
+
+model Prescription {
+  id              String   @id @default(cuid())
+  userId          String
+  uploadedById    String
+  fileName        String
+  filePath        String
+  fileType        String
+  extractedData   Json?
+  doctorName      String?
+  hospitalName    String?
+  prescriptionDate DateTime?
+  notes           String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user       User         @relation("PrescriptionUser", fields: [userId], references: [id], onDelete: Cascade)
+  uploadedBy User         @relation("PrescriptionUploader", fields: [uploadedById], references: [id], onDelete: Cascade)
+  medications Medication[] @relation("PrescriptionMeds")
+
+  @@index([userId, createdAt])
 }
 
 // ─── Emergency & Safety ─────────────────────────────────────────
@@ -550,4 +577,40 @@ model NotificationPreference {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, category])
+}
+
+// ─── Geriatrics Care Directory ──────────────────────────────────
+
+enum GeriatricCareCategory {
+  self_help_group
+  ngo
+  palliative_care
+  physiotherapy
+  massage
+  yoga
+  meditation
+}
+
+model GeriatricCareListing {
+  id          String                @id @default(cuid())
+  name        String
+  category    GeriatricCareCategory
+  description String?               @db.Text
+  phone       String?
+  email       String?
+  website     String?
+  address     String?               @db.Text
+  city        String?
+  pincode     String?
+  contactName String?
+  isActive    Boolean               @default(true)
+  verified    Boolean               @default(false)
+  addedById   String
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  addedBy User @relation("GeriatricListingCreator", fields: [addedById], references: [id], onDelete: Cascade)
+
+  @@index([category, isActive])
+  @@index([city])
 }

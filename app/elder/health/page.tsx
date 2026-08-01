@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Pill,
   CalendarDays,
@@ -9,6 +9,9 @@ import {
   Check,
   Clock,
   XCircle,
+  FileImage,
+  Eye,
+  Phone,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -57,6 +60,24 @@ interface FoodRequest {
   handler: { name: string } | null;
 }
 
+interface Prescription {
+  id: string;
+  fileName: string;
+  filePath: string;
+  doctorName: string | null;
+  hospitalName: string | null;
+  prescriptionDate: string | null;
+  createdAt: string;
+  medications: { name: string; dosage: string }[];
+}
+
+interface EmergencyContact {
+  id: string;
+  name: string;
+  phone: string;
+  relationship: string;
+}
+
 const STATUS_ICON: Record<string, typeof Check> = {
   taken: Check,
   missed: XCircle,
@@ -72,6 +93,15 @@ export default function ElderHealthPage() {
   const appts = useHealthData<Appointment[]>('/appointments');
   const notes = useHealthData<HealthNote[]>('/notes');
   const food = useHealthData<FoodRequest[]>('/food-requests');
+  const prescriptions = useHealthData<Prescription[]>('/prescriptions');
+
+  const [contacts, setContacts] = useState<EmergencyContact[]>([]);
+  useEffect(() => {
+    fetch('/api/v1/emergency/contacts', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((j) => { if (j.success) setContacts(j.data); })
+      .catch(() => {});
+  }, []);
 
   const [markingId, setMarkingId] = useState<string | null>(null);
   const [foodBusy, setFoodBusy] = useState(false);
@@ -241,6 +271,79 @@ export default function ElderHealthPage() {
           </div>
         )}
       </section>
+
+      {/* My prescriptions */}
+      <section className="mt-8">
+        <h2 className="flex items-center gap-2 text-lg font-bold text-text">
+          <FileImage className="h-5 w-5 text-primary-600" />
+          My prescriptions
+        </h2>
+        {prescriptions.loading ? (
+          <p className="mt-3 text-text-secondary">Loading…</p>
+        ) : (prescriptions.data?.length ?? 0) === 0 ? (
+          <Card className="mt-3"><CardContent className="py-8 text-center text-text-secondary">No prescriptions uploaded yet. Your caregiver can upload them.</CardContent></Card>
+        ) : (
+          <div className="mt-3 flex flex-col gap-3">
+            {prescriptions.data?.map((p) => (
+              <Card key={p.id}>
+                <CardContent className="flex items-start justify-between gap-3 pt-6">
+                  <div className="min-w-0">
+                    <p className="font-bold text-text">
+                      {p.doctorName ?? p.fileName}
+                    </p>
+                    <p className="text-sm text-text-secondary">
+                      {p.hospitalName && `${p.hospitalName} · `}
+                      {p.prescriptionDate
+                        ? new Date(p.prescriptionDate).toLocaleDateString()
+                        : new Date(p.createdAt).toLocaleDateString()}
+                    </p>
+                    {p.medications.length > 0 && (
+                      <p className="mt-1 text-xs text-text-secondary">
+                        {p.medications.map((m) => `${m.name} ${m.dosage}`).join(', ')}
+                      </p>
+                    )}
+                  </div>
+                  <a
+                    href={p.filePath}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border text-primary-600 hover:bg-primary-50"
+                  >
+                    <Eye className="h-5 w-5" />
+                  </a>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Emergency quick reference */}
+      {contacts.length > 0 && (
+        <section className="mt-8">
+          <h2 className="flex items-center gap-2 text-lg font-bold text-text">
+            <Phone className="h-5 w-5 text-danger-600" />
+            Emergency contacts
+          </h2>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {contacts.map((c) => (
+              <a
+                key={c.id}
+                href={`tel:${c.phone}`}
+                className="flex items-center gap-3 rounded-xl border border-border px-4 py-3 transition-colors hover:bg-primary-50"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-danger-50">
+                  <Phone className="h-5 w-5 text-danger-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-bold text-text">{c.name}</p>
+                  <p className="text-sm text-text-secondary">{c.relationship} · {c.phone}</p>
+                </div>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
