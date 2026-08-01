@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, Phone, Users, User, Ambulance } from 'lucide-react';
+import { AlertTriangle, Phone, Users, User, Ambulance, FileImage } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
@@ -15,7 +15,23 @@ interface Invite {
   caregiverUser: { name: string; phone: string | null };
 }
 
+interface PrescriptionRef {
+  id: string;
+  filePath: string;
+  doctorName: string | null;
+  fileName: string;
+  prescriptionDate: string | null;
+  createdAt: string;
+}
+
 export function ElderHomeClient({ userName, invites }: { userName: string; invites: Invite[] }) {
+  const [prescriptions, setPrescriptions] = useState<PrescriptionRef[]>([]);
+  useEffect(() => {
+    fetch('/api/v1/health/prescriptions', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((j) => { if (j.success && j.data?.length) setPrescriptions(j.data.slice(0, 3)); })
+      .catch(() => {});
+  }, []);
   const router = useRouter();
   const [pendingInvites, setPendingInvites] = useState(invites);
   const [sosSending, setSosSending] = useState(false);
@@ -142,6 +158,36 @@ export function ElderHomeClient({ userName, invites }: { userName: string; invit
         </CardContent>
         {sosMessage && <CardContent className="pt-0 text-sm font-semibold text-text">{sosMessage}</CardContent>}
       </Card>
+
+      {prescriptions.length > 0 && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileImage className="h-5 w-5 text-primary-600" />
+              My prescriptions
+            </CardTitle>
+            <CardDescription>Quick access to your latest prescriptions.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2">
+            {prescriptions.map((p) => (
+              <a
+                key={p.id}
+                href={p.filePath}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between gap-3 rounded-xl border border-border px-4 py-3 text-sm transition-colors hover:bg-primary-50"
+              >
+                <span className="font-semibold text-text">{p.doctorName ?? p.fileName}</span>
+                <span className="text-xs text-text-secondary">
+                  {p.prescriptionDate
+                    ? new Date(p.prescriptionDate).toLocaleDateString()
+                    : new Date(p.createdAt).toLocaleDateString()}
+                </span>
+              </a>
+            ))}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

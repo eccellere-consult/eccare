@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, use } from 'react';
+import { useState, useRef, use } from 'react';
 import {
   Pill,
   CalendarDays,
@@ -8,7 +8,10 @@ import {
   UtensilsCrossed,
   Plus,
   Check,
-  XCircle,
+  Upload,
+  Loader2,
+  Eye,
+  Trash2,
   ArrowLeft,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -27,6 +30,19 @@ interface Medication {
   timeSlots: string[];
   instructions: string | null;
   isActive: boolean;
+}
+
+interface Prescription {
+  id: string;
+  fileName: string;
+  filePath: string;
+  doctorName: string | null;
+  hospitalName: string | null;
+  prescriptionDate: string | null;
+  notes: string | null;
+  createdAt: string;
+  uploadedBy: { name: string };
+  medications: { id: string; name: string; dosage: string; isActive: boolean }[];
 }
 
 interface Appointment {
@@ -66,6 +82,7 @@ export default function FamilyHealthPage({
   const qs = `?elderUserId=${elderId}`;
 
   const meds = useHealthData<Medication[]>(`/medications${qs}`);
+  const prescriptions = useHealthData<Prescription[]>(`/prescriptions${qs}`);
   const appts = useHealthData<Appointment[]>(`/appointments${qs}`);
   const notes = useHealthData<HealthNote[]>(`/notes${qs}`);
   const food = useHealthData<FoodRequest[]>(`/food-requests${qs}`);
@@ -73,6 +90,14 @@ export default function FamilyHealthPage({
   const [activeForm, setActiveForm] = useState<Section | null>(null);
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState('');
+
+  // Prescription upload
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadResult, setUploadResult] = useState<{
+    createdMedications: number;
+    extractedMedications: { name: string; dosage: string }[];
+  } | null>(null);
 
   // Med form
   const [medForm, setMedForm] = useState({ name: '', dosage: '', frequency: 'Daily', timeSlots: '08:00', instructions: '', prescribingDoctor: '' });
@@ -82,6 +107,46 @@ export default function FamilyHealthPage({
 
   // Note form
   const [noteContent, setNoteContent] = useState('');
+
+  async function uploadPrescription(file: File) {
+    setUploading(true);
+    setUploadResult(null);
+    setFormError('');
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('elderUserId', elderId);
+
+      const res = await fetch('/api/v1/health/prescriptions', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json?.error?.message || 'Upload failed.');
+      }
+      setUploadResult({
+        createdMedications: json.data.createdMedications,
+        extractedMedications: json.data.extractedMedications,
+      });
+      prescriptions.reload();
+      meds.reload();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Upload failed.');
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  }
+
+  async function deletePrescription(id: string) {
+    if (!confirm('Delete this prescription? Medications created from it will remain.')) return;
+    try {
+      await healthApi.del(`/prescriptions/${id}`);
+      prescriptions.reload();
+    } catch { /* ignore */ }
+  }
 
   async function addMedication(e: React.FormEvent) {
     e.preventDefault();
@@ -169,15 +234,126 @@ export default function FamilyHealthPage({
 
   return (
     <div>
-      <Link href="/family" className="mb-4 inline-flex items-center gap-1 text-sm font-semibold text-primary-600 hover:underline">
-        <ArrowLeft className="h-4 w-4" /> Back to family
+      <Link href="/family/health" className="mb-4 inline-flex items-center gap-1 text-sm font-semibold text-primary-600 hover:underline">
+        <ArrowLeft className="h-4 w-4" /> Back
       </Link>
 
       <h1 className="text-2xl font-bold text-text">Health management</h1>
       <p className="mt-1 text-text-secondary">Manage medicines, appointments, and notes for your elder.</p>
 
-      {/* Medications */}
+      {/* Prescription upload */}
       <section className="mt-6">
+        <h2 className="flex items-center gap-2 text-lg font-bold text-text">
+          <Upload className="h-5 w-5 text-primary-600" /> Prescriptions
+        </h2>
+        <p className="mt-1 text-sm text-text-secondary">
+          Upload a prescription photo — AI will read it and set up the medicine calendar automatically.
+        </p>
+
+        <div className="mt-3">
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) uploadPrescription(f);
+            }}
+          />
+          <Button
+            variant="outline"
+            disabled={uploading}
+            onClick={() => fileRef.current?.click()}
+            className="gap-2"
+          >
+            {uploading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Reading prescription…
+              </>
+            ) : (
+              <>
+                <Upload className="h-4 w-4" />
+                Upload prescription
+              </>
+            )}
+          </Button>
+        </div>
+
+        {formError && !activeForm && (
+          <p className="mt-2 text-sm text-danger-600">{formError}</p>
+        )}
+
+        {uploadResult && (
+          <Card className="mt-3 border-success-200 bg-success-50">
+            <CardContent className="py-4">
+              <p className="font-semibold text-success-900">
+                {uploadResult.createdMedications > 0
+                  ? `Found ${uploadResult.createdMedications} medication${uploadResult.createdMedications === 1 ? '' : 's'} and added to the calendar.`
+                  : 'Prescription saved. No medications could be extracted — please add them manually below.'}
+              </p>
+              {uploadResult.extractedMedications.length > 0 && (
+                <ul className="mt-2 flex flex-col gap-1 text-sm text-success-800">
+                  {uploadResult.extractedMedications.map((m, i) => (
+                    <li key={i}>
+                      {m.name} — {m.dosage}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {prescriptions.loading ? (
+          <p className="mt-3 text-text-secondary">Loading…</p>
+        ) : (prescriptions.data?.length ?? 0) > 0 && (
+          <div className="mt-3 flex flex-col gap-3">
+            {prescriptions.data?.map((p) => (
+              <Card key={p.id}>
+                <CardContent className="flex items-start justify-between gap-3 pt-6">
+                  <div className="min-w-0">
+                    <p className="font-bold text-text">{p.fileName}</p>
+                    <p className="text-sm text-text-secondary">
+                      {p.doctorName && `${p.doctorName} · `}
+                      {p.hospitalName && `${p.hospitalName} · `}
+                      {p.prescriptionDate
+                        ? new Date(p.prescriptionDate).toLocaleDateString()
+                        : new Date(p.createdAt).toLocaleDateString()}
+                    </p>
+                    {p.medications.length > 0 && (
+                      <p className="mt-1 text-xs text-text-secondary">
+                        {p.medications.length} med{p.medications.length === 1 ? '' : 's'}: {p.medications.map((m) => m.name).join(', ')}
+                      </p>
+                    )}
+                    <p className="mt-1 text-xs text-text-secondary">Uploaded by {p.uploadedBy.name}</p>
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <a
+                      href={p.filePath}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border text-text-secondary hover:bg-primary-50"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </a>
+                    <button
+                      onClick={() => deletePrescription(p.id)}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border text-text-secondary hover:bg-danger-50 hover:text-danger-600"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Medications */}
+      <section className="mt-8">
         <div className="flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-lg font-bold text-text">
             <Pill className="h-5 w-5 text-primary-600" /> Medications
@@ -219,7 +395,7 @@ export default function FamilyHealthPage({
                     <Input id="prescribingDoctor" value={medForm.prescribingDoctor} onChange={(e) => setMedForm((f) => ({ ...f, prescribingDoctor: e.target.value }))} placeholder="Dr. Sharma" />
                   </div>
                 </div>
-                {formError && <p className="text-sm text-danger-600">{formError}</p>}
+                {formError && activeForm === 'medications' && <p className="text-sm text-danger-600">{formError}</p>}
                 <Button type="submit" disabled={busy || !medForm.name || !medForm.dosage}>
                   {busy ? 'Adding…' : 'Add medication'}
                 </Button>
@@ -293,7 +469,7 @@ export default function FamilyHealthPage({
                   <Label htmlFor="apptNotes">Notes (optional)</Label>
                   <Input id="apptNotes" value={apptForm.notes} onChange={(e) => setApptForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Bring previous reports" />
                 </div>
-                {formError && <p className="text-sm text-danger-600">{formError}</p>}
+                {formError && activeForm === 'appointments' && <p className="text-sm text-danger-600">{formError}</p>}
                 <Button type="submit" disabled={busy || !apptForm.doctorName || !apptForm.datetime}>
                   {busy ? 'Adding…' : 'Add appointment'}
                 </Button>
@@ -359,7 +535,7 @@ export default function FamilyHealthPage({
                     placeholder="Blood pressure reading: 130/85. Slightly elevated, doctor said watch for a week."
                   />
                 </div>
-                {formError && <p className="text-sm text-danger-600">{formError}</p>}
+                {formError && activeForm === 'notes' && <p className="text-sm text-danger-600">{formError}</p>}
                 <Button type="submit" disabled={busy || !noteContent.trim()}>
                   {busy ? 'Saving…' : 'Save note'}
                 </Button>
