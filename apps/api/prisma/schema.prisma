@@ -10,44 +10,46 @@ datasource db {
 // ─── Users & Auth ───────────────────────────────────────────────
 
 model User {
-  id            String   @id @default(cuid())
-  phone         String?  @unique
-  email         String?  @unique
-  passwordHash  String?
-  name          String
-  pinHash       String?
-  avatarUrl     String?
-  role          UserRole @default(elder)
-  language      String   @default("en")
-  fontSizePref  String   @default("xlarge")
-  highContrast  Boolean  @default(true)
-  voiceEnabled  Boolean  @default(true)
-  bloodGroup    String?
-  address       String?  @db.Text
-  city          String?
-  state         String?
-  pincode       String?
-  lat           Decimal? @db.Decimal(10, 7)
-  lng           Decimal? @db.Decimal(10, 7)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String   @id @default(cuid())
+  phone        String?  @unique
+  email        String?  @unique
+  passwordHash String?
+  name         String
+  pinHash      String?
+  avatarUrl    String?
+  role         UserRole @default(elder)
+  language     String   @default("en")
+  fontSizePref String   @default("xlarge")
+  highContrast Boolean  @default(true)
+  voiceEnabled Boolean  @default(true)
+  bloodGroup   String?
+  address      String?  @db.Text
+  city         String?
+  state        String?
+  pincode      String?
+  lat          Decimal? @db.Decimal(10, 7)
+  lng          Decimal? @db.Decimal(10, 7)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   // Relations as elder
-  medications        Medication[]
-  reminders          MedicationReminder[]
-  appointments       Appointment[]
-  healthNotes        HealthNote[]         @relation("HealthNoteUser")
-  sosEvents          SOSEvent[]
-  emergencyContacts  EmergencyContact[]
-  foodRequests       FoodRequest[]
-  mealReminders      MealReminder[]
-  voiceLogs          VoiceLog[]
-  deviceTokens       DeviceToken[]
-  elderRelations     FamilyRelation[]     @relation("ElderRelations")
-  caregiverRelations FamilyRelation[]     @relation("CaregiverRelations")
-  healthNotesCreated HealthNote[]         @relation("HealthNoteCreator")
-  sosAcknowledged    SOSEvent[]           @relation("SOSAcknowledger")
-  foodHandled        FoodRequest[]        @relation("FoodHandler")
+  prescriptions         Prescription[]
+  medications           Medication[]
+  reminders             MedicationReminder[]
+  appointments          Appointment[]
+  healthNotes           HealthNote[]         @relation("HealthNoteUser")
+  sosEvents             SOSEvent[]
+  emergencyContacts     EmergencyContact[]
+  foodRequests          FoodRequest[]
+  mealReminders         MealReminder[]
+  voiceLogs             VoiceLog[]
+  deviceTokens          DeviceToken[]
+  elderRelations        FamilyRelation[]     @relation("ElderRelations")
+  caregiverRelations    FamilyRelation[]     @relation("CaregiverRelations")
+  healthNotesCreated    HealthNote[]         @relation("HealthNoteCreator")
+  sosAcknowledged       SOSEvent[]           @relation("SOSAcknowledger")
+  foodHandled           FoodRequest[]        @relation("FoodHandler")
+  prescriptionsUploaded Prescription[]       @relation("PrescriptionUploader")
 
   @@index([phone])
   @@index([role])
@@ -61,17 +63,17 @@ enum UserRole {
 }
 
 model FamilyRelation {
-  id               String       @id @default(cuid())
-  elderUserId      String
-  caregiverUserId  String
-  relationship     String
-  canViewHealth    Boolean      @default(true)
-  canManageMeds    Boolean      @default(false)
-  receivesSos      Boolean      @default(true)
-  receivesCheckin  Boolean      @default(true)
-  inviteStatus     InviteStatus @default(pending)
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  id              String       @id @default(cuid())
+  elderUserId     String
+  caregiverUserId String
+  relationship    String
+  canViewHealth   Boolean      @default(true)
+  canManageMeds   Boolean      @default(false)
+  receivesSos     Boolean      @default(true)
+  receivesCheckin Boolean      @default(true)
+  inviteStatus    InviteStatus @default(pending)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
   elderUser     User @relation("ElderRelations", fields: [elderUserId], references: [id], onDelete: Cascade)
   caregiverUser User @relation("CaregiverRelations", fields: [caregiverUserId], references: [id], onDelete: Cascade)
@@ -109,21 +111,43 @@ model DeviceToken {
 
 // ─── Health & Medicine ──────────────────────────────────────────
 
-model Medication {
-  id               String   @id @default(cuid())
-  userId           String
-  name             String
-  dosage           String
-  frequency        String
-  timeSlots        Json
-  instructions     String?  @db.Text
-  prescribingDoctor String?
-  isActive         Boolean  @default(true)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+model Prescription {
+  id            String   @id @default(cuid())
+  userId        String
+  filePath      String
+  fileName      String
+  fileType      String
+  fileSize      Int
+  uploadedById  String
+  extractedData Json?
+  status        String   @default("pending") // pending, processed, failed
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  reminders MedicationReminder[]
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  uploadedBy  User         @relation("PrescriptionUploader", fields: [uploadedById], references: [id])
+  medications Medication[]
+
+  @@index([userId, status])
+}
+
+model Medication {
+  id                String   @id @default(cuid())
+  userId            String
+  prescriptionId    String?
+  name              String
+  dosage            String
+  frequency         String
+  timeSlots         Json
+  instructions      String?  @db.Text
+  prescribingDoctor String?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prescription Prescription?        @relation(fields: [prescriptionId], references: [id])
+  reminders    MedicationReminder[]
 
   @@index([userId, isActive])
 }

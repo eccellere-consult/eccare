@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   UserPlus,
   Kanban,
+  Heart,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -39,6 +40,7 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
     label: 'Family',
     items: [
       { label: 'Dashboard', href: '/family', icon: LayoutDashboard },
+      { label: 'Health', href: '/family/health', icon: Heart },
       { label: 'Contacts', href: '/family/contacts', icon: Users },
       { label: 'SOS History', href: '/family/sos-history', icon: AlertTriangle },
       { label: 'Invite Elder', href: '/family/invite', icon: UserPlus },

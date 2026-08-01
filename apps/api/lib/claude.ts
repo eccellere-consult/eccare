@@ -71,3 +71,110 @@ export async function processVoiceInput(
     };
   }
 }
+
+const PRESCRIPTION_EXTRACTION_PROMPT = `You are a medical prescription parser. Extract structured data from prescription images.
+
+Extract and return a JSON object with:
+{
+  "medications": [
+    {
+      "name": "medication name",
+      "dosage": "dose amount and form (e.g., 500mg tablet)",
+      "frequency": "how often (e.g., twice daily, morning-evening)",
+      "instructions": "special instructions (before/after food, etc.)",
+      "duration": "how long to take (e.g., 7 days, 1 month)"
+    }
+  ],
+  "appointments": [
+    {
+      "type": "follow_up or new_visit",
+      "date": "YYYY-MM-DD if specified, or 'not_specified'",
+      "notes": "any notes about the appointment"
+    }
+  ],
+  "doctorInfo": {
+    "name": "doctor name",
+    "specialty": "specialty if mentioned",
+    "hospital": "hospital/clinic name if mentioned"
+  },
+  "patientInfo": {
+    "name": "patient name if visible",
+    "age": "age if mentioned"
+  },
+  "prescriptionDate": "YYYY-MM-DD or 'not_specified'"
+}
+
+Rules:
+- Extract ALL medications visible
+- Parse dosage carefully (mg, ml, tablet, capsule, syrup)
+- Parse frequency (OD=once daily, BD=twice, TDS=thrice, QID=4 times)
+- Include timing (morning, afternoon, evening, night, before/after food)
+- If handwritten is unclear, mark field as "unclear_handwriting"
+- Return empty arrays if no medications/appointments found`;
+
+export interface PrescriptionExtraction {
+  medications: Array<{
+    name: string;
+    dosage: string;
+    frequency: string;
+    instructions?: string;
+    duration?: string;
+  }>;
+  appointments: Array<{
+    type: string;
+    date: string;
+    notes?: string;
+  }>;
+  doctorInfo?: {
+    name?: string;
+    specialty?: string;
+    hospital?: string;
+  };
+  patientInfo?: {
+    name?: string;
+    age?: string;
+  };
+  prescriptionDate?: string;
+}
+
+export async function extractPrescriptionData(
+  imageBase64: string,
+  mediaType: string = 'image/jpeg',
+): Promise<PrescriptionExtraction> {
+  const message = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 2048,
+    system: PRESCRIPTION_EXTRACTION_PROMPT,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: mediaType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
+              data: imageBase64,
+            },
+          },
+          {
+            type: 'text',
+            text: 'Extract all medications, appointments, and relevant information from this prescription.',
+          },
+        ],
+      },
+    ],
+  });
+
+  const text =
+    message.content[0].type === 'text' ? message.content[0].text : '{}';
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return {
+      medications: [],
+      appointments: [],
+    };
+  }
+}
