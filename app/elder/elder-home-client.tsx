@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, Phone, Users, User, Ambulance, FileImage } from 'lucide-react';
+import { AlertTriangle, Phone, Users, Ambulance, FileImage } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
@@ -24,7 +24,20 @@ interface PrescriptionRef {
   createdAt: string;
 }
 
-export function ElderHomeClient({ userName, invites }: { userName: string; invites: Invite[] }) {
+interface DailyQuote {
+  text: string;
+  author: string | null;
+}
+
+export function ElderHomeClient({
+  userName,
+  invites,
+  quote,
+}: {
+  userName: string;
+  invites: Invite[];
+  quote: DailyQuote | null;
+}) {
   const [prescriptions, setPrescriptions] = useState<PrescriptionRef[]>([]);
   useEffect(() => {
     fetch('/api/v1/health/prescriptions', { credentials: 'include' })
@@ -89,6 +102,15 @@ export function ElderHomeClient({ userName, invites }: { userName: string; invit
       <h1 className="text-3xl font-bold text-text">Hello, {userName}</h1>
       <p className="mt-1 text-lg text-text-secondary">What do you need?</p>
 
+      {quote?.text && (
+        <Card className="mt-6 border-accent-100 bg-accent-50">
+          <CardContent className="py-5">
+            <p className="text-lg font-semibold italic text-accent-900">&ldquo;{quote.text}&rdquo;</p>
+            {quote.author && <p className="mt-2 text-sm text-accent-900/80">— {quote.author}</p>}
+          </CardContent>
+        </Card>
+      )}
+
       {pendingInvites.length > 0 && (
         <div className="mt-6 flex flex-col gap-3">
           {pendingInvites.map((invite) => (
@@ -111,9 +133,9 @@ export function ElderHomeClient({ userName, invites }: { userName: string; invit
         </div>
       )}
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2">
+      <div className="mt-8">
         <Link href="/elder/contacts">
-          <Card className="h-full transition-shadow hover:shadow-md">
+          <Card className="transition-shadow hover:shadow-md">
             <CardContent className="flex items-center gap-4 py-8">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary-50">
                 <Users className="h-7 w-7 text-primary-600" />
@@ -121,20 +143,6 @@ export function ElderHomeClient({ userName, invites }: { userName: string; invit
               <div>
                 <p className="text-lg font-bold text-text">Call Family</p>
                 <p className="text-sm text-text-secondary">Reach your saved contacts</p>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link href="/elder/profile">
-          <Card className="h-full transition-shadow hover:shadow-md">
-            <CardContent className="flex items-center gap-4 py-8">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary-50">
-                <User className="h-7 w-7 text-primary-600" />
-              </div>
-              <div>
-                <p className="text-lg font-bold text-text">Your Profile</p>
-                <p className="text-sm text-text-secondary">Update your details</p>
               </div>
             </CardContent>
           </Card>
@@ -188,6 +196,12 @@ export function ElderHomeClient({ userName, invites }: { userName: string; invit
           </CardContent>
         </Card>
       )}
+
+      <div className="mt-6 text-center">
+        <Link href="/elder/profile" className="text-sm font-semibold text-text-secondary underline">
+          Your Profile
+        </Link>
+      </div>
     </div>
   );
 }
