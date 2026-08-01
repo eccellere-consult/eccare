@@ -217,6 +217,7 @@ model Prescription {
   hospitalName    String?
   prescriptionDate DateTime?
   notes           String?  @db.Text
+  reviewed        Boolean  @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

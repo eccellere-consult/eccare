@@ -13,6 +13,7 @@ import {
   Eye,
   Trash2,
   ArrowLeft,
+  X,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
@@ -40,9 +41,37 @@ interface Prescription {
   hospitalName: string | null;
   prescriptionDate: string | null;
   notes: string | null;
+  reviewed: boolean;
   createdAt: string;
   uploadedBy: { name: string };
   medications: { id: string; name: string; dosage: string; isActive: boolean }[];
+}
+
+interface ReviewMedication {
+  key: number;
+  name: string;
+  dosage: string;
+  frequency: string;
+  timeSlots: string;
+  instructions: string;
+}
+
+interface ReviewAppointment {
+  doctorName: string;
+  hospital: string;
+  specialty: string;
+  datetime: string;
+  notes: string;
+}
+
+interface ReviewState {
+  prescriptionId: string;
+  fileName: string;
+  medications: ReviewMedication[];
+  appointment: ReviewAppointment | null;
+  includeAppointment: boolean;
+  aiNotes: string | null;
+  aiProvider: string | null;
 }
 
 interface Appointment {
@@ -91,15 +120,15 @@ export default function FamilyHealthPage({
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState('');
 
-  // Prescription upload
+  // Prescription upload + review
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-  const [uploadResult, setUploadResult] = useState<{
-    createdMedications: number;
-    extractedMedications: { name: string; dosage: string }[];
-    notes: string | null;
-    aiProvider: string | null;
-  } | null>(null);
+  const [review, setReview] = useState<ReviewState | null>(null);
+  const [savingReview, setSavingReview] = useState(false);
+  const [reviewError, setReviewError] = useState('');
+  const [saveSummary, setSaveSummary] = useState<{ medications: number; appointment: boolean } | null>(null);
+  const reviewKeyCounter = useRef(0);
+  const nextReviewKey = () => (reviewKeyCounter.current += 1);
 
   // Med form
   const [medForm, setMedForm] = useState({ name: '', dosage: '', frequency: 'Daily', timeSlots: '08:00', instructions: '', prescribingDoctor: '' });
@@ -112,8 +141,10 @@ export default function FamilyHealthPage({
 
   async function uploadPrescription(file: File) {
     setUploading(true);
-    setUploadResult(null);
+    setReview(null);
+    setSaveSummary(null);
     setFormError('');
+    setReviewError('');
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -128,10 +159,16 @@ export default function FamilyHealthPage({
       let json: {
         success?: boolean;
         data?: {
-          createdMedications: number;
-          extractedMedications: { name: string; dosage: string }[];
+          prescription?: { id: string; fileName: string; notes: string | null };
+          extractedMedications?: {
+            name: string;
+            dosage: string;
+            frequency: string;
+            timeSlots: string[];
+            instructions: string | null;
+          }[];
+          nextVisitDate?: string | null;
           aiProvider?: string;
-          prescription?: { notes: string | null };
         };
         error?: { message: string };
       };
@@ -140,23 +177,128 @@ export default function FamilyHealthPage({
       } catch {
         throw new Error(`Server error (${res.status}). Please try again.`);
       }
-      if (!res.ok || !json.success) {
+      if (!res.ok || !json.success || !json.data?.prescription) {
         throw new Error(json?.error?.message || 'Upload failed.');
       }
-      setUploadResult({
-        createdMedications: json.data?.createdMedications ?? 0,
-        extractedMedications: json.data?.extractedMedications ?? [],
-        notes: json.data?.prescription?.notes ?? null,
-        aiProvider: json.data?.aiProvider ?? null,
+
+      setReview({
+        prescriptionId: json.data.prescription.id,
+        fileName: json.data.prescription.fileName,
+        medications: (json.data.extractedMedications ?? []).map((m) => ({
+          key: nextReviewKey(),
+          name: m.name,
+          dosage: m.dosage,
+          frequency: m.frequency,
+          timeSlots: m.timeSlots.join(', '),
+          instructions: m.instructions ?? '',
+        })),
+        appointment: json.data.nextVisitDate
+          ? {
+              doctorName: '',
+              hospital: '',
+              specialty: '',
+              datetime: `${json.data.nextVisitDate}T09:00`,
+              notes: 'Follow-up from prescription',
+            }
+          : null,
+        includeAppointment: Boolean(json.data.nextVisitDate),
+        aiNotes: json.data.prescription.notes,
+        aiProvider: json.data.aiProvider ?? null,
       });
       prescriptions.reload();
-      meds.reload();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Upload failed.');
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';
     }
+  }
+
+  function updateReviewMed(key: number, field: keyof Omit<ReviewMedication, 'key'>, value: string) {
+    setReview((r) => r && { ...r, medications: r.medications.map((m) => (m.key === key ? { ...m, [field]: value } : m)) });
+  }
+
+  function removeReviewMed(key: number) {
+    setReview((r) => r && { ...r, medications: r.medications.filter((m) => m.key !== key) });
+  }
+
+  function addReviewMedRow() {
+    setReview(
+      (r) =>
+        r && {
+          ...r,
+          medications: [
+            ...r.medications,
+            { key: nextReviewKey(), name: '', dosage: '', frequency: 'Daily', timeSlots: '08:00', instructions: '' },
+          ],
+        },
+    );
+  }
+
+  function updateReviewAppt(field: keyof ReviewAppointment, value: string) {
+    setReview((r) => r && r.appointment && { ...r, appointment: { ...r.appointment, [field]: value } });
+  }
+
+  async function saveReview() {
+    if (!review) return;
+    setReviewError('');
+    for (const m of review.medications) {
+      if (!m.name.trim() || !m.dosage.trim() || !m.timeSlots.trim()) {
+        setReviewError('Every medication needs a name, dosage, and at least one time.');
+        return;
+      }
+    }
+    if (review.includeAppointment && review.appointment && !review.appointment.doctorName.trim()) {
+      setReviewError('Enter a doctor name for the appointment, or remove it.');
+      return;
+    }
+
+    setSavingReview(true);
+    try {
+      const body = {
+        medications: review.medications.map((m) => ({
+          name: m.name.trim(),
+          dosage: m.dosage.trim(),
+          frequency: m.frequency.trim() || 'As needed',
+          timeSlots: m.timeSlots.split(',').map((s) => s.trim()).filter(Boolean),
+          instructions: m.instructions.trim() || null,
+        })),
+        appointment:
+          review.includeAppointment && review.appointment
+            ? {
+                doctorName: review.appointment.doctorName.trim(),
+                hospital: review.appointment.hospital.trim() || null,
+                specialty: review.appointment.specialty.trim() || null,
+                datetime: new Date(review.appointment.datetime).toISOString(),
+                notes: review.appointment.notes.trim() || null,
+              }
+            : null,
+      };
+      const data = await healthApi.post<{ createdMedications: number; appointment: unknown }>(
+        `/prescriptions/${review.prescriptionId}/confirm`,
+        body,
+      );
+      setSaveSummary({ medications: data.createdMedications, appointment: Boolean(data.appointment) });
+      setReview(null);
+      prescriptions.reload();
+      meds.reload();
+      appts.reload();
+    } catch (err) {
+      setReviewError(err instanceof Error ? err.message : 'Could not save. Please try again.');
+    } finally {
+      setSavingReview(false);
+    }
+  }
+
+  async function discardReview() {
+    if (!review) return;
+    if (!confirm('Discard this scan? Nothing has been saved to the calendar yet.')) return;
+    try {
+      await healthApi.del(`/prescriptions/${review.prescriptionId}`);
+    } catch { /* ignore */ }
+    setReview(null);
+    setReviewError('');
+    prescriptions.reload();
   }
 
   async function deletePrescription(id: string) {
@@ -304,41 +446,146 @@ export default function FamilyHealthPage({
           <p className="mt-2 text-sm text-danger-600">{formError}</p>
         )}
 
-        {uploadResult && (
-          <Card
-            className={`mt-3 ${
-              uploadResult.createdMedications > 0
-                ? 'border-success-200 bg-success-50'
-                : 'border-danger-200 bg-danger-50'
-            }`}
-          >
+        {saveSummary && (
+          <Card className="mt-3 border-success-200 bg-success-50">
             <CardContent className="py-4">
-              <p
-                className={`font-semibold ${
-                  uploadResult.createdMedications > 0 ? 'text-success-900' : 'text-danger-900'
-                }`}
-              >
-                {uploadResult.createdMedications > 0
-                  ? `Found ${uploadResult.createdMedications} medication${uploadResult.createdMedications === 1 ? '' : 's'} and added to the calendar.`
-                  : 'Prescription saved. No medications could be extracted — please add them manually below.'}
+              <p className="font-semibold text-success-900">
+                {saveSummary.medications > 0
+                  ? `${saveSummary.medications} medication${saveSummary.medications === 1 ? '' : 's'} added to the calendar.`
+                  : 'Saved — no medications were added.'}
+                {saveSummary.appointment && ' Appointment added too.'}
               </p>
-              {uploadResult.extractedMedications.length > 0 && (
-                <ul className="mt-2 flex flex-col gap-1 text-sm text-success-800">
-                  {uploadResult.extractedMedications.map((m, i) => (
-                    <li key={i}>
-                      {m.name} — {m.dosage}
-                    </li>
-                  ))}
-                </ul>
+            </CardContent>
+          </Card>
+        )}
+
+        {review && (
+          <Card className="mt-3 border-primary-200">
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-semibold text-text">Review what AI read from &ldquo;{review.fileName}&rdquo;</p>
+                <button
+                  onClick={discardReview}
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-secondary hover:bg-danger-50 hover:text-danger-600"
+                  aria-label="Discard scan"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              {review.aiNotes && (
+                <p className="mt-1 text-sm text-text-secondary">{review.aiNotes}</p>
               )}
-              {uploadResult.notes && (
-                <p className="mt-2 text-sm text-danger-700">
-                  <span className="font-semibold">Details:</span> {uploadResult.notes}
-                </p>
+              {review.aiProvider && (
+                <p className="mt-1 text-xs text-text-secondary">AI provider: {review.aiProvider}</p>
               )}
-              {uploadResult.aiProvider && (
-                <p className="mt-1 text-xs text-text-secondary">AI provider: {uploadResult.aiProvider}</p>
+
+              <p className="mt-4 text-sm font-semibold text-text">Medications</p>
+              {review.medications.length === 0 && (
+                <p className="mt-1 text-sm text-text-secondary">Nothing extracted — add medications manually below.</p>
               )}
+              <div className="mt-2 flex flex-col gap-3">
+                {review.medications.map((m) => (
+                  <div key={m.key} className="rounded-xl border border-border p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="grid flex-1 gap-2 sm:grid-cols-2">
+                        <Input
+                          value={m.name}
+                          onChange={(e) => updateReviewMed(m.key, 'name', e.target.value)}
+                          placeholder="Medicine name"
+                        />
+                        <Input
+                          value={m.dosage}
+                          onChange={(e) => updateReviewMed(m.key, 'dosage', e.target.value)}
+                          placeholder="Dosage, e.g. 5mg"
+                        />
+                        <Input
+                          value={m.frequency}
+                          onChange={(e) => updateReviewMed(m.key, 'frequency', e.target.value)}
+                          placeholder="Frequency, e.g. Twice daily"
+                        />
+                        <Input
+                          value={m.timeSlots}
+                          onChange={(e) => updateReviewMed(m.key, 'timeSlots', e.target.value)}
+                          placeholder="Times, e.g. 08:00, 20:00"
+                        />
+                        <Input
+                          className="sm:col-span-2"
+                          value={m.instructions}
+                          onChange={(e) => updateReviewMed(m.key, 'instructions', e.target.value)}
+                          placeholder="Instructions (optional), e.g. After meals"
+                        />
+                      </div>
+                      <button
+                        onClick={() => removeReviewMed(m.key)}
+                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-text-secondary hover:bg-danger-50 hover:text-danger-600"
+                        aria-label="Remove medication"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <Button variant="outline" size="sm" className="mt-2" onClick={addReviewMedRow}>
+                <Plus className="h-4 w-4" /> Add another medication
+              </Button>
+
+              {review.appointment && (
+                <div className="mt-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-text">Follow-up appointment found</p>
+                    <label className="flex items-center gap-2 text-sm text-text-secondary">
+                      <input
+                        type="checkbox"
+                        checked={review.includeAppointment}
+                        onChange={(e) => setReview((r) => r && { ...r, includeAppointment: e.target.checked })}
+                      />
+                      Add to calendar
+                    </label>
+                  </div>
+                  {review.includeAppointment && (
+                    <div className="mt-2 grid gap-2 rounded-xl border border-border p-3 sm:grid-cols-2">
+                      <Input
+                        value={review.appointment.doctorName}
+                        onChange={(e) => updateReviewAppt('doctorName', e.target.value)}
+                        placeholder="Doctor name"
+                      />
+                      <Input
+                        type="datetime-local"
+                        value={review.appointment.datetime}
+                        onChange={(e) => updateReviewAppt('datetime', e.target.value)}
+                      />
+                      <Input
+                        value={review.appointment.hospital}
+                        onChange={(e) => updateReviewAppt('hospital', e.target.value)}
+                        placeholder="Hospital (optional)"
+                      />
+                      <Input
+                        value={review.appointment.specialty}
+                        onChange={(e) => updateReviewAppt('specialty', e.target.value)}
+                        placeholder="Specialty (optional)"
+                      />
+                      <Input
+                        className="sm:col-span-2"
+                        value={review.appointment.notes}
+                        onChange={(e) => updateReviewAppt('notes', e.target.value)}
+                        placeholder="Notes (optional)"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {reviewError && <p className="mt-3 text-sm text-danger-600">{reviewError}</p>}
+
+              <div className="mt-4 flex gap-2">
+                <Button onClick={saveReview} disabled={savingReview}>
+                  {savingReview ? 'Saving…' : 'Save to calendar'}
+                </Button>
+                <Button variant="outline" onClick={discardReview} disabled={savingReview}>
+                  Discard
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -351,7 +598,10 @@ export default function FamilyHealthPage({
               <Card key={p.id}>
                 <CardContent className="flex items-start justify-between gap-3 pt-6">
                   <div className="min-w-0">
-                    <p className="font-bold text-text">{p.fileName}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold text-text">{p.fileName}</p>
+                      {!p.reviewed && <Badge variant="accent">Needs review</Badge>}
+                    </div>
                     <p className="text-sm text-text-secondary">
                       {p.doctorName && `${p.doctorName} · `}
                       {p.hospitalName && `${p.hospitalName} · `}
