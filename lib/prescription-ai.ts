@@ -1,6 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-
-const anthropic = new Anthropic();
+import OpenAI from 'openai';
 
 export interface ExtractedMedication {
   name: string;
@@ -47,55 +46,141 @@ Rules:
 - Extract ALL medications listed, do not skip any
 - Be accurate with dosage and frequency — these affect patient safety`;
 
-export async function extractPrescription(
-  imageBase64: string,
-  mediaType: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif',
-): Promise<PrescriptionExtraction> {
-  const message = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 2048,
-    messages: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'image',
-            source: { type: 'base64', media_type: mediaType, data: imageBase64 },
-          },
-          { type: 'text', text: EXTRACTION_PROMPT },
-        ],
-      },
-    ],
-  });
+const FALLBACK_RESULT: PrescriptionExtraction = {
+  doctorName: null,
+  hospitalName: null,
+  prescriptionDate: null,
+  medications: [],
+  notes: 'AI could not parse the prescription. Please try a clearer photo.',
+};
 
-  const text = message.content[0].type === 'text' ? message.content[0].text : '';
-
+function parseExtraction(text: string): PrescriptionExtraction {
   const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    return {
-      doctorName: null,
-      hospitalName: null,
-      prescriptionDate: null,
-      medications: [],
-      notes: 'AI could not parse the prescription. Please try a clearer photo.',
-    };
-  }
+  if (!jsonMatch) return { ...FALLBACK_RESULT };
 
   try {
     const parsed = JSON.parse(jsonMatch[0]) as PrescriptionExtraction;
     if (!Array.isArray(parsed.medications)) parsed.medications = [];
     return parsed;
   } catch {
-    return {
-      doctorName: null,
-      hospitalName: null,
-      prescriptionDate: null,
-      medications: [],
-      notes: 'AI returned invalid data. Please try again.',
-    };
+    return { ...FALLBACK_RESULT, notes: 'AI returned invalid data. Please try again.' };
   }
 }
 
+type MediaType = 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif';
+
+async function extractWithAnthropic(
+  imageBase64: string,
+  mediaType: MediaType,
+): Promise<PrescriptionExtraction> {
+  const client = new Anthropic();
+  const message = await client.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 2048,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } },
+          { type: 'text', text: EXTRACTION_PROMPT },
+        ],
+      },
+    ],
+  });
+  const text = message.content[0].type === 'text' ? message.content[0].text : '';
+  return parseExtraction(text);
+}
+
+async function extractWithOpenAI(
+  imageBase64: string,
+  mediaType: MediaType,
+): Promise<PrescriptionExtraction> {
+  const client = new OpenAI();
+  const dataUrl = `data:${mediaType};base64,${imageBase64}`;
+  const response = await client.chat.completions.create({
+    model: 'gpt-4o',
+    max_tokens: 2048,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          { type: 'image_url', image_url: { url: dataUrl, detail: 'high' } },
+          { type: 'text', text: EXTRACTION_PROMPT },
+        ],
+      },
+    ],
+  });
+  const text = response.choices[0]?.message?.content ?? '';
+  return parseExtraction(text);
+}
+
+async function extractWithGrok(
+  imageBase64: string,
+  mediaType: MediaType,
+): Promise<PrescriptionExtraction> {
+  const client = new OpenAI({
+    apiKey: process.env.XAI_API_KEY,
+    baseURL: 'https://api.x.ai/v1',
+  });
+  const dataUrl = `data:${mediaType};base64,${imageBase64}`;
+  const response = await client.chat.completions.create({
+    model: 'grok-2-vision-1212',
+    max_tokens: 2048,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          { type: 'image_url', image_url: { url: dataUrl, detail: 'high' } },
+          { type: 'text', text: EXTRACTION_PROMPT },
+        ],
+      },
+    ],
+  });
+  const text = response.choices[0]?.message?.content ?? '';
+  return parseExtraction(text);
+}
+
+type Provider = { name: string; available: () => boolean; extract: (b64: string, mt: MediaType) => Promise<PrescriptionExtraction> };
+
+const PROVIDERS: Provider[] = [
+  { name: 'anthropic', available: () => !!process.env.ANTHROPIC_API_KEY, extract: extractWithAnthropic },
+  { name: 'openai', available: () => !!process.env.OPENAI_API_KEY, extract: extractWithOpenAI },
+  { name: 'grok', available: () => !!process.env.XAI_API_KEY, extract: extractWithGrok },
+];
+
+export async function extractPrescription(
+  imageBase64: string,
+  mediaType: MediaType,
+): Promise<PrescriptionExtraction & { provider?: string }> {
+  const errors: string[] = [];
+
+  for (const provider of PROVIDERS) {
+    if (!provider.available()) continue;
+    try {
+      const result = await provider.extract(imageBase64, mediaType);
+      return { ...result, provider: provider.name };
+    } catch (err) {
+      errors.push(`${provider.name}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  if (errors.length > 0) {
+    return {
+      ...FALLBACK_RESULT,
+      notes: `AI extraction failed across all providers. Errors: ${errors.join('; ')}. Please add medications manually.`,
+    };
+  }
+
+  return {
+    ...FALLBACK_RESULT,
+    notes: 'No AI provider configured. Please add medications manually.',
+  };
+}
+
 export function isConfigured(): boolean {
-  return !!process.env.ANTHROPIC_API_KEY;
+  return PROVIDERS.some((p) => p.available());
+}
+
+export function configuredProviders(): string[] {
+  return PROVIDERS.filter((p) => p.available()).map((p) => p.name);
 }

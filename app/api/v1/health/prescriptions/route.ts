@@ -65,12 +65,15 @@ export async function POST(req: NextRequest) {
     notes: null,
   };
 
+  let aiProvider: string | undefined;
   if (isConfigured()) {
     const base64 = buffer.toString('base64');
-    extraction = await extractPrescription(base64, file.type as AllowedType);
+    const result = await extractPrescription(base64, file.type as AllowedType);
+    aiProvider = result.provider;
+    extraction = result;
   } else {
     extraction.notes =
-      'AI extraction is not available in this environment. Please add medications manually.';
+      'No AI provider configured. Please add medications manually.';
   }
 
   const prescription = await prisma.prescription.create({
@@ -134,6 +137,7 @@ export async function POST(req: NextRequest) {
       prescription,
       extractedMedications: extraction.medications,
       createdMedications: createdMeds.length,
+      aiProvider,
     },
     201,
   );
