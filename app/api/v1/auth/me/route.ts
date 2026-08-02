@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthUser, toSafeUser } from '@/lib/auth';
+import { isSupportedLanguage } from '@/lib/i18n/languages';
 
 export async function GET(req: NextRequest) {
   const auth = await getAuthUser(req);
@@ -38,11 +39,26 @@ export async function PUT(req: NextRequest) {
   }
 
   const body = await req.json();
+
+  if (body.language !== undefined && !isSupportedLanguage(body.language)) {
+    return NextResponse.json(
+      { success: false, error: { code: 'VALIDATION_ERROR', message: 'Invalid language.' } },
+      { status: 400 },
+    );
+  }
+  if (body.secondaryLanguage != null && !isSupportedLanguage(body.secondaryLanguage)) {
+    return NextResponse.json(
+      { success: false, error: { code: 'VALIDATION_ERROR', message: 'Invalid secondary language.' } },
+      { status: 400 },
+    );
+  }
+
   const user = await prisma.user.update({
     where: { id: auth.userId },
     data: {
       name: body.name,
       language: body.language,
+      secondaryLanguage: body.secondaryLanguage,
       fontSizePref: body.fontSizePref,
       highContrast: body.highContrast,
       voiceEnabled: body.voiceEnabled,

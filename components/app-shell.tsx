@@ -18,9 +18,12 @@ import {
   Sparkles,
   HeartPulse,
   Briefcase,
+  Languages,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { languageLabel } from '@/lib/i18n/languages';
 
 export type PortalRole = 'elder' | 'family' | 'admin' | 'provider';
 
@@ -72,6 +75,25 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
   },
 };
 
+function LanguageToggle({ compact }: { compact?: boolean }) {
+  const lang = useLanguage();
+  if (!lang || !lang.secondaryLanguage) return null;
+
+  return (
+    <button
+      onClick={lang.toggle}
+      aria-label={`Switch language to ${languageLabel(lang.secondaryLanguage)}`}
+      className={cn(
+        'flex items-center gap-2 rounded-full border border-border bg-bg font-semibold text-text-secondary hover:bg-primary-50 hover:text-primary-900 pointer-coarse:py-3',
+        compact ? 'px-3 py-2 text-xs' : 'w-full justify-center px-3 py-3 text-sm',
+      )}
+    >
+      <Languages className="h-4 w-4 shrink-0" />
+      <span>{languageLabel(lang.language)}</span>
+    </button>
+  );
+}
+
 interface AppShellProps {
   role: PortalRole;
   userName?: string;
@@ -119,6 +141,9 @@ export function AppShell({ role, userName, children }: AppShellProps) {
           })}
         </nav>
         <div className="border-t border-border p-3">
+          <div className="hidden lg:block lg:pb-2">
+            <LanguageToggle />
+          </div>
           <button
             onClick={handleLogout}
             className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-text-secondary hover:bg-danger-50 hover:text-danger-900"
@@ -135,13 +160,16 @@ export function AppShell({ role, userName, children }: AppShellProps) {
           <span className="text-xl font-black text-primary-600">EC</span>
           <span className="text-sm font-semibold text-text-secondary">{portalLabel}</span>
         </div>
-        <button
-          onClick={() => setDrawerOpen(true)}
-          aria-label="Open menu"
-          className="flex h-11 w-11 items-center justify-center rounded-xl hover:bg-primary-50"
-        >
-          <Menu className="h-6 w-6 text-text" />
-        </button>
+        <div className="flex items-center gap-2">
+          <LanguageToggle compact />
+          <button
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Open menu"
+            className="flex h-11 w-11 items-center justify-center rounded-xl hover:bg-primary-50"
+          >
+            <Menu className="h-6 w-6 text-text" />
+          </button>
+        </div>
       </header>
 
       {/* Mobile drawer */}
