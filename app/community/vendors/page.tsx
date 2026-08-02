@@ -18,13 +18,38 @@ interface Vendor {
   address: string | null;
   verified: boolean;
 }
+interface Me { memberships: { role: string }[] }
 
 export default function VendorsPage() {
   const { data, loading, error, reload } = useCommunityData<Vendor[]>('/community/vendors');
+  const { data: me } = useCommunityData<Me>('/community/me');
+  const canManage = me?.memberships?.[0]?.role !== 'member';
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', category: '', phone: '', address: '' });
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState('');
+  const [actionId, setActionId] = useState<string | null>(null);
+
+  async function verify(id: string) {
+    setActionId(id);
+    try {
+      await communityApi.patch(`/community/vendors/${id}`, { verified: true });
+      reload();
+    } finally {
+      setActionId(null);
+    }
+  }
+
+  async function remove(id: string) {
+    if (!confirm('Remove this vendor listing?')) return;
+    setActionId(id);
+    try {
+      await communityApi.delete(`/community/vendors/${id}`);
+      reload();
+    } finally {
+      setActionId(null);
+    }
+  }
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
@@ -107,6 +132,24 @@ export default function VendorsPage() {
                 >
                   <Phone className="h-5 w-5" />
                 </a>
+                {canManage && (
+                  <div className="flex shrink-0 flex-col gap-1.5">
+                    {!v.verified && (
+                      <Button size="sm" variant="outline" disabled={actionId === v.id} onClick={() => verify(v.id)}>
+                        Verify
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-danger-600"
+                      disabled={actionId === v.id}
+                      onClick={() => remove(v.id)}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
