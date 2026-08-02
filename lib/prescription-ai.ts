@@ -95,7 +95,10 @@ async function extractWithAnthropic(
       },
     ],
   });
-  const text = message.content[0].type === 'text' ? message.content[0].text : '';
+  // Sonnet 5 runs adaptive thinking by default, which puts a thinking block
+  // before the text block — content[0] is not reliably the text block.
+  const textBlock = message.content.find((block) => block.type === 'text');
+  const text = textBlock?.type === 'text' ? textBlock.text : '';
   return parseExtraction(text);
 }
 
@@ -132,7 +135,10 @@ async function extractWithGrok(
   });
   const dataUrl = `data:${mediaType};base64,${imageBase64}`;
   const response = await client.chat.completions.create({
-    model: 'grok-2-vision-1212',
+    // grok-2-vision-1212 was retired; xAI's current multimodal flagship is
+    // grok-4.5 (as of 2026-08) — verify this is still current if it starts
+    // 400ing again, xAI's model names churn faster than Anthropic's.
+    model: 'grok-4.5',
     max_tokens: 2048,
     messages: [
       {
