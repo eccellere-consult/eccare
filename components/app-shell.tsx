@@ -24,6 +24,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { languageLabel } from '@/lib/i18n/languages';
+import { VoiceAssistant } from '@/components/voice-assistant';
 
 export type PortalRole = 'elder' | 'family' | 'admin' | 'provider';
 
@@ -241,6 +242,8 @@ export function AppShell({ role, userName, children }: AppShellProps) {
           );
         })}
       </nav>
+
+      {role === 'elder' && <VoiceAssistant />}
     </div>
   );
 }
