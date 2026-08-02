@@ -17,6 +17,7 @@ import {
   Building2,
   Sparkles,
   HeartPulse,
+  Briefcase,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -62,6 +63,7 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
       { label: 'SOS Feed', href: '/admin/sos-feed', icon: AlertTriangle },
       { label: 'Backlog', href: '/admin/backlog', icon: Kanban },
       { label: 'Quotes', href: '/admin/quotes', icon: Sparkles },
+      { label: 'Providers', href: '/admin/providers', icon: Briefcase },
     ],
   },
   provider: {

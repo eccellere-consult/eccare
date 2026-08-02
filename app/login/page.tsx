@@ -92,11 +92,19 @@ function SignInForm({ onSuccess }: { onSuccess: (role: string) => void }) {
   );
 }
 
+const ROLE_TOGGLE_OPTIONS = [
+  { value: 'elder', label: 'An elder' },
+  { value: 'caregiver', label: 'A family member' },
+  { value: 'provider', label: 'A service provider' },
+] as const;
+
 function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void }) {
-  const [role, setRole] = useState<'elder' | 'caregiver'>('elder');
+  const [role, setRole] = useState<'elder' | 'caregiver' | 'provider'>('elder');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [businessName, setBusinessName] = useState('');
+  const [category, setCategory] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -107,9 +115,19 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
       setError('Password must be at least 8 characters.');
       return;
     }
+    if (role === 'provider' && (!businessName.trim() || !category.trim())) {
+      setError('Please enter your business name and category.');
+      return;
+    }
     setLoading(true);
     try {
-      const data = await api('/auth/register', { name, email, password, role });
+      const data = await api('/auth/register', {
+        name,
+        email,
+        password,
+        role,
+        ...(role === 'provider' ? { businessName, category } : {}),
+      });
       onSuccess(data.user.role);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create account.');
@@ -123,26 +141,19 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
       <div className="flex flex-col gap-2">
         <Label>I am</Label>
         <div className="flex h-12 items-center rounded-xl bg-primary-50 p-1">
-          <button
-            type="button"
-            onClick={() => setRole('elder')}
-            className={cn(
-              'flex-1 rounded-lg py-2 text-sm font-semibold transition-colors',
-              role === 'elder' ? 'bg-surface text-primary-900 shadow-sm' : 'text-primary-900/70',
-            )}
-          >
-            An elder
-          </button>
-          <button
-            type="button"
-            onClick={() => setRole('caregiver')}
-            className={cn(
-              'flex-1 rounded-lg py-2 text-sm font-semibold transition-colors',
-              role === 'caregiver' ? 'bg-surface text-primary-900 shadow-sm' : 'text-primary-900/70',
-            )}
-          >
-            A family member
-          </button>
+          {ROLE_TOGGLE_OPTIONS.map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setRole(value)}
+              className={cn(
+                'flex-1 rounded-lg py-2 text-xs font-semibold transition-colors sm:text-sm',
+                role === value ? 'bg-surface text-primary-900 shadow-sm' : 'text-primary-900/70',
+              )}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
       <div className="flex flex-col gap-2">
@@ -177,6 +188,28 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
           placeholder="At least 8 characters"
         />
       </div>
+      {role === 'provider' && (
+        <>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="reg-business-name">Business name</Label>
+            <Input
+              id="reg-business-name"
+              value={businessName}
+              onChange={(e) => setBusinessName(e.target.value)}
+              placeholder="City Care Clinic"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="reg-category">Category</Label>
+            <Input
+              id="reg-category"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              placeholder="Nursing, physiotherapy, home care…"
+            />
+          </div>
+        </>
+      )}
       {error && <p className="text-sm text-danger-600">{error}</p>}
       <Button type="submit" disabled={loading} size="lg">
         {loading ? 'Creating account...' : 'Create account'}
