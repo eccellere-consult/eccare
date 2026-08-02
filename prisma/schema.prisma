@@ -72,6 +72,10 @@ model User {
   serviceProvider          ServiceProvider?  @relation("ServiceProviderUser")
   verifiedServiceProviders ServiceProvider[] @relation("ServiceProviderVerifier")
 
+  // Personal contact book
+  contactsOwned Contact[] @relation("ContactElder")
+  contactsAdded Contact[] @relation("ContactAdder")
+
   @@index([phone])
   @@index([role])
 }
@@ -118,6 +122,38 @@ model EmergencyContact {
   notifyOnSos  Boolean @default(true)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// General categorized contact book (neighbor, friend, service provider, hospital,
+/// etc.) — distinct from EmergencyContact, which is specifically the SOS-notify list.
+/// "Emergency Contact" as a category routes into EmergencyContact directly instead of
+/// creating a row here, so there is no duplicate/parallel record for it.
+model Contact {
+  id              String          @id @default(cuid())
+  elderUserId     String
+  addedById       String
+  name            String
+  phone           String
+  category        ContactCategory
+  providerType    String? // sub-type when category = serviceProvider (e.g. "Plumber")
+  notes           String?         @db.Text
+  sharedListingId String?         @unique // set when promoted to the community Vendors directory
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  elderUser     User          @relation("ContactElder", fields: [elderUserId], references: [id], onDelete: Cascade)
+  addedBy       User          @relation("ContactAdder", fields: [addedById], references: [id], onDelete: Cascade)
+  sharedListing LocalListing? @relation(fields: [sharedListingId], references: [id], onDelete: SetNull)
+
+  @@index([elderUserId])
+}
+
+enum ContactCategory {
+  neighbor
+  friend
+  serviceProvider
+  hospital
+  other
 }
 
 model DeviceToken {
@@ -492,6 +528,7 @@ model LocalListing {
 
   neighborhood Neighborhood? @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
   addedBy      User          @relation("ListingCreator", fields: [addedById], references: [id], onDelete: Cascade)
+  sharedFrom   Contact?
 
   @@index([neighborhoodId, category])
 }
