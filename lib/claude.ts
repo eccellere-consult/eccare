@@ -1,7 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
 
-const anthropic = new Anthropic();
-
 const EC_SYSTEM_PROMPT = `You are EC, a calm and friendly care assistant for elderly people aged 65 and above.
 
 Your personality:
@@ -51,6 +49,7 @@ export async function processVoiceInput(
     ? `${EC_SYSTEM_PROMPT}\n\nUser context:\n${userContext}`
     : EC_SYSTEM_PROMPT;
 
+  const anthropic = new Anthropic();
   const message = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 256,
