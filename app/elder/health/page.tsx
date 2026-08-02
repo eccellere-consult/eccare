@@ -21,6 +21,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { healthApi, useHealthData } from '@/lib/health-client';
 import { getSlotForDate, formatIstTime, SLOT_META, SLOT_ORDER, todayIST, type MedicineSlot } from '@/lib/medicine-slots';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
 interface Medication {
   id: string;
@@ -89,6 +91,20 @@ const SLOT_ICON: Record<MedicineSlot, typeof Sunrise> = {
   night: Moon,
 };
 
+const SLOT_LABEL_KEY: Record<MedicineSlot, TranslationKey> = {
+  morning: 'elder.health.slot.morning',
+  afternoon: 'elder.health.slot.afternoon',
+  evening: 'elder.health.slot.evening',
+  night: 'elder.health.slot.night',
+};
+
+const MEAL_LABEL_KEY: Record<'breakfast' | 'lunch' | 'dinner' | 'snack', TranslationKey> = {
+  breakfast: 'elder.health.meal.breakfast',
+  lunch: 'elder.health.meal.lunch',
+  dinner: 'elder.health.meal.dinner',
+  snack: 'elder.health.meal.snack',
+};
+
 const SLOT_STYLE: Record<MedicineSlot, { card: string; iconWrap: string; icon: string; heading: string; sub: string; itemBorder: string }> = {
   morning: {
     card: 'border-accent-100 bg-accent-50',
@@ -125,6 +141,8 @@ const SLOT_STYLE: Record<MedicineSlot, { card: string; iconWrap: string; icon: s
 };
 
 export default function ElderHealthPage() {
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   const today = todayIST();
 
   const meds = useHealthData<Medication[]>('/medications');
@@ -153,7 +171,7 @@ export default function ElderHealthPage() {
       await healthApi.post('/reminders/confirm-batch', { reminderIds });
       reminders.reload();
     } catch (err) {
-      setSlotError(err instanceof Error ? err.message : 'Could not confirm. Please try again.');
+      setSlotError(err instanceof Error ? err.message : t('elder.health.confirmErrorGeneric'));
     } finally {
       setConfirmingSlot(null);
     }
@@ -171,22 +189,22 @@ export default function ElderHealthPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-text">My health</h1>
-      <p className="mt-1 text-text-secondary">Your medications, appointments, and care notes.</p>
+      <h1 className="text-2xl font-bold text-text">{t('elder.health.title')}</h1>
+      <p className="mt-1 text-text-secondary">{t('elder.health.subtitle')}</p>
 
       {/* Today's medicine box — one compartment per time of day */}
       <section className="mt-6">
         <h2 className="flex items-center gap-2 text-lg font-bold text-text">
           <Pill className="h-5 w-5 text-primary-600" />
-          Today&rsquo;s medicines
+          {t('elder.health.todaysMedicines')}
         </h2>
 
         {reminders.loading ? (
-          <p className="mt-3 text-text-secondary">Loading…</p>
+          <p className="mt-3 text-text-secondary">{t('common.loading')}</p>
         ) : reminders.error ? (
           <Card className="mt-3"><CardContent className="py-6 text-center text-danger-600">{reminders.error}</CardContent></Card>
         ) : (reminders.data?.length ?? 0) === 0 ? (
-          <Card className="mt-3"><CardContent className="py-8 text-center text-text-secondary">No medicines scheduled for today.</CardContent></Card>
+          <Card className="mt-3"><CardContent className="py-8 text-center text-text-secondary">{t('elder.health.noMedicinesToday')}</CardContent></Card>
         ) : (
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {SLOT_ORDER.map((slot) => {
@@ -205,11 +223,11 @@ export default function ElderHealthPage() {
                       <Icon className={`h-6 w-6 ${style.icon}`} />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className={`text-lg font-extrabold ${style.heading}`}>{SLOT_META[slot].label}</p>
+                      <p className={`text-lg font-extrabold ${style.heading}`}>{t(SLOT_LABEL_KEY[slot])}</p>
                       <p className={`text-xs ${style.sub}`}>{SLOT_META[slot].range}</p>
                     </div>
                     <Badge variant="muted" className="shrink-0 bg-white/80 text-text">
-                      {items.length} medicine{items.length === 1 ? '' : 's'}
+                      {items.length} {items.length === 1 ? t('elder.health.medicineWord') : t('elder.health.medicinesWord')}
                     </Badge>
                   </div>
 
@@ -226,7 +244,7 @@ export default function ElderHealthPage() {
                           )}
                         </div>
                         <span className="shrink-0 text-xs font-semibold text-text-secondary">
-                          By {formatIstTime(new Date(r.scheduledAt))}
+                          {t('elder.health.byTimePrefix')} {formatIstTime(new Date(r.scheduledAt))}
                         </span>
                       </div>
                     ))}
@@ -234,7 +252,7 @@ export default function ElderHealthPage() {
 
                   {allConfirmed ? (
                     <div className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-success-50 py-2.5 text-sm font-bold text-success-600">
-                      <Check className="h-4 w-4" /> All confirmed for {SLOT_META[slot].label.toLowerCase()}
+                      <Check className="h-4 w-4" /> {t('elder.health.allConfirmedFor')} {t(SLOT_LABEL_KEY[slot])}
                     </div>
                   ) : (
                     <Button
@@ -244,10 +262,10 @@ export default function ElderHealthPage() {
                     >
                       {confirmingSlot === slot ? (
                         <>
-                          <Loader2 className="h-4 w-4 animate-spin" /> Confirming…
+                          <Loader2 className="h-4 w-4 animate-spin" /> {t('elder.health.confirming')}
                         </>
                       ) : (
-                        `Confirm ${pendingIds.length} taken`
+                        t('elder.health.confirmNTaken').replace('{n}', String(pendingIds.length))
                       )}
                     </Button>
                   )}
@@ -259,8 +277,9 @@ export default function ElderHealthPage() {
         {slotError && <p className="mt-2 text-sm text-danger-600">{slotError}</p>}
         {(meds.data?.length ?? 0) > 0 && (reminders.data?.length ?? 0) === 0 && !reminders.loading && (
           <p className="mt-2 text-sm text-text-secondary">
-            You have {meds.data?.length} active medicine{meds.data?.length === 1 ? '' : 's'}, but no reminders were generated for today.
-            Your caregiver can set those up.
+            {t('elder.health.noRemindersGenerated')
+              .replace('{count}', String(meds.data?.length))
+              .replace('{word}', meds.data?.length === 1 ? t('elder.health.medicineWord') : t('elder.health.medicinesWord'))}
           </p>
         )}
       </section>
@@ -269,12 +288,12 @@ export default function ElderHealthPage() {
       <section className="mt-8">
         <h2 className="flex items-center gap-2 text-lg font-bold text-text">
           <CalendarDays className="h-5 w-5 text-primary-600" />
-          Upcoming appointments
+          {t('elder.health.upcomingAppointments')}
         </h2>
         {appts.loading ? (
-          <p className="mt-3 text-text-secondary">Loading…</p>
+          <p className="mt-3 text-text-secondary">{t('common.loading')}</p>
         ) : (appts.data?.length ?? 0) === 0 ? (
-          <Card className="mt-3"><CardContent className="py-8 text-center text-text-secondary">No upcoming appointments.</CardContent></Card>
+          <Card className="mt-3"><CardContent className="py-8 text-center text-text-secondary">{t('elder.health.noUpcomingAppointments')}</CardContent></Card>
         ) : (
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {appts.data?.map((a) => (
@@ -284,7 +303,7 @@ export default function ElderHealthPage() {
                   <p className="text-sm text-text-secondary">
                     {a.specialty && `${a.specialty} · `}
                     {new Date(a.datetime).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
-                    {' at '}
+                    {' '}{t('elder.health.atTimeJoiner')}{' '}
                     {new Date(a.datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
                   {a.hospital && <p className="mt-1 text-sm text-text-secondary">{a.hospital}</p>}
@@ -300,12 +319,12 @@ export default function ElderHealthPage() {
       <section className="mt-8">
         <h2 className="flex items-center gap-2 text-lg font-bold text-text">
           <FileText className="h-5 w-5 text-primary-600" />
-          Health notes
+          {t('elder.health.healthNotesTitle')}
         </h2>
         {notes.loading ? (
-          <p className="mt-3 text-text-secondary">Loading…</p>
+          <p className="mt-3 text-text-secondary">{t('common.loading')}</p>
         ) : (notes.data?.length ?? 0) === 0 ? (
-          <Card className="mt-3"><CardContent className="py-8 text-center text-text-secondary">No health notes yet.</CardContent></Card>
+          <Card className="mt-3"><CardContent className="py-8 text-center text-text-secondary">{t('elder.health.noHealthNotes')}</CardContent></Card>
         ) : (
           <div className="mt-3 flex flex-col gap-3">
             {notes.data?.slice(0, 10).map((n) => (
@@ -313,7 +332,7 @@ export default function ElderHealthPage() {
                 <CardContent className="pt-6">
                   <p className="text-text">{n.content}</p>
                   <p className="mt-2 text-xs text-text-secondary">
-                    By {n.createdBy.name} · {new Date(n.createdAt).toLocaleDateString()}
+                    {t('common.by')} {n.createdBy.name} · {new Date(n.createdAt).toLocaleDateString()}
                   </p>
                 </CardContent>
               </Card>
@@ -326,15 +345,15 @@ export default function ElderHealthPage() {
       <section className="mt-8">
         <h2 className="flex items-center gap-2 text-lg font-bold text-text">
           <UtensilsCrossed className="h-5 w-5 text-primary-600" />
-          Meal help
+          {t('elder.health.mealHelpTitle')}
         </h2>
         <p className="mt-1 text-sm text-text-secondary">
-          Need help with a meal? Tap below — your family will be notified.
+          {t('elder.health.mealHelpSub')}
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           {(['breakfast', 'lunch', 'dinner', 'snack'] as const).map((type) => (
             <Button key={type} variant="outline" disabled={foodBusy} onClick={() => requestMeal(type)}>
-              {type.charAt(0).toUpperCase() + type.slice(1)}
+              {t(MEAL_LABEL_KEY[type])}
             </Button>
           ))}
         </div>
@@ -346,7 +365,7 @@ export default function ElderHealthPage() {
                   {f.status}
                 </Badge>
                 <span className="text-text">{f.requestType}</span>
-                {f.handler && <span className="text-text-secondary">· handled by {f.handler.name}</span>}
+                {f.handler && <span className="text-text-secondary">· {t('elder.health.handledBy')} {f.handler.name}</span>}
                 <span className="ml-auto text-xs text-text-secondary">
                   {new Date(f.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
@@ -360,12 +379,12 @@ export default function ElderHealthPage() {
       <section className="mt-8">
         <h2 className="flex items-center gap-2 text-lg font-bold text-text">
           <FileImage className="h-5 w-5 text-primary-600" />
-          My prescriptions
+          {t('common.myPrescriptions')}
         </h2>
         {prescriptions.loading ? (
-          <p className="mt-3 text-text-secondary">Loading…</p>
+          <p className="mt-3 text-text-secondary">{t('common.loading')}</p>
         ) : (prescriptions.data?.length ?? 0) === 0 ? (
-          <Card className="mt-3"><CardContent className="py-8 text-center text-text-secondary">No prescriptions uploaded yet. Your caregiver can upload them.</CardContent></Card>
+          <Card className="mt-3"><CardContent className="py-8 text-center text-text-secondary">{t('elder.health.noPrescriptions')}</CardContent></Card>
         ) : (
           <div className="mt-3 flex flex-col gap-3">
             {prescriptions.data?.map((p) => (
@@ -407,7 +426,7 @@ export default function ElderHealthPage() {
         <section className="mt-8">
           <h2 className="flex items-center gap-2 text-lg font-bold text-text">
             <Phone className="h-5 w-5 text-danger-600" />
-            Emergency contacts
+            {t('elder.health.emergencyContactsTitle')}
           </h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {contacts.map((c) => (

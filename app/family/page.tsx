@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { UserPlus, Phone, Clock } from 'lucide-react';
+import { UserPlus, Phone, Clock, Settings } from 'lucide-react';
 import { prisma } from '@/lib/db';
 import { getServerSession } from '@/lib/server-session';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -55,9 +55,20 @@ export default async function FamilyDashboard() {
                   <CardTitle>{rel.elderUser.name}</CardTitle>
                   <CardDescription>{rel.relationship}</CardDescription>
                 </div>
-                <Badge variant={rel.inviteStatus === 'accepted' ? 'success' : 'muted'}>
-                  {rel.inviteStatus === 'accepted' ? 'Connected' : 'Pending'}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant={rel.inviteStatus === 'accepted' ? 'success' : 'muted'}>
+                    {rel.inviteStatus === 'accepted' ? 'Connected' : 'Pending'}
+                  </Badge>
+                  {rel.inviteStatus === 'accepted' && (
+                    <Link
+                      href={`/family/elder/${rel.elderUserId}/settings`}
+                      aria-label={`Language settings for ${rel.elderUser.name}`}
+                      className="flex h-9 w-9 items-center justify-center rounded-xl text-text-secondary hover:bg-primary-50 hover:text-primary-900"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Link>
+                  )}
+                </div>
               </CardHeader>
               <CardContent className="flex items-center gap-4 text-sm text-text-secondary">
                 <span className="flex items-center gap-1.5">
