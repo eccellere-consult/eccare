@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -105,27 +106,29 @@ export default function AdminCommunitiesPage() {
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
             {data?.map((n) => (
-              <Card key={n.id}>
-                <CardContent className="pt-6">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-bold text-text">{n.name}</p>
-                      <p className="text-sm text-text-secondary">
-                        {[n.city, n.pincode].filter(Boolean).join(' · ') || '—'}
-                      </p>
+              <Link key={n.id} href={`/admin/communities/${n.id}`}>
+                <Card className="transition-shadow hover:shadow-md">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-bold text-text">{n.name}</p>
+                        <p className="text-sm text-text-secondary">
+                          {[n.city, n.pincode].filter(Boolean).join(' · ') || '—'}
+                        </p>
+                      </div>
+                      <Badge variant="muted">
+                        {n._count.members} member{n._count.members === 1 ? '' : 's'}
+                      </Badge>
                     </div>
-                    <Badge variant="muted">
-                      {n._count.members} member{n._count.members === 1 ? '' : 's'}
-                    </Badge>
-                  </div>
-                  <p className="mt-3 text-sm text-text-secondary">
-                    Join code:{' '}
-                    <span className="rounded bg-primary-50 px-2 py-1 font-mono font-bold tracking-widest text-primary-900">
-                      {n.joinCode}
-                    </span>
-                  </p>
-                </CardContent>
-              </Card>
+                    <p className="mt-3 text-sm text-text-secondary">
+                      Join code:{' '}
+                      <span className="rounded bg-primary-50 px-2 py-1 font-mono font-bold tracking-widest text-primary-900">
+                        {n.joinCode}
+                      </span>
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
         )}
