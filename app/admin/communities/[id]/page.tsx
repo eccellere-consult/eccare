@@ -348,9 +348,31 @@ function HelplinesTab({ neighborhoodId }: { neighborhoodId: string }) {
 }
 
 function VendorsTab({ neighborhoodId }: { neighborhoodId: string }) {
-  const { data, loading, error } = useCommunityData<
+  const { data, loading, error, reload } = useCommunityData<
     { id: string; name: string; category: string; phone: string; verified: boolean }[]
   >(`/community/vendors?neighborhoodId=${neighborhoodId}`);
+  const [actionId, setActionId] = useState<string | null>(null);
+
+  async function verify(id: string) {
+    setActionId(id);
+    try {
+      await communityApi.patch(`/community/vendors/${id}`, { verified: true });
+      reload();
+    } finally {
+      setActionId(null);
+    }
+  }
+
+  async function remove(id: string) {
+    if (!confirm('Remove this vendor listing?')) return;
+    setActionId(id);
+    try {
+      await communityApi.delete(`/community/vendors/${id}`);
+      reload();
+    } finally {
+      setActionId(null);
+    }
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -372,7 +394,24 @@ function VendorsTab({ neighborhoodId }: { neighborhoodId: string }) {
                   <p className="font-bold text-text">{v.name}</p>
                   <p className="text-sm text-text-secondary">{v.category} · {v.phone}</p>
                 </div>
-                {v.verified && <Badge variant="success">Verified</Badge>}
+                <div className="flex shrink-0 items-center gap-2">
+                  {v.verified ? (
+                    <Badge variant="success">Verified</Badge>
+                  ) : (
+                    <Button size="sm" variant="outline" disabled={actionId === v.id} onClick={() => verify(v.id)}>
+                      Verify
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-danger-600"
+                    disabled={actionId === v.id}
+                    onClick={() => remove(v.id)}
+                  >
+                    Delete
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}
