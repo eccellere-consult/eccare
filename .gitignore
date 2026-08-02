@@ -25,6 +25,8 @@ prisma/*.db
 # Uploaded files (keep .gitkeep)
 public/uploads/prescriptions/*
 !public/uploads/prescriptions/.gitkeep
+public/uploads/certifications/*
+!public/uploads/certifications/.gitkeep
 
 # OS
 .DS_Store

@@ -1,33 +1,36 @@
-import { Store, Inbox, BadgeCheck } from 'lucide-react';
+import { Store, Inbox } from 'lucide-react';
 import { prisma } from '@/lib/db';
 import { getServerUser } from '@/lib/server-session';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { ProviderProfileClient } from './provider-profile-client';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * Provider landing page.
  *
- * The full provider experience (ServiceRequest booking + assignment workflow, admin
- * verification queue) is Phase C and genuinely isn't built yet. Rather than show a
- * fake dashboard of empty widgets, this states plainly what a provider can do today
- * and what's coming — a provider who sees invented "0 requests" panels would
- * reasonably assume the request system works and that nobody is booking them.
+ * The full provider experience (ServiceRequest booking + assignment workflow) is
+ * Phase C and genuinely isn't built yet — registration, a profile, and admin
+ * verification are. Rather than show a fake dashboard of empty widgets, this states
+ * plainly what a provider can do today and what's coming — a provider who sees
+ * invented "0 requests" panels would reasonably assume the request system works and
+ * that nobody is booking them.
  */
 export default async function ProviderHomePage() {
   const user = await getServerUser();
 
-  // Vendor listings this provider has been added to across communities is the one
-  // genuinely useful signal available today.
-  const listings = user
-    ? await prisma.localListing.findMany({
-        where: { addedById: user.id },
-        include: { neighborhood: { select: { name: true } } },
-        orderBy: { createdAt: 'desc' },
-        take: 20,
-      })
-    : [];
+  const [listings, provider] = user
+    ? await Promise.all([
+        prisma.localListing.findMany({
+          where: { addedById: user.id },
+          include: { neighborhood: { select: { name: true } } },
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+        }),
+        prisma.serviceProvider.findUnique({ where: { userId: user.id } }),
+      ])
+    : [[], null];
 
   return (
     <div>
@@ -36,19 +39,11 @@ export default async function ProviderHomePage() {
       </h1>
       <p className="mt-1 text-text-secondary">Your service provider account on EC.</p>
 
-      <Card className="mt-6">
-        <CardContent className="flex items-start gap-4 pt-6">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-50">
-            <BadgeCheck className="h-6 w-6 text-primary-600" />
-          </span>
-          <div>
-            <p className="font-bold text-text">Account active</p>
-            <p className="text-sm text-text-secondary">
-              {user?.email ?? '—'} · Service provider
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      {provider && (
+        <div className="mt-6">
+          <ProviderProfileClient initial={provider} />
+        </div>
+      )}
 
       <h2 className="mt-8 text-lg font-bold text-text">Your listings</h2>
       {listings.length === 0 ? (
