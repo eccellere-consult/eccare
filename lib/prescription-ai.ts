@@ -84,7 +84,12 @@ async function extractWithAnthropic(
   const client = new Anthropic();
   const message = await client.messages.create({
     model: 'claude-sonnet-5',
-    max_tokens: 2048,
+    // Sonnet 5 runs adaptive thinking by default, and max_tokens caps
+    // thinking + response text combined — the old 2048 budget could get
+    // partly consumed by thinking before the extraction JSON is complete.
+    // Left at default effort (not lowered, unlike quote-ai.ts) since
+    // medication accuracy matters more here than speed.
+    max_tokens: 4096,
     messages: [
       {
         role: 'user',

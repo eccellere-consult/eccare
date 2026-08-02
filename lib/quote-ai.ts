@@ -45,7 +45,15 @@ async function generateWithAnthropic(count: number): Promise<GeneratedQuote[]> {
   const client = new Anthropic();
   const message = await client.messages.create({
     model: 'claude-sonnet-5',
-    max_tokens: 1024,
+    // Sonnet 5 runs adaptive thinking by default, and max_tokens is a hard
+    // cap on thinking + response text combined — not just the response. At
+    // 1024 the thinking pass alone could consume the whole budget and
+    // truncate the quote JSON before it's valid, producing the exact same
+    // "no usable quotes" symptom as the block-ordering bug below.
+    // (output_config.effort would let us cap thinking depth explicitly, but
+    // the installed @anthropic-ai/sdk (0.39.0) predates that parameter —
+    // the generous max_tokens is the fix available at this SDK version.)
+    max_tokens: 4096,
     messages: [{ role: 'user', content: buildPrompt(count) }],
   });
   // Sonnet 5 runs adaptive thinking by default, which puts a thinking block
