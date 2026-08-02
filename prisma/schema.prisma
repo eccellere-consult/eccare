@@ -67,6 +67,10 @@ model User {
   notificationPrefs   NotificationPreference[]
   geriatricListings   GeriatricCareListing[]   @relation("GeriatricListingCreator")
 
+  // Service provider
+  serviceProvider          ServiceProvider?  @relation("ServiceProviderUser")
+  verifiedServiceProviders ServiceProvider[] @relation("ServiceProviderVerifier")
+
   @@index([phone])
   @@index([role])
 }
@@ -633,4 +637,36 @@ model GeriatricCareListing {
 
   @@index([category, isActive])
   @@index([city])
+}
+
+// ─── Service Provider ───────────────────────────────────────────
+
+enum ProviderVerificationStatus {
+  pending
+  verified
+  rejected
+}
+
+model ServiceProvider {
+  id                    String                     @id @default(cuid())
+  userId                String                     @unique
+  businessName          String
+  category              String
+  description           String?                    @db.Text
+  serviceArea           String?
+  phone                 String?
+  address               String?                    @db.Text
+  certificationFileName String?
+  certificationFilePath String?
+  verificationStatus    ProviderVerificationStatus @default(pending)
+  rejectionReason       String?
+  verifiedAt            DateTime?
+  verifiedById          String?
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
+
+  user       User  @relation("ServiceProviderUser", fields: [userId], references: [id], onDelete: Cascade)
+  verifiedBy User? @relation("ServiceProviderVerifier", fields: [verifiedById], references: [id])
+
+  @@index([verificationStatus])
 }

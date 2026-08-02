@@ -3,12 +3,25 @@ import { prisma } from '@/lib/db';
 import { createToken, hashPassword, setSessionCookie, toSafeUser } from '@/lib/auth';
 import { z } from 'zod';
 
-const schema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
-  name: z.string().min(1),
-  role: z.enum(['elder', 'caregiver']),
-});
+const schema = z
+  .object({
+    email: z.string().email(),
+    password: z.string().min(8),
+    name: z.string().min(1),
+    role: z.enum(['elder', 'caregiver', 'provider']),
+    businessName: z.string().min(1).max(160).optional(),
+    category: z.string().min(1).max(80).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.role === 'provider') {
+      if (!data.businessName) {
+        ctx.addIssue({ code: 'custom', path: ['businessName'], message: 'Business name is required.' });
+      }
+      if (!data.category) {
+        ctx.addIssue({ code: 'custom', path: ['category'], message: 'Category is required.' });
+      }
+    }
+  });
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -20,15 +33,16 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { email, password, name, role } = parsed.data;
+  const { email, password, name, role, businessName, category } = parsed.data;
   const passwordHash = await hashPassword(password);
 
   const existing = await prisma.user.findUnique({ where: { email } });
   let user;
   if (existing) {
-    // A family member may have already invited this person, which creates an
-    // unclaimed placeholder (no passwordHash). Claim it instead of rejecting.
-    if (existing.passwordHash) {
+    // Providers have no invite-based placeholder flow (unlike elder/caregiver, whose
+    // account may already exist unclaimed from a family invite), so any existing row
+    // for this email is always a real, already-claimed account.
+    if (existing.passwordHash || role === 'provider') {
       return NextResponse.json(
         { success: false, error: { code: 'EMAIL_TAKEN', message: 'An account with this email already exists.' } },
         { status: 409 },
@@ -41,6 +55,21 @@ export async function POST(req: NextRequest) {
       );
     }
     user = await prisma.user.update({ where: { id: existing.id }, data: { passwordHash, name } });
+  } else if (role === 'provider') {
+    // A pending ServiceProvider profile is created in the same transaction so a
+    // provider account is never left ungated.
+    user = await prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({ data: { email, passwordHash, name, role } });
+      await tx.serviceProvider.create({
+        data: {
+          userId: created.id,
+          businessName: businessName!,
+          category: category!,
+          verificationStatus: 'pending',
+        },
+      });
+      return created;
+    });
   } else {
     user = await prisma.user.create({ data: { email, passwordHash, name, role } });
   }
