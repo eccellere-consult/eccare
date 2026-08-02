@@ -35,7 +35,7 @@ interface NavItem {
 
 const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
   elder: {
-    label: 'Elder',
+    label: 'Golden Generation',
     items: [
       { label: 'Home', href: '/elder', icon: Home },
       { label: 'Contacts', href: '/elder/contacts', icon: Users },
