@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { AlertTriangle, Phone, Users, Ambulance, FileImage } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
 const AMBULANCE_NUMBER = '108';
 
@@ -49,6 +51,8 @@ export function ElderHomeClient({
   const [pendingInvites, setPendingInvites] = useState(invites);
   const [sosSending, setSosSending] = useState(false);
   const [sosMessage, setSosMessage] = useState('');
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
 
   async function respondToInvite(id: string, action: 'accept' | 'decline') {
     await fetch(`/api/v1/family/invites/${id}`, {
@@ -71,7 +75,7 @@ export function ElderHomeClient({
   }
 
   async function handleSOS() {
-    if (!confirm('Send an emergency alert to your family right now?')) return;
+    if (!confirm(t('elder.home.confirmSOS'))) return;
     setSosSending(true);
     setSosMessage('');
     try {
@@ -82,25 +86,25 @@ export function ElderHomeClient({
         body: JSON.stringify({ triggerType: 'manual', lat, lng }),
       });
       const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Could not send alert.');
-      setSosMessage('Help is coming. Your family has been notified.');
+      if (!res.ok || !json.success) throw new Error(json?.error?.message || t('elder.home.sosErrorGeneric'));
+      setSosMessage(t('elder.home.sosSuccess'));
     } catch (err) {
-      setSosMessage(err instanceof Error ? err.message : 'Could not send alert. Please try again.');
+      setSosMessage(err instanceof Error ? err.message : t('elder.home.sosErrorGeneric'));
     } finally {
       setSosSending(false);
     }
   }
 
   function handleAmbulance() {
-    if (confirm(`Call ambulance now? This will dial ${AMBULANCE_NUMBER}.`)) {
+    if (confirm(t('elder.home.confirmAmbulance').replace('{number}', AMBULANCE_NUMBER))) {
       window.location.href = `tel:${AMBULANCE_NUMBER}`;
     }
   }
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-text">Hello, {userName}</h1>
-      <p className="mt-1 text-lg text-text-secondary">What do you need?</p>
+      <h1 className="text-3xl font-bold text-text">{t('elder.home.hello')} {userName}</h1>
+      <p className="mt-1 text-lg text-text-secondary">{t('elder.home.subtitle')}</p>
 
       {quote?.text && (
         <Card className="mt-6 border-accent-100 bg-accent-50">
@@ -117,14 +121,14 @@ export function ElderHomeClient({
             <Card key={invite.id} className="border-accent-100 bg-accent-50">
               <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
                 <p className="font-semibold text-accent-900">
-                  {invite.caregiverUser.name} wants to connect as your {invite.relationship.toLowerCase()}.
+                  {invite.caregiverUser.name} {t('elder.home.inviteConnectAs')} {invite.relationship.toLowerCase()}.
                 </p>
                 <div className="flex gap-2">
                   <Button size="sm" onClick={() => respondToInvite(invite.id, 'accept')}>
-                    Accept
+                    {t('common.accept')}
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => respondToInvite(invite.id, 'decline')}>
-                    Decline
+                    {t('common.decline')}
                   </Button>
                 </div>
               </CardContent>
@@ -141,8 +145,8 @@ export function ElderHomeClient({
                 <Users className="h-7 w-7 text-primary-600" />
               </div>
               <div>
-                <p className="text-lg font-bold text-text">Call Family</p>
-                <p className="text-sm text-text-secondary">Reach your saved contacts</p>
+                <p className="text-lg font-bold text-text">{t('elder.home.callFamily')}</p>
+                <p className="text-sm text-text-secondary">{t('elder.home.callFamilySub')}</p>
               </div>
             </CardContent>
           </Card>
@@ -151,17 +155,17 @@ export function ElderHomeClient({
 
       <Card className="mt-6 border-danger-100">
         <CardHeader>
-          <CardTitle className="text-danger-900">Emergency</CardTitle>
-          <CardDescription>Press the button below if you need help right away.</CardDescription>
+          <CardTitle className="text-danger-900">{t('elder.home.emergencyTitle')}</CardTitle>
+          <CardDescription>{t('elder.home.emergencySub')}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3 sm:flex-row">
           <Button variant="danger" size="lg" className="flex-1" onClick={handleSOS} disabled={sosSending}>
             <AlertTriangle className="h-6 w-6" />
-            {sosSending ? 'Sending...' : 'Need Help Now'}
+            {sosSending ? t('elder.home.sosSending') : t('elder.home.needHelpNow')}
           </Button>
           <Button variant="outline" size="lg" className="flex-1 border-danger-600 text-danger-600" onClick={handleAmbulance}>
             <Ambulance className="h-6 w-6" />
-            Call Ambulance
+            {t('elder.home.callAmbulance')}
           </Button>
         </CardContent>
         {sosMessage && <CardContent className="pt-0 text-sm font-semibold text-text">{sosMessage}</CardContent>}
@@ -172,9 +176,9 @@ export function ElderHomeClient({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileImage className="h-5 w-5 text-primary-600" />
-              My prescriptions
+              {t('common.myPrescriptions')}
             </CardTitle>
-            <CardDescription>Quick access to your latest prescriptions.</CardDescription>
+            <CardDescription>{t('elder.home.prescriptionsSub')}</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-2">
             {prescriptions.map((p) => (
@@ -199,7 +203,7 @@ export function ElderHomeClient({
 
       <div className="mt-6 text-center">
         <Link href="/elder/profile" className="text-sm font-semibold text-text-secondary underline">
-          Your Profile
+          {t('elder.home.yourProfile')}
         </Link>
       </div>
     </div>
