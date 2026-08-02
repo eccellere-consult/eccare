@@ -11,27 +11,28 @@ datasource db {
 // ─── Users & Auth ───────────────────────────────────────────────
 
 model User {
-  id            String   @id @default(cuid())
-  phone         String?  @unique
-  email         String?  @unique
-  passwordHash  String?
-  name          String
-  pinHash       String?
-  avatarUrl     String?
-  role          UserRole @default(elder)
-  language      String   @default("en")
-  fontSizePref  String   @default("xlarge")
-  highContrast  Boolean  @default(true)
-  voiceEnabled  Boolean  @default(true)
-  bloodGroup    String?
-  address       String?  @db.Text
-  city          String?
-  state         String?
-  pincode       String?
-  lat           Decimal? @db.Decimal(10, 7)
-  lng           Decimal? @db.Decimal(10, 7)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                String   @id @default(cuid())
+  phone             String?  @unique
+  email             String?  @unique
+  passwordHash      String?
+  name              String
+  pinHash           String?
+  avatarUrl         String?
+  role              UserRole @default(elder)
+  language          String   @default("en") // the elder's currently active display language
+  secondaryLanguage String? // the elder's other language option; caregiver sets this pair together with `language`
+  fontSizePref      String   @default("xlarge")
+  highContrast      Boolean  @default(true)
+  voiceEnabled      Boolean  @default(true)
+  bloodGroup        String?
+  address           String?  @db.Text
+  city              String?
+  state             String?
+  pincode           String?
+  lat               Decimal? @db.Decimal(10, 7)
+  lng               Decimal? @db.Decimal(10, 7)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   // Relations as elder
   medications        Medication[]
