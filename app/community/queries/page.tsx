@@ -5,8 +5,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { CommunityPageFrame } from '@/components/community/page-frame';
+import { QueryThread } from '@/components/query-thread';
 import { communityApi, useCommunityData } from '@/lib/community-client';
 import { cn } from '@/lib/utils';
 
@@ -20,16 +20,12 @@ interface Query {
   user: { id: string; name: string };
   _count: { replies: number };
 }
-
-const STATUS_VARIANT = {
-  open: 'danger',
-  in_progress: 'accent',
-  resolved: 'success',
-  closed: 'muted',
-} as const;
+interface Me { memberships: { role: string }[] }
 
 export default function QueriesPage() {
+  const { data: me } = useCommunityData<Me>('/community/me');
   const { data, loading, error, reload } = useCommunityData<Query[]>('/community/queries');
+  const canManageStatus = me?.memberships?.[0]?.role !== 'member';
   const [showForm, setShowForm] = useState(false);
   const [type, setType] = useState<'committee' | 'helpdesk'>('committee');
   const [subject, setSubject] = useState('');
@@ -114,22 +110,7 @@ export default function QueriesPage() {
         )}
 
         {data?.map((q) => (
-          <Card key={q.id}>
-            <CardContent className="pt-6">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <h2 className="font-bold text-text">{q.subject}</h2>
-                <div className="flex gap-2">
-                  <Badge variant="muted">{q.type === 'committee' ? 'Committee' : 'Help desk'}</Badge>
-                  <Badge variant={STATUS_VARIANT[q.status]}>{q.status.replace('_', ' ')}</Badge>
-                </div>
-              </div>
-              <p className="mt-2 whitespace-pre-wrap text-text">{q.body}</p>
-              <p className="mt-3 text-sm text-text-secondary">
-                {q.user.name} · {new Date(q.createdAt).toLocaleDateString()}
-                {q._count.replies > 0 && ` · ${q._count.replies} repl${q._count.replies === 1 ? 'y' : 'ies'}`}
-              </p>
-            </CardContent>
-          </Card>
+          <QueryThread key={q.id} query={q} canManageStatus={canManageStatus} onUpdated={reload} />
         ))}
       </div>
     </CommunityPageFrame>
