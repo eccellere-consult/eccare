@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { QueryThread } from '@/components/query-thread';
+import { CommunityMembers } from '@/components/community-members';
 import { communityApi, useCommunityData } from '@/lib/community-client';
 import { cn } from '@/lib/utils';
 
@@ -30,7 +31,7 @@ interface NeighborhoodDetail {
   };
 }
 
-const TABS = ['Overview', 'Notices', 'Helplines', 'Vendors', 'Events', 'Queries'] as const;
+const TABS = ['Overview', 'Members', 'Notices', 'Helplines', 'Vendors', 'Events', 'Queries'] as const;
 type Tab = (typeof TABS)[number];
 
 export default function AdminCommunityDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -87,6 +88,7 @@ export default function AdminCommunityDetailPage({ params }: { params: Promise<{
 
           <div className="mt-6">
             {tab === 'Overview' && <OverviewTab neighborhood={data} onSaved={reload} />}
+            {tab === 'Members' && <CommunityMembers neighborhoodId={id} viewerRole="admin" />}
             {tab === 'Notices' && <NoticesTab neighborhoodId={id} />}
             {tab === 'Helplines' && <HelplinesTab neighborhoodId={id} />}
             {tab === 'Vendors' && <VendorsTab neighborhoodId={id} />}
