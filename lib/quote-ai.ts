@@ -48,7 +48,10 @@ async function generateWithAnthropic(count: number): Promise<GeneratedQuote[]> {
     max_tokens: 1024,
     messages: [{ role: 'user', content: buildPrompt(count) }],
   });
-  const text = message.content[0].type === 'text' ? message.content[0].text : '';
+  // Sonnet 5 runs adaptive thinking by default, which puts a thinking block
+  // before the text block — content[0] is not reliably the text block.
+  const textBlock = message.content.find((block) => block.type === 'text');
+  const text = textBlock?.type === 'text' ? textBlock.text : '';
   return parseQuotes(text);
 }
 
@@ -69,7 +72,10 @@ async function generateWithGrok(count: number): Promise<GeneratedQuote[]> {
     baseURL: 'https://api.x.ai/v1',
   });
   const response = await client.chat.completions.create({
-    model: 'grok-2-1212',
+    // grok-2-1212 was retired; xAI's current flagship for chat/agentic
+    // workloads is grok-4.5 (as of 2026-08) — verify this is still current
+    // if it starts 400ing again, xAI's model names churn faster than Anthropic's.
+    model: 'grok-4.5',
     max_tokens: 1024,
     messages: [{ role: 'user', content: buildPrompt(count) }],
   });

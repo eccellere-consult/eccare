@@ -14,6 +14,7 @@ import {
   LifeBuoy,
   Settings,
   ShieldAlert,
+  UserCog,
   type LucideIcon,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -30,7 +31,7 @@ interface MeResponse {
   primaryNeighborhoodId: string | null;
 }
 
-const TILES: { href: string; label: string; sub: string; icon: LucideIcon }[] = [
+const BASE_TILES: { href: string; label: string; sub: string; icon: LucideIcon }[] = [
   { href: '/community/announcements', label: 'Announcements', sub: 'Notices from the committee', icon: Megaphone },
   { href: '/community/events', label: 'Events', sub: "What's happening nearby", icon: Calendar },
   { href: '/community/directory', label: 'Neighbours', sub: 'Say hello or call', icon: Users },
@@ -41,6 +42,13 @@ const TILES: { href: string; label: string; sub: string; icon: LucideIcon }[] = 
   { href: '/community/groups', label: 'WhatsApp groups', sub: 'Join the conversation', icon: LifeBuoy },
   { href: '/community/settings', label: 'Notifications', sub: 'Choose what you hear about', icon: Settings },
 ];
+
+const MEMBERS_TILE = {
+  href: '/community/members',
+  label: 'Members',
+  sub: 'Promote to committee or admin',
+  icon: UserCog,
+};
 
 export function CommunityHubClient() {
   const router = useRouter();
@@ -130,7 +138,7 @@ export function CommunityHubClient() {
       </Card>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {TILES.map(({ href, label, sub, icon: Icon }) => (
+        {(membership.role === 'member' ? BASE_TILES : [...BASE_TILES, MEMBERS_TILE]).map(({ href, label, sub, icon: Icon }) => (
           <Link key={href} href={href}>
             <Card className="flex h-full items-center gap-4 p-5 transition-shadow hover:shadow-md">
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-50">
