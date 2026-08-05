@@ -4,6 +4,7 @@ import { getServerUser } from '@/lib/server-session';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ProviderProfileClient } from './provider-profile-client';
+import { CommunityRequestsClient } from './community-requests-client';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,6 +43,12 @@ export default async function ProviderHomePage() {
       {provider && (
         <div className="mt-6">
           <ProviderProfileClient initial={provider} />
+        </div>
+      )}
+
+      {provider && (
+        <div className="mt-6">
+          <CommunityRequestsClient />
         </div>
       )}
 

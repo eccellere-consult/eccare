@@ -411,6 +411,7 @@ model Neighborhood {
   whatsAppGroups WhatsAppGroupLink[]
   messages       ChatMessage[]
   sosEvents      SOSEvent[]
+  providerListings CommunityProviderListing[]
 
   @@index([pincode])
 }
@@ -526,9 +527,10 @@ model LocalListing {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  neighborhood Neighborhood? @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
-  addedBy      User          @relation("ListingCreator", fields: [addedById], references: [id], onDelete: Cascade)
-  sharedFrom   Contact?
+  neighborhood     Neighborhood?              @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  addedBy          User                       @relation("ListingCreator", fields: [addedById], references: [id], onDelete: Cascade)
+  sharedFrom       Contact?
+  providerListing  CommunityProviderListing?
 
   @@index([neighborhoodId, category])
 }
@@ -705,6 +707,41 @@ model ServiceProvider {
 
   user       User  @relation("ServiceProviderUser", fields: [userId], references: [id], onDelete: Cascade)
   verifiedBy User? @relation("ServiceProviderVerifier", fields: [verifiedById], references: [id])
+  communityListings CommunityProviderListing[]
 
   @@index([verificationStatus])
+}
+
+/// Connects a registered ServiceProvider to one community's Vendors directory.
+/// Dual-approval, in order: the community's own committee/admin vouches first
+/// (communityApproved), then the platform admin gives final sign-off (approved) —
+/// only then is a verified LocalListing auto-created and linked.
+model CommunityProviderListing {
+  id                    String    @id @default(cuid())
+  providerId            String
+  neighborhoodId        String
+  status                CPLStatus @default(pending)
+  communityApprovedAt   DateTime?
+  communityApprovedById String?
+  platformApprovedAt    DateTime?
+  platformApprovedById  String?
+  rejectedAt            DateTime?
+  rejectedById          String?
+  rejectionReason       String?
+  localListingId        String?   @unique
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  provider     ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  neighborhood Neighborhood    @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  localListing LocalListing?   @relation(fields: [localListingId], references: [id], onDelete: SetNull)
+
+  @@unique([providerId, neighborhoodId])
+}
+
+enum CPLStatus {
+  pending
+  communityApproved
+  approved
+  rejected
 }
