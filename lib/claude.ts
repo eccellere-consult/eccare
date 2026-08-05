@@ -31,7 +31,8 @@ Confirm/Cancel step before anything actually happens, so a declarative "I've boo
 it" would be a lie the elder hears. Every other action (including trigger_sos and
 call_contact) executes immediately, so those stay declarative as before.
 
-You must return a JSON object with these fields:
+You must return ONLY a raw JSON object — no markdown code fence, no triple-backtick
+json block, no prose before or after it. Just the object itself, with these fields:
 - "intent": one of [call_contact, trigger_sos, show_medicines, book_appointment, order_food, send_family_message, show_appointments, set_reminder, check_status, unknown]
 - "response": what to speak back to the elder (short, calm, friendly)
 - "action": the app action to execute — same values as intent, plus "none" for a
@@ -105,7 +106,16 @@ export async function processVoiceInput(
     // block isn't a guarantee this code should depend on either way.
     const textBlock = message.content.find((block) => block.type === 'text');
     const text = textBlock?.type === 'text' ? textBlock.text : '';
-    return JSON.parse(text);
+
+    // Same extraction pattern as lib/quote-ai.ts's parseQuotes — Claude wraps JSON
+    // in a ```json fence more often than not despite the prompt not asking for one
+    // (confirmed live during this feature's own testing, once a real API key was
+    // configured), so a bare JSON.parse(text) fails on the fence's own backticks
+    // even though the JSON itself is well-formed. Pulling out the {...} substring
+    // is robust to that without needing the model to never do it.
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error(`No JSON object found in Claude's response: ${text.slice(0, 200)}`);
+    return JSON.parse(jsonMatch[0]);
   } catch (err) {
     console.error('[voice] processVoiceInput failed:', err);
     return {
