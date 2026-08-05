@@ -23,6 +23,7 @@ import {
   PackageCheck,
   Flower2,
   Camera,
+  MessageCircle,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -78,6 +79,7 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
       { label: 'Quotes', href: '/admin/quotes', icon: Sparkles },
       { label: 'Wellness', href: '/admin/wellness', icon: Flower2 },
       { label: 'Providers', href: '/admin/providers', icon: Briefcase },
+      { label: 'WhatsApp Invite', href: '/admin/invite', icon: MessageCircle },
       { label: 'Profile', href: '/admin/profile', icon: User },
     ],
   },
