@@ -15,11 +15,13 @@ import {
   Sunset,
   Moon,
   Loader2,
+  Flower2,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { healthApi, useHealthData } from '@/lib/health-client';
+import { useCommunityData } from '@/lib/community-client';
 import { getSlotForDate, formatIstTime, SLOT_META, SLOT_ORDER, todayIST, type MedicineSlot } from '@/lib/medicine-slots';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
@@ -64,6 +66,14 @@ interface FoodRequest {
   status: string;
   createdAt: string;
   handler: { name: string } | null;
+}
+
+interface WellnessVideo {
+  id: string;
+  title: string;
+  category: 'yoga' | 'exercise' | 'meditation';
+  youtubeUrl: string;
+  description: string | null;
 }
 
 interface Prescription {
@@ -151,6 +161,7 @@ export default function ElderHealthPage() {
   const notes = useHealthData<HealthNote[]>('/notes');
   const food = useHealthData<FoodRequest[]>('/food-requests');
   const prescriptions = useHealthData<Prescription[]>('/prescriptions');
+  const wellness = useCommunityData<WellnessVideo[]>('/wellness');
 
   const [contacts, setContacts] = useState<EmergencyContact[]>([]);
   useEffect(() => {
@@ -425,6 +436,47 @@ export default function ElderHealthPage() {
           </div>
         )}
       </section>
+
+      {/* Yoga, exercise & meditation — admin-curated, links out to YouTube */}
+      {(wellness.data?.length ?? 0) > 0 && (
+        <section className="mt-8">
+          <h2 className="flex items-center gap-2 text-lg font-bold text-text">
+            <Flower2 className="h-5 w-5 text-primary-600" />
+            Yoga, exercise & meditation
+          </h2>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {wellness.data?.map((v) => {
+              const videoId = v.youtubeUrl.match(/(?:v=|youtu\.be\/)([\w-]{6,})/)?.[1];
+              return (
+                <a
+                  key={v.id}
+                  href={v.youtubeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-primary-50"
+                >
+                  {videoId ? (
+                    <img
+                      src={`https://img.youtube.com/vi/${videoId}/mqdefault.jpg`}
+                      alt=""
+                      className="h-16 w-24 shrink-0 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <span className="flex h-16 w-24 shrink-0 items-center justify-center rounded-lg bg-primary-50">
+                      <Flower2 className="h-6 w-6 text-primary-600" />
+                    </span>
+                  )}
+                  <div className="min-w-0">
+                    <Badge variant="muted">{v.category}</Badge>
+                    <p className="mt-1 truncate font-bold text-text">{v.title}</p>
+                    {v.description && <p className="truncate text-sm text-text-secondary">{v.description}</p>}
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Emergency quick reference */}
       {contacts.length > 0 && (

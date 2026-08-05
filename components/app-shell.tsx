@@ -21,6 +21,7 @@ import {
   Languages,
   Package,
   PackageCheck,
+  Flower2,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -72,6 +73,7 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
       { label: 'SOS Feed', href: '/admin/sos-feed', icon: AlertTriangle },
       { label: 'Backlog', href: '/admin/backlog', icon: Kanban },
       { label: 'Quotes', href: '/admin/quotes', icon: Sparkles },
+      { label: 'Wellness', href: '/admin/wellness', icon: Flower2 },
       { label: 'Providers', href: '/admin/providers', icon: Briefcase },
       { label: 'Profile', href: '/admin/profile', icon: User },
     ],
