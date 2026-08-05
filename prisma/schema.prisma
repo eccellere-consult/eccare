@@ -88,8 +88,30 @@ model User {
   // Password recovery
   passwordResetTokens PasswordResetToken[]
 
+  // Voice-created informal reminders — distinct from `reminders` (MedicationReminder)
+  voiceReminders Reminder[]
+
   @@index([phone])
   @@index([role])
+}
+
+/** An informal, one-off reminder — "call the plumber at 5", "take a walk this
+ *  evening" — distinct from Medication/MedicationReminder, which is specifically
+ *  the medicine-schedule pill box. Created almost entirely via the voice assistant's
+ *  set_reminder action; pull-based like everything else in this app (shown on the
+ *  elder health page), not push-at-exact-time — nothing else here does scheduled
+ *  push delivery either, so this doesn't introduce a new background-job dependency. */
+model Reminder {
+  id        String    @id @default(cuid())
+  userId    String
+  message   String
+  remindAt  DateTime
+  notified  Boolean   @default(false)
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, remindAt])
 }
 
 /** A single-use, short-lived token emailed to a user to let them reset their

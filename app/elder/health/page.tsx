@@ -16,6 +16,8 @@ import {
   Moon,
   Loader2,
   Flower2,
+  Bell,
+  X,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,6 +42,15 @@ interface Reminder {
   scheduledAt: string;
   status: string;
   medication: { name: string; dosage: string; instructions: string | null; endDate: string | null };
+}
+
+/** An informal one-off reminder — see prisma/schema.prisma's Reminder model.
+ *  Named distinctly from `Reminder` above (that's the medicine-schedule pill box,
+ *  MedicationReminder) to avoid a collision in the same file. */
+interface VoiceReminder {
+  id: string;
+  message: string;
+  remindAt: string;
 }
 
 interface Appointment {
@@ -157,6 +168,7 @@ export default function ElderHealthPage() {
 
   const meds = useHealthData<Medication[]>('/medications');
   const reminders = useHealthData<Reminder[]>(`/reminders?date=${today}`);
+  const voiceReminders = useHealthData<VoiceReminder[]>('/voice-reminders');
   const appts = useHealthData<Appointment[]>('/appointments');
   const notes = useHealthData<HealthNote[]>('/notes');
   const food = useHealthData<FoodRequest[]>('/food-requests');
@@ -174,6 +186,17 @@ export default function ElderHealthPage() {
   const [confirmingSlot, setConfirmingSlot] = useState<MedicineSlot | null>(null);
   const [slotError, setSlotError] = useState('');
   const [foodBusy, setFoodBusy] = useState(false);
+  const [dismissingReminderId, setDismissingReminderId] = useState<string | null>(null);
+
+  async function dismissVoiceReminder(id: string) {
+    setDismissingReminderId(id);
+    try {
+      await healthApi.del(`/voice-reminders/${id}`);
+      voiceReminders.reload();
+    } finally {
+      setDismissingReminderId(null);
+    }
+  }
 
   async function confirmSlot(slot: MedicineSlot, reminderIds: string[]) {
     setConfirmingSlot(slot);
@@ -299,6 +322,51 @@ export default function ElderHealthPage() {
           </p>
         )}
       </section>
+
+      {/* Reminders — informal one-offs created via "Remind me to..." by voice,
+          distinct from the medicine pill box above. Hidden entirely when empty,
+          same as Wellness below, rather than showing an empty-state card most
+          elders will never fill. */}
+      {(voiceReminders.data?.length ?? 0) > 0 && (
+        <section className="mt-8">
+          <h2 className="flex items-center gap-2 text-lg font-bold text-text">
+            <Bell className="h-5 w-5 text-primary-600" />
+            Reminders
+          </h2>
+          <div className="mt-3 flex flex-col gap-2">
+            {voiceReminders.data?.map((r) => (
+              <div
+                key={r.id}
+                className="flex min-w-0 items-center gap-3 rounded-xl border border-border px-4 py-3"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-50">
+                  <Bell className="h-5 w-5 text-primary-600" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="break-words font-bold text-text">{r.message}</p>
+                  <p className="text-sm text-text-secondary">
+                    {new Date(r.remindAt).toLocaleString([], {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                </div>
+                <button
+                  onClick={() => dismissVoiceReminder(r.id)}
+                  disabled={dismissingReminderId === r.id}
+                  aria-label={`Dismiss reminder: ${r.message}`}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-text-secondary hover:bg-primary-50 disabled:opacity-50"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Upcoming appointments */}
       <section className="mt-8">
