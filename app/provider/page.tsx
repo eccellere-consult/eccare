@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ProviderProfileClient } from './provider-profile-client';
 import { CommunityRequestsClient } from './community-requests-client';
+import { ProviderAccountClient } from './account-client';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,6 +52,12 @@ export default async function ProviderHomePage() {
           <CommunityRequestsClient />
         </div>
       )}
+
+      <div className="mt-6">
+        <ProviderAccountClient
+          initial={{ name: user?.name ?? '', email: user?.email ?? null, phone: user?.phone ?? null }}
+        />
+      </div>
 
       <h2 className="mt-8 text-lg font-bold text-text">Your listings</h2>
       {listings.length === 0 ? (

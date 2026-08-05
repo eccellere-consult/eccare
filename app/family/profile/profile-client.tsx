@@ -11,14 +11,13 @@ interface Profile {
   name: string;
   email: string | null;
   phone: string | null;
-  bloodGroup: string | null;
   address: string | null;
   city: string | null;
   state: string | null;
   pincode: string | null;
 }
 
-export function ProfileClient({ profile }: { profile: Profile }) {
+export function FamilyProfileClient({ profile }: { profile: Profile }) {
   const [form, setForm] = useState(profile);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -50,12 +49,12 @@ export function ProfileClient({ profile }: { profile: Profile }) {
   return (
     <div className="mx-auto max-w-lg">
       <h1 className="text-2xl font-bold text-text">Your profile</h1>
-      <p className="mt-1 text-text-secondary">Kept up to date so family and services can reach you.</p>
+      <p className="mt-1 text-text-secondary">Kept up to date so the elders you care for can reach you.</p>
 
       <Card className="mt-6">
         <CardHeader>
           <CardTitle>Details</CardTitle>
-          <CardDescription>Phone: {profile.phone ?? 'not set'}</CardDescription>
+          <CardDescription>Kept up to date so the elders you care for can reach you.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSave} className="flex flex-col gap-4">
@@ -64,12 +63,12 @@ export function ProfileClient({ profile }: { profile: Profile }) {
               <Input id="p-name" value={form.name} onChange={(e) => update('name', e.target.value)} />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="p-email">Email</Label>
-              <Input id="p-email" type="email" value={form.email ?? ''} onChange={(e) => update('email', e.target.value)} />
+              <Label htmlFor="p-phone">Phone number</Label>
+              <Input id="p-phone" type="tel" value={form.phone ?? ''} onChange={(e) => update('phone', e.target.value)} />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="p-blood">Blood group</Label>
-              <Input id="p-blood" value={form.bloodGroup ?? ''} onChange={(e) => update('bloodGroup', e.target.value)} placeholder="O+" />
+              <Label htmlFor="p-email">Email</Label>
+              <Input id="p-email" type="email" value={form.email ?? ''} onChange={(e) => update('email', e.target.value)} />
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="p-address">Address</Label>

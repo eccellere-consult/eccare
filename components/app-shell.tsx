@@ -60,6 +60,7 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
       { label: 'Orders', href: '/family/orders', icon: PackageCheck },
       { label: 'SOS History', href: '/family/sos-history', icon: AlertTriangle },
       { label: 'Invite Elder', href: '/family/invite', icon: UserPlus },
+      { label: 'Profile', href: '/family/profile', icon: User },
     ],
   },
   admin: {
@@ -72,6 +73,7 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
       { label: 'Backlog', href: '/admin/backlog', icon: Kanban },
       { label: 'Quotes', href: '/admin/quotes', icon: Sparkles },
       { label: 'Providers', href: '/admin/providers', icon: Briefcase },
+      { label: 'Profile', href: '/admin/profile', icon: User },
     ],
   },
   provider: {

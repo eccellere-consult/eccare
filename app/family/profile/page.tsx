@@ -1,10 +1,10 @@
 import { prisma } from '@/lib/db';
 import { getServerSession } from '@/lib/server-session';
-import { ProfileClient } from './profile-client';
+import { FamilyProfileClient } from './profile-client';
 
 export const dynamic = 'force-dynamic';
 
-export default async function ElderProfilePage() {
+export default async function FamilyProfilePage() {
   const session = await getServerSession();
   const user = session ? await prisma.user.findUnique({ where: { id: session.userId } }) : null;
 
@@ -12,12 +12,11 @@ export default async function ElderProfilePage() {
     name: user?.name ?? '',
     email: user?.email ?? null,
     phone: user?.phone ?? null,
-    bloodGroup: user?.bloodGroup ?? null,
     address: user?.address ?? null,
     city: user?.city ?? null,
     state: user?.state ?? null,
     pincode: user?.pincode ?? null,
   };
 
-  return <ProfileClient profile={profile} />;
+  return <FamilyProfileClient profile={profile} />;
 }
