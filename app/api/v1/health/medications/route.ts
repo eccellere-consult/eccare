@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { requireHealthAccess, ok, fail } from '@/lib/health-access';
+import { ensureRemindersForMedication } from '@/lib/medicine-reminders';
+import { todayIST } from '@/lib/medicine-slots';
 
 const createSchema = z.object({
   elderUserId: z.string().optional(),
@@ -44,6 +46,10 @@ export async function POST(req: NextRequest) {
   const medication = await prisma.medication.create({
     data: { ...data, userId: guard.elderUserId },
   });
+
+  // Immediate feedback — today's pill box shows this medicine right away rather than
+  // waiting for the next GET /reminders auto-heal (which would also cover it).
+  await ensureRemindersForMedication(medication, todayIST());
 
   return ok(medication, 201);
 }

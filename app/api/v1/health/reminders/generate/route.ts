@@ -2,13 +2,16 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { requireHealthAccess, ok, fail } from '@/lib/health-access';
-import { localTimeToUtcDate } from '@/lib/medicine-slots';
+import { ensureRemindersForMedication } from '@/lib/medicine-reminders';
 
 const generateSchema = z.object({
   medicationId: z.string().min(1),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
 
+/** Manual/explicit trigger — kept for cases like generating a future date ahead of
+ *  time. GET /reminders auto-heals today's reminders on every read via the same
+ *  helper, so this route is no longer the only way reminders get created. */
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const parsed = generateSchema.safeParse(body);
@@ -16,7 +19,7 @@ export async function POST(req: NextRequest) {
 
   const med = await prisma.medication.findUnique({
     where: { id: parsed.data.medicationId },
-    select: { userId: true, isActive: true, timeSlots: true },
+    select: { id: true, userId: true, isActive: true, timeSlots: true, endDate: true },
   });
   if (!med) return fail('NOT_FOUND', 'Medication not found.', 404);
   if (!med.isActive) return fail('INACTIVE', 'Cannot generate reminders for an inactive medication.');
@@ -28,26 +31,7 @@ export async function POST(req: NextRequest) {
     return fail('FORBIDDEN', 'You do not have medication management permission.', 403);
   }
 
-  const slots = med.timeSlots as string[];
-  const created = [];
+  const generated = await ensureRemindersForMedication(med, parsed.data.date);
 
-  for (const slot of slots) {
-    const scheduledAt = localTimeToUtcDate(parsed.data.date, slot);
-
-    const existing = await prisma.medicationReminder.findFirst({
-      where: { medicationId: parsed.data.medicationId, scheduledAt },
-    });
-    if (existing) continue;
-
-    const reminder = await prisma.medicationReminder.create({
-      data: {
-        medicationId: parsed.data.medicationId,
-        userId: med.userId,
-        scheduledAt,
-      },
-    });
-    created.push(reminder);
-  }
-
-  return ok({ generated: created.length, reminders: created }, 201);
+  return ok({ generated }, 201);
 }

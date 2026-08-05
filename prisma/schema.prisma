@@ -188,6 +188,13 @@ model Medication {
   timeSlots        Json
   instructions     String?  @db.Text
   prescribingDoctor String?
+  // Doctor-recommended course end date, when known — e.g. a 5-day antibiotic course.
+  // Null means indefinite/ongoing, which is the common case for elder medication
+  // (BP, diabetes, etc. are typically lifelong) — reminders keep generating until
+  // this date passes, or the caregiver deletes/deactivates it, whichever comes first.
+  // The record itself is never auto-deleted or hidden when this passes; only new
+  // reminder generation stops.
+  endDate          DateTime?
   isActive         Boolean  @default(true)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
