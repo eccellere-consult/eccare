@@ -76,6 +76,10 @@ model User {
   contactsOwned Contact[] @relation("ContactElder")
   contactsAdded Contact[] @relation("ContactAdder")
 
+  // Memories (family-private photos)
+  memoriesOwned Memory[] @relation("MemoryElder")
+  memoriesAdded Memory[] @relation("MemoryAdder")
+
   // Orders (catalog checkout)
   ordersAsElder  Order[] @relation("OrderElder")
   ordersPlaced   Order[] @relation("OrderPlacer")
@@ -164,6 +168,24 @@ enum ContactCategory {
   serviceProvider
   hospital
   other
+}
+
+/// A private photo shared within one elder's own family — distinct from the
+/// community-scoped, social Photo Album backlog item (Community Buzz), which is
+/// neighbourhood-wide. Same elderUserId/addedById split as Contact and Order —
+/// gated by canAccessElder, never visible outside that elder's linked family.
+model Memory {
+  id          String   @id @default(cuid())
+  elderUserId String
+  addedById   String
+  imagePath   String
+  caption     String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  elderUser User @relation("MemoryElder", fields: [elderUserId], references: [id], onDelete: Cascade)
+  addedBy   User @relation("MemoryAdder", fields: [addedById], references: [id], onDelete: Cascade)
+
+  @@index([elderUserId])
 }
 
 model DeviceToken {
