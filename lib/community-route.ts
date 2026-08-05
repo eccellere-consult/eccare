@@ -67,3 +67,16 @@ export const invalidInput = (message = 'Please check the details and try again.'
 
 export const ok = (data: unknown, status = 200) =>
   NextResponse.json({ success: true, data }, { status });
+
+// Natural/numeric-aware comparator so flat numbers like "2", "10", "104-B" sort as a
+// person actually expects (2 before 10) rather than lexically (10 before 2, since
+// "1" < "2" as characters). Members with no flat number set yet sort to the end —
+// there's nothing to meaningfully order them by, and burying unassigned entries at
+// the bottom keeps the numbered part of the list clean.
+const flatNumberCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+export function compareByFlatNumberAsc<T extends { flatNumber: string | null }>(a: T, b: T): number {
+  if (a.flatNumber == null && b.flatNumber == null) return 0;
+  if (a.flatNumber == null) return 1;
+  if (b.flatNumber == null) return -1;
+  return flatNumberCollator.compare(a.flatNumber, b.flatNumber);
+}
