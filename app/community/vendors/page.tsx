@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Phone, BadgeCheck } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -176,15 +177,18 @@ export default function VendorsPage() {
             <Card key={v.id}>
               <CardContent className="flex items-center gap-4 py-4">
                 <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-1.5 font-bold text-text">
+                  <Link href={`/community/vendors/${v.id}`} className="flex items-center gap-1.5 font-bold text-text hover:underline">
                     <span className="truncate">{v.name}</span>
                     {v.verified && <BadgeCheck className="h-4 w-4 shrink-0 text-success-600" />}
-                  </p>
+                  </Link>
                   {/* div, not p — Badge renders a div (invalid inside a paragraph). */}
                   <div className="mt-0.5">
                     <Badge variant="muted">{v.category}</Badge>
                   </div>
                   {v.address && <p className="mt-1 truncate text-sm text-text-secondary">{v.address}</p>}
+                  <Link href={`/community/vendors/${v.id}`} className="mt-1 inline-block text-xs font-semibold text-primary-600 hover:underline">
+                    View catalog
+                  </Link>
                 </div>
                 <a
                   href={`tel:${v.phone}`}

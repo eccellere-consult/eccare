@@ -1,6 +1,7 @@
 import { AppShell } from '@/components/app-shell';
 import { getServerUser } from '@/lib/server-session';
 import type { PortalRole } from '@/components/app-shell';
+import { CartProvider } from '@/components/cart-context';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +16,7 @@ export default async function CommunityLayout({ children }: { children: React.Re
 
   return (
     <AppShell role={role} userName={user?.name}>
-      {children}
+      <CartProvider>{children}</CartProvider>
     </AppShell>
   );
 }

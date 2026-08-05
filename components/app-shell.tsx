@@ -19,6 +19,8 @@ import {
   HeartPulse,
   Briefcase,
   Languages,
+  Package,
+  PackageCheck,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -43,6 +45,7 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
       { label: 'Health', href: '/elder/health', icon: HeartPulse },
       { label: 'Community', href: '/community', icon: Building2 },
       { label: 'Services', href: '/services', icon: Sparkles },
+      { label: 'Orders', href: '/elder/orders', icon: PackageCheck },
       { label: 'Profile', href: '/elder/profile', icon: User },
     ],
   },
@@ -54,6 +57,7 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
       { label: 'Contacts', href: '/family/contacts', icon: Users },
       { label: 'Community', href: '/community', icon: Building2 },
       { label: 'Services', href: '/services', icon: Sparkles },
+      { label: 'Orders', href: '/family/orders', icon: PackageCheck },
       { label: 'SOS History', href: '/family/sos-history', icon: AlertTriangle },
       { label: 'Invite Elder', href: '/family/invite', icon: UserPlus },
     ],
@@ -72,7 +76,11 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
   },
   provider: {
     label: 'Provider',
-    items: [{ label: 'Overview', href: '/provider', icon: LayoutDashboard }],
+    items: [
+      { label: 'Overview', href: '/provider', icon: LayoutDashboard },
+      { label: 'Catalog', href: '/provider/catalog', icon: Package },
+      { label: 'Orders', href: '/provider/orders', icon: PackageCheck },
+    ],
   },
 };
 
