@@ -85,8 +85,28 @@ model User {
   ordersAsElder  Order[] @relation("OrderElder")
   ordersPlaced   Order[] @relation("OrderPlacer")
 
+  // Password recovery
+  passwordResetTokens PasswordResetToken[]
+
   @@index([phone])
   @@index([role])
+}
+
+/** A single-use, short-lived token emailed to a user to let them reset their
+ *  password without knowing the old one. Only the SHA-256 hash of the raw token is
+ *  stored — same reasoning as `User.pinHash`: a DB leak alone should never be enough
+ *  to reset someone's password. The raw token only ever exists in the emailed link. */
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 enum UserRole {
