@@ -50,7 +50,11 @@ export async function GET(req: NextRequest) {
 /** Adds a personal contact. When the category is `serviceProvider`/`hospital` and
  *  `shareWithCommunity` is set, also creates a linked LocalListing so it surfaces in
  *  the community Vendors directory — pending committee/admin verification unless the
- *  adder already holds that standing, mirroring the existing vendors POST route. */
+ *  adder already holds that standing, mirroring the existing vendors POST route.
+ *  When the category is `neighbor` and `shareWithCommunity` is set, the contact shows
+ *  up directly in the community's "Your neighbours" directory instead — no separate
+ *  promoted record or verification needed, see the schema comment on
+ *  Contact.shareWithNeighbours. */
 export async function POST(req: NextRequest) {
   const auth = await getAuthUser(req);
   if (!auth) {
@@ -78,6 +82,7 @@ export async function POST(req: NextRequest) {
   }
 
   let sharedListingId: string | null = null;
+  let shareWithNeighbours = false;
 
   if (shareWithCommunity && (category === 'serviceProvider' || category === 'hospital')) {
     const neighborhoodId = await getPrimaryNeighborhoodId(elderUserId);
@@ -95,6 +100,8 @@ export async function POST(req: NextRequest) {
       });
       sharedListingId = listing.id;
     }
+  } else if (shareWithCommunity && category === 'neighbor') {
+    shareWithNeighbours = true;
   }
 
   const contact = await prisma.contact.create({
@@ -107,6 +114,7 @@ export async function POST(req: NextRequest) {
       providerType: category === 'serviceProvider' ? providerType : undefined,
       notes,
       sharedListingId,
+      shareWithNeighbours,
     },
   });
 

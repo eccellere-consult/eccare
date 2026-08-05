@@ -37,7 +37,7 @@ interface Reminder {
   id: string;
   scheduledAt: string;
   status: string;
-  medication: { name: string; dosage: string; instructions: string | null };
+  medication: { name: string; dosage: string; instructions: string | null; endDate: string | null };
 }
 
 interface Appointment {
@@ -241,6 +241,11 @@ export default function ElderHealthPage() {
                           <p className="truncate font-semibold text-text">{r.medication.name} — {r.medication.dosage}</p>
                           {r.medication.instructions && (
                             <p className="truncate text-xs text-text-secondary">{r.medication.instructions}</p>
+                          )}
+                          {r.medication.endDate && (
+                            <p className="truncate text-xs text-accent-600">
+                              Ends {new Date(r.medication.endDate).toLocaleDateString()}
+                            </p>
                           )}
                         </div>
                         <span className="shrink-0 text-xs font-semibold text-text-secondary">

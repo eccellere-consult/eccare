@@ -102,6 +102,7 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
   const [role, setRole] = useState<'elder' | 'caregiver' | 'provider'>('elder');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [category, setCategory] = useState('');
@@ -124,6 +125,7 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
       const data = await api('/auth/register', {
         name,
         email,
+        phone: phone.trim() || undefined,
         password,
         role,
         ...(role === 'provider' ? { businessName, category } : {}),
@@ -176,6 +178,20 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
         />
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="reg-phone">Phone number (optional)</Label>
+        <Input
+          id="reg-phone"
+          type="tel"
+          autoComplete="tel"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder="9876543210"
+        />
+        <p className="text-xs text-text-secondary">
+          Lets neighbours and family reach you directly. You can add or change this later in your profile.
+        </p>
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="reg-password">Password</Label>

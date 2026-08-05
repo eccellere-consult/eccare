@@ -5,9 +5,11 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ChangePasswordCard } from '@/components/change-password-card';
 
 interface Profile {
   name: string;
+  email: string | null;
   phone: string | null;
   bloodGroup: string | null;
   address: string | null;
@@ -53,13 +55,20 @@ export function ProfileClient({ profile }: { profile: Profile }) {
       <Card className="mt-6">
         <CardHeader>
           <CardTitle>Details</CardTitle>
-          <CardDescription>Phone: {profile.phone ?? 'not set'}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSave} className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
               <Label htmlFor="p-name">Name</Label>
               <Input id="p-name" value={form.name} onChange={(e) => update('name', e.target.value)} />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="p-phone">Phone number</Label>
+              <Input id="p-phone" type="tel" value={form.phone ?? ''} onChange={(e) => update('phone', e.target.value)} />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="p-email">Email</Label>
+              <Input id="p-email" type="email" value={form.email ?? ''} onChange={(e) => update('email', e.target.value)} />
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="p-blood">Blood group</Label>
@@ -86,6 +95,10 @@ export function ProfileClient({ profile }: { profile: Profile }) {
           </form>
         </CardContent>
       </Card>
+
+      <div className="mt-6">
+        <ChangePasswordCard />
+      </div>
     </div>
   );
 }

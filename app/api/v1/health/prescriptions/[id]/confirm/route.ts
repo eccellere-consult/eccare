@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { requireHealthAccess, ok, fail } from '@/lib/health-access';
 import { localTimeToUtcDate, todayIST } from '@/lib/medicine-slots';
+import { ensureRemindersForMedication } from '@/lib/medicine-reminders';
 
 const medicationSchema = z.object({
   name: z.string().min(1).max(200),
@@ -10,6 +11,9 @@ const medicationSchema = z.object({
   frequency: z.string().min(1).max(100),
   timeSlots: z.array(z.string().regex(/^\d{2}:\d{2}$/)).min(1),
   instructions: z.string().max(1000).nullable().optional(),
+  // A short antibiotic-style course, e.g. 5 — null/omitted means indefinite/ongoing
+  // (the common case for elder medication). Converted to a concrete endDate here.
+  durationDays: z.number().int().positive().max(3650).nullable().optional(),
 });
 
 const appointmentSchema = z.object({
@@ -49,8 +53,17 @@ export async function POST(
   const parsed = confirmSchema.safeParse(await req.json());
   if (!parsed.success) return fail('VALIDATION', parsed.error.issues[0].message);
 
+  const today = todayIST();
   const createdMeds = [];
   for (const med of parsed.data.medications) {
+    let endDate: Date | null = null;
+    if (med.durationDays) {
+      const endDateStr = new Date(Date.now() + med.durationDays * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split('T')[0];
+      endDate = localTimeToUtcDate(endDateStr, '00:00');
+    }
+
     const medication = await prisma.medication.create({
       data: {
         userId: guard.elderUserId,
@@ -61,29 +74,11 @@ export async function POST(
         timeSlots: med.timeSlots,
         instructions: med.instructions ?? null,
         prescribingDoctor: prescription.doctorName,
+        endDate,
       },
     });
     createdMeds.push(medication);
-  }
-
-  const today = todayIST();
-  for (const med of createdMeds) {
-    const slots = med.timeSlots as string[];
-    for (const slot of slots) {
-      const scheduledAt = localTimeToUtcDate(today, slot);
-      const existing = await prisma.medicationReminder.findFirst({
-        where: { medicationId: med.id, scheduledAt },
-      });
-      if (!existing) {
-        await prisma.medicationReminder.create({
-          data: {
-            medicationId: med.id,
-            userId: guard.elderUserId,
-            scheduledAt,
-          },
-        });
-      }
-    }
+    await ensureRemindersForMedication(medication, today);
   }
 
   let createdAppointment = null;

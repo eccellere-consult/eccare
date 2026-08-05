@@ -9,6 +9,10 @@ const patchSchema = z.object({
   phone: z.string().min(3).max(20).optional(),
   providerType: z.string().max(60).optional(),
   notes: z.string().max(2000).optional(),
+  // Only meaningful when the contact's category is 'neighbor' — toggles whether it
+  // appears in the community "Your neighbours" directory. Silently ignored server-side
+  // for other categories rather than rejected, since it's harmless either way.
+  shareWithNeighbours: z.boolean().optional(),
 });
 
 async function loadOwnedContact(auth: { userId: string }, id: string) {
@@ -38,7 +42,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const { id } = await params;
-  const { error } = await loadOwnedContact(auth, id);
+  const { contact, error } = await loadOwnedContact(auth, id);
   if (error) return error;
 
   const parsed = patchSchema.safeParse(await req.json());
@@ -49,7 +53,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     );
   }
 
-  const updated = await prisma.contact.update({ where: { id }, data: parsed.data });
+  const data = { ...parsed.data };
+  if (data.shareWithNeighbours !== undefined && contact!.category !== 'neighbor') {
+    delete data.shareWithNeighbours;
+  }
+
+  const updated = await prisma.contact.update({ where: { id }, data });
 
   return NextResponse.json({ success: true, data: updated });
 }
