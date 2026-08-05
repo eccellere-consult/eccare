@@ -8,7 +8,7 @@ const schema = z
     email: z.string().email(),
     password: z.string().min(8),
     name: z.string().min(1),
-    phone: z.string().min(7).max(20).optional(),
+    phone: z.string().min(7).max(20),
     role: z.enum(['elder', 'caregiver', 'provider']),
     businessName: z.string().min(1).max(160).optional(),
     category: z.string().min(1).max(80).optional(),

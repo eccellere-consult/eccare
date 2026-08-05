@@ -116,6 +116,10 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
       setError('Password must be at least 8 characters.');
       return;
     }
+    if (!phone.trim()) {
+      setError('Please enter your phone number.');
+      return;
+    }
     if (role === 'provider' && (!businessName.trim() || !category.trim())) {
       setError('Please enter your business name and category.');
       return;
@@ -125,7 +129,7 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
       const data = await api('/auth/register', {
         name,
         email,
-        phone: phone.trim() || undefined,
+        phone: phone.trim(),
         password,
         role,
         ...(role === 'provider' ? { businessName, category } : {}),
@@ -180,7 +184,7 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
         />
       </div>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="reg-phone">Phone number (optional)</Label>
+        <Label htmlFor="reg-phone">Phone number</Label>
         <Input
           id="reg-phone"
           type="tel"
@@ -190,7 +194,8 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
           placeholder="9876543210"
         />
         <p className="text-xs text-text-secondary">
-          Lets neighbours and family reach you directly. You can add or change this later in your profile.
+          Lets neighbours and family reach you directly. Whether it's actually shown in
+          your community's neighbours directory is a separate, optional choice you make later.
         </p>
       </div>
       <div className="flex flex-col gap-2">

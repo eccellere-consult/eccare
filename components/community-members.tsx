@@ -49,6 +49,20 @@ export function CommunityMembers({
     }
   }
 
+  async function removeMember(member: Member) {
+    if (!confirm(`Remove ${member.user.name} from this community? They'd need to rejoin with the join code.`)) return;
+    setBusyId(member.id);
+    setActionError('');
+    try {
+      await communityApi.delete(`/community/members/${member.id}`);
+      reload();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not remove member.');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   if (loading) return <p className="text-text-secondary">Loading…</p>;
   if (error) {
     return (
@@ -115,6 +129,19 @@ export function CommunityMembers({
                   onClick={() => setRole(m.id, 'committee')}
                 >
                   Remove admin
+                </Button>
+              )}
+              {/* Removing an admin outright (not just demoting) needs an admin-tier
+                  viewer too — mirrors the DELETE route's own guard. */}
+              {(m.role !== 'admin' || viewerRole === 'admin') && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={busyId === m.id}
+                  onClick={() => removeMember(m)}
+                  className="text-danger-600 hover:bg-danger-50"
+                >
+                  Remove member
                 </Button>
               )}
             </div>
