@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Phone, Hand, Pencil, Trash2 } from 'lucide-react';
+import { Phone, Hand, Pencil, Trash2, ShieldX } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ interface Neighbour {
   id: string;
   userId: string | null;
   contactId: string | null;
+  memberId: string | null;
   name: string;
   phone: string | null;
   flatNumber: string | null;
@@ -21,6 +22,7 @@ interface Neighbour {
   isSelf: boolean;
   source: 'member' | 'contact';
   canManage: boolean;
+  canModerate: boolean;
 }
 
 export default function DirectoryPage() {
@@ -29,6 +31,7 @@ export default function DirectoryPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
+  const [editFlatNumber, setEditFlatNumber] = useState('');
   const [editError, setEditError] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -47,22 +50,30 @@ export default function DirectoryPage() {
     setEditingId(n.id);
     setEditName(n.name);
     setEditPhone(n.phone ?? '');
+    setEditFlatNumber(n.flatNumber ?? '');
     setEditError('');
   }
 
   async function saveEdit(n: Neighbour) {
-    if (!n.contactId) return;
-    if (!editName.trim() || !editPhone.trim()) {
-      setEditError('Please enter a name and phone number.');
-      return;
-    }
     setBusyId(n.id);
     setEditError('');
     try {
-      await communityApi.patch(`/contacts/${n.contactId}`, { name: editName, phone: editPhone });
-      setData((prev) =>
-        prev?.map((x) => (x.id === n.id ? { ...x, name: editName, phone: editPhone } : x)) ?? prev,
-      );
+      if (n.source === 'contact' && n.contactId) {
+        if (!editName.trim() || !editPhone.trim()) {
+          setEditError('Please enter a name and phone number.');
+          setBusyId(null);
+          return;
+        }
+        await communityApi.patch(`/contacts/${n.contactId}`, { name: editName, phone: editPhone });
+        setData((prev) =>
+          prev?.map((x) => (x.id === n.id ? { ...x, name: editName, phone: editPhone } : x)) ?? prev,
+        );
+      } else if (n.source === 'member' && n.memberId) {
+        await communityApi.patch(`/community/members/${n.memberId}`, { flatNumber: editFlatNumber || null });
+        setData((prev) =>
+          prev?.map((x) => (x.id === n.id ? { ...x, flatNumber: editFlatNumber || null } : x)) ?? prev,
+        );
+      }
       setEditingId(null);
     } catch (err) {
       setEditError(err instanceof Error ? err.message : 'Could not save changes.');
@@ -72,11 +83,36 @@ export default function DirectoryPage() {
   }
 
   async function handleDelete(n: Neighbour) {
-    if (!n.contactId) return;
     setBusyId(n.id);
     try {
-      await communityApi.delete(`/contacts/${n.contactId}`);
+      if (n.source === 'contact' && n.contactId) {
+        await communityApi.delete(`/contacts/${n.contactId}`);
+      } else if (n.source === 'member' && n.memberId) {
+        if (!confirm(`Remove ${n.name} from this community? They would need to rejoin with the join code.`)) {
+          setBusyId(null);
+          return;
+        }
+        await communityApi.delete(`/community/members/${n.memberId}`);
+      }
       setData((prev) => prev?.filter((x) => x.id !== n.id) ?? prev);
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'Could not remove.');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  /** Moderator-only: unpublish a shared contact from this directory without
+   *  touching the owner's personal contact-book entry. */
+  async function handleModerateRemove(n: Neighbour) {
+    if (!n.contactId) return;
+    if (!confirm(`Remove ${n.name} from the community directory? This doesn't delete it from the owner's own contacts.`)) return;
+    setBusyId(n.id);
+    try {
+      await communityApi.delete(`/community/directory/${n.contactId}`);
+      setData((prev) => prev?.filter((x) => x.id !== n.id) ?? prev);
+    } catch {
+      /* surfaced via reload's own error state on next load */
     } finally {
       setBusyId(null);
     }
@@ -96,14 +132,28 @@ export default function DirectoryPage() {
           editingId === n.id ? (
             <Card key={n.id}>
               <CardContent className="flex flex-col gap-3 py-4">
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor={`nb-name-${n.id}`}>Name</Label>
-                  <Input id={`nb-name-${n.id}`} value={editName} onChange={(e) => setEditName(e.target.value)} />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor={`nb-phone-${n.id}`}>Phone number</Label>
-                  <Input id={`nb-phone-${n.id}`} value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
-                </div>
+                {n.source === 'contact' ? (
+                  <>
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor={`nb-name-${n.id}`}>Name</Label>
+                      <Input id={`nb-name-${n.id}`} value={editName} onChange={(e) => setEditName(e.target.value)} />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor={`nb-phone-${n.id}`}>Phone number</Label>
+                      <Input id={`nb-phone-${n.id}`} value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor={`nb-flat-${n.id}`}>Flat / house number</Label>
+                    <Input
+                      id={`nb-flat-${n.id}`}
+                      value={editFlatNumber}
+                      onChange={(e) => setEditFlatNumber(e.target.value)}
+                      placeholder="A-101"
+                    />
+                  </div>
+                )}
                 {editError && <p className="text-sm text-danger-600">{editError}</p>}
                 <div className="flex gap-2">
                   <Button size="sm" disabled={busyId === n.id} onClick={() => saveEdit(n)}>
@@ -176,6 +226,18 @@ export default function DirectoryPage() {
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </>
+                  )}
+                  {!n.canManage && n.canModerate && n.source === 'contact' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={busyId === n.id}
+                      onClick={() => handleModerateRemove(n)}
+                      aria-label={`Remove ${n.name} from directory`}
+                      title="Remove from community directory"
+                    >
+                      <ShieldX className="h-4 w-4" />
+                    </Button>
                   )}
                 </div>
               </CardContent>
