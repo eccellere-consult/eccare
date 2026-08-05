@@ -21,6 +21,7 @@ import {
   Languages,
   Package,
   PackageCheck,
+  MessageCircle,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -73,6 +74,7 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
       { label: 'Backlog', href: '/admin/backlog', icon: Kanban },
       { label: 'Quotes', href: '/admin/quotes', icon: Sparkles },
       { label: 'Providers', href: '/admin/providers', icon: Briefcase },
+      { label: 'WhatsApp Invite', href: '/admin/invite', icon: MessageCircle },
       { label: 'Profile', href: '/admin/profile', icon: User },
     ],
   },
