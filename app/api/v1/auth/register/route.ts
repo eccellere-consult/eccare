@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { createToken, hashPassword, setSessionCookie, toSafeUser } from '@/lib/auth';
 import { z } from 'zod';
+import { isValidEmail, isValidPhone, EMAIL_FORMAT_MESSAGE, PHONE_FORMAT_MESSAGE } from '@/lib/validation';
 
 const schema = z
   .object({
-    email: z.string().email(),
+    email: z.string().min(1).refine(isValidEmail, EMAIL_FORMAT_MESSAGE),
     password: z.string().min(8),
     name: z.string().min(1),
-    phone: z.string().min(7).max(20),
+    phone: z.string().min(1).refine(isValidPhone, PHONE_FORMAT_MESSAGE),
     role: z.enum(['elder', 'caregiver', 'provider']),
     businessName: z.string().min(1).max(160).optional(),
     category: z.string().min(1).max(80).optional(),
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
-      { success: false, error: { code: 'INVALID_INPUT', message: 'Please check your details and try again.' } },
+      { success: false, error: { code: 'INVALID_INPUT', message: parsed.error.issues[0]?.message || 'Please check your details and try again.' } },
       { status: 400 },
     );
   }

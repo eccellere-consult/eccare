@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ChangePasswordCard } from '@/components/change-password-card';
+import { isValidEmail, isValidPhone, EMAIL_FORMAT_MESSAGE, PHONE_FORMAT_MESSAGE } from '@/lib/validation';
 
 interface Account {
   name: string;
@@ -29,8 +30,16 @@ export function ProviderAccountClient({ initial }: { initial: Account }) {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    setSaving(true);
     setMessage('');
+    if (form.email && !isValidEmail(form.email)) {
+      setMessage(EMAIL_FORMAT_MESSAGE);
+      return;
+    }
+    if (form.phone && !isValidPhone(form.phone)) {
+      setMessage(PHONE_FORMAT_MESSAGE);
+      return;
+    }
+    setSaving(true);
     try {
       const res = await fetch('/api/v1/auth/me', {
         method: 'PUT',
