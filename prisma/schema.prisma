@@ -67,6 +67,7 @@ model User {
   chatMessages        ChatMessage[]
   notificationPrefs   NotificationPreference[]
   geriatricListings   GeriatricCareListing[]   @relation("GeriatricListingCreator")
+  wellnessVideosAdded WellnessVideo[]
 
   // Service provider
   serviceProvider          ServiceProvider?  @relation("ServiceProviderUser")
@@ -75,6 +76,10 @@ model User {
   // Personal contact book
   contactsOwned Contact[] @relation("ContactElder")
   contactsAdded Contact[] @relation("ContactAdder")
+
+  // Memories (family-private photos)
+  memoriesOwned Memory[] @relation("MemoryElder")
+  memoriesAdded Memory[] @relation("MemoryAdder")
 
   // Orders (catalog checkout)
   ordersAsElder  Order[] @relation("OrderElder")
@@ -164,6 +169,24 @@ enum ContactCategory {
   serviceProvider
   hospital
   other
+}
+
+/// A private photo shared within one elder's own family — distinct from the
+/// community-scoped, social Photo Album backlog item (Community Buzz), which is
+/// neighbourhood-wide. Same elderUserId/addedById split as Contact and Order —
+/// gated by canAccessElder, never visible outside that elder's linked family.
+model Memory {
+  id          String   @id @default(cuid())
+  elderUserId String
+  addedById   String
+  imagePath   String
+  caption     String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  elderUser User @relation("MemoryElder", fields: [elderUserId], references: [id], onDelete: Cascade)
+  addedBy   User @relation("MemoryAdder", fields: [addedById], references: [id], onDelete: Cascade)
+
+  @@index([elderUserId])
 }
 
 model DeviceToken {
@@ -303,6 +326,31 @@ enum DailyQuoteStatus {
   pending
   approved
   rejected
+}
+
+/// Admin-curated yoga/exercise/meditation content — a link to a YouTube video, not
+/// hosted content. Elder-facing, admin-managed, same shape as DailyQuote's
+/// admin-CRUD-then-public-read pattern.
+model WellnessVideo {
+  id          String            @id @default(cuid())
+  title       String
+  category    WellnessCategory
+  youtubeUrl  String
+  description String?           @db.Text
+  isActive    Boolean           @default(true)
+  addedById   String
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  addedBy User @relation(fields: [addedById], references: [id], onDelete: Cascade)
+
+  @@index([isActive, category])
+}
+
+enum WellnessCategory {
+  yoga
+  exercise
+  meditation
 }
 
 // ─── Emergency & Safety ─────────────────────────────────────────

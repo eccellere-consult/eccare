@@ -29,6 +29,8 @@ public/uploads/certifications/*
 !public/uploads/certifications/.gitkeep
 public/uploads/catalog/*
 !public/uploads/catalog/.gitkeep
+public/uploads/memories/*
+!public/uploads/memories/.gitkeep
 
 # OS
 .DS_Store

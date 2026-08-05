@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { isValidEmail, isValidPhone, EMAIL_FORMAT_MESSAGE, PHONE_FORMAT_MESSAGE } from '@/lib/validation';
 
 const ROLE_HOME: Record<string, string> = {
   elder: '/elder',
@@ -112,12 +113,20 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
   async function register(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+    if (!isValidEmail(email)) {
+      setError(EMAIL_FORMAT_MESSAGE);
+      return;
+    }
     if (password.length < 8) {
       setError('Password must be at least 8 characters.');
       return;
     }
     if (!phone.trim()) {
       setError('Please enter your phone number.');
+      return;
+    }
+    if (!isValidPhone(phone)) {
+      setError(PHONE_FORMAT_MESSAGE);
       return;
     }
     if (role === 'provider' && (!businessName.trim() || !category.trim())) {
