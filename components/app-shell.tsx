@@ -22,6 +22,7 @@ import {
   Package,
   PackageCheck,
   Flower2,
+  Camera,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -47,6 +48,7 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
       { label: 'Community', href: '/community', icon: Building2 },
       { label: 'Services', href: '/services', icon: Sparkles },
       { label: 'Orders', href: '/elder/orders', icon: PackageCheck },
+      { label: 'Memories', href: '/elder/memories', icon: Camera },
       { label: 'Profile', href: '/elder/profile', icon: User },
     ],
   },
@@ -59,6 +61,7 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
       { label: 'Community', href: '/community', icon: Building2 },
       { label: 'Services', href: '/services', icon: Sparkles },
       { label: 'Orders', href: '/family/orders', icon: PackageCheck },
+      { label: 'Memories', href: '/family/memories', icon: Camera },
       { label: 'SOS History', href: '/family/sos-history', icon: AlertTriangle },
       { label: 'Invite Elder', href: '/family/invite', icon: UserPlus },
       { label: 'Profile', href: '/family/profile', icon: User },
