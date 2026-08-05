@@ -347,11 +347,36 @@ function HelplinesTab({ neighborhoodId }: { neighborhoodId: string }) {
   );
 }
 
+interface AdminProviderRequest {
+  id: string;
+  status: 'pending' | 'communityApproved' | 'approved' | 'rejected';
+  neighborhood: { id: string };
+  provider: { businessName: string; category: string; user: { name: string } };
+}
+
 function VendorsTab({ neighborhoodId }: { neighborhoodId: string }) {
   const { data, loading, error, reload } = useCommunityData<
     { id: string; name: string; category: string; phone: string; verified: boolean }[]
   >(`/community/vendors?neighborhoodId=${neighborhoodId}`);
+  const { data: allRequests, reload: reloadRequests } = useCommunityData<AdminProviderRequest[]>(
+    '/admin/provider-requests',
+  );
   const [actionId, setActionId] = useState<string | null>(null);
+
+  const pendingPlatformRequests = (allRequests ?? []).filter(
+    (r) => r.neighborhood.id === neighborhoodId && r.status === 'communityApproved',
+  );
+
+  async function decideRequest(id: string, action: 'approve' | 'reject') {
+    setActionId(id);
+    try {
+      await communityApi.patch(`/admin/provider-requests/${id}`, { action });
+      reloadRequests();
+      reload();
+    } finally {
+      setActionId(null);
+    }
+  }
 
   async function verify(id: string) {
     setActionId(id);
@@ -376,6 +401,38 @@ function VendorsTab({ neighborhoodId }: { neighborhoodId: string }) {
 
   return (
     <div className="flex flex-col gap-4">
+      {pendingPlatformRequests.length > 0 && (
+        <div className="flex flex-col gap-3 rounded-2xl border border-accent-100 bg-accent-50 p-4">
+          <p className="text-sm font-bold text-accent-900">
+            Provider requests awaiting platform approval
+          </p>
+          {pendingPlatformRequests.map((r) => (
+            <Card key={r.id}>
+              <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+                <div>
+                  <p className="font-bold text-text">{r.provider.businessName}</p>
+                  <p className="text-sm text-text-secondary">{r.provider.category} · {r.provider.user.name}</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" disabled={actionId === r.id} onClick={() => decideRequest(r.id, 'approve')}>
+                    Approve
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-danger-600"
+                    disabled={actionId === r.id}
+                    onClick={() => decideRequest(r.id, 'reject')}
+                  >
+                    Reject
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
       <p className="text-sm text-text-secondary">
         Residents add vendors themselves; committee members vouch by verifying them.
       </p>

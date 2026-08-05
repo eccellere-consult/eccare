@@ -19,16 +19,42 @@ interface Vendor {
   verified: boolean;
 }
 interface Me { memberships: { role: string }[] }
+interface ProviderRequest {
+  id: string;
+  status: 'pending' | 'communityApproved' | 'approved' | 'rejected';
+  provider: {
+    businessName: string;
+    category: string;
+    serviceArea: string | null;
+    phone: string | null;
+    user: { name: string; email: string | null };
+  };
+}
 
 export default function VendorsPage() {
   const { data, loading, error, reload } = useCommunityData<Vendor[]>('/community/vendors');
   const { data: me } = useCommunityData<Me>('/community/me');
   const canManage = me?.memberships?.[0]?.role !== 'member';
+  const { data: providerRequests, reload: reloadRequests } = useCommunityData<ProviderRequest[]>(
+    '/community/provider-requests',
+  );
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', category: '', phone: '', address: '' });
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState('');
   const [actionId, setActionId] = useState<string | null>(null);
+
+  const pendingRequests = (providerRequests ?? []).filter((r) => r.status === 'pending');
+
+  async function decideRequest(id: string, action: 'approve' | 'reject') {
+    setActionId(id);
+    try {
+      await communityApi.patch(`/community/provider-requests/${id}`, { action });
+      reloadRequests();
+    } finally {
+      setActionId(null);
+    }
+  }
 
   async function verify(id: string) {
     setActionId(id);
@@ -81,6 +107,41 @@ export default function VendorsPage() {
       emptyMessage="No vendors listed yet."
     >
       <div className="flex flex-col gap-4">
+        {canManage && pendingRequests.length > 0 && (
+          <div className="flex flex-col gap-3 rounded-2xl border border-accent-100 bg-accent-50 p-4">
+            <p className="text-sm font-bold text-accent-900">
+              Provider requests awaiting your approval
+            </p>
+            {pendingRequests.map((r) => (
+              <Card key={r.id}>
+                <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+                  <div>
+                    <p className="font-bold text-text">{r.provider.businessName}</p>
+                    <p className="text-sm text-text-secondary">
+                      {r.provider.category}
+                      {r.provider.serviceArea ? ` · ${r.provider.serviceArea}` : ''} · {r.provider.user.name}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" disabled={actionId === r.id} onClick={() => decideRequest(r.id, 'approve')}>
+                      Approve
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-danger-600"
+                      disabled={actionId === r.id}
+                      onClick={() => decideRequest(r.id, 'reject')}
+                    >
+                      Reject
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
         {showForm && (
           <Card>
             <CardContent className="pt-6">
