@@ -313,17 +313,17 @@ export default function ElderHealthPage() {
         ) : (
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {appts.data?.map((a) => (
-              <Card key={a.id}>
-                <CardContent className="pt-6">
-                  <p className="font-bold text-text">{a.doctorName}</p>
-                  <p className="text-sm text-text-secondary">
+              <Card key={a.id} className="min-w-0">
+                <CardContent className="min-w-0 pt-6">
+                  <p className="break-words font-bold text-text">{a.doctorName}</p>
+                  <p className="break-words text-sm text-text-secondary">
                     {a.specialty && `${a.specialty} · `}
                     {new Date(a.datetime).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
                     {' '}{t('elder.health.atTimeJoiner')}{' '}
                     {new Date(a.datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
-                  {a.hospital && <p className="mt-1 text-sm text-text-secondary">{a.hospital}</p>}
-                  {a.notes && <p className="mt-2 text-sm text-text-secondary">{a.notes}</p>}
+                  {a.hospital && <p className="mt-1 break-words text-sm text-text-secondary">{a.hospital}</p>}
+                  {a.notes && <p className="mt-2 break-words text-sm text-text-secondary">{a.notes}</p>}
                 </CardContent>
               </Card>
             ))}
@@ -342,11 +342,11 @@ export default function ElderHealthPage() {
         ) : (notes.data?.length ?? 0) === 0 ? (
           <Card className="mt-3"><CardContent className="py-8 text-center text-text-secondary">{t('elder.health.noHealthNotes')}</CardContent></Card>
         ) : (
-          <div className="mt-3 flex flex-col gap-3">
+          <div className="mt-3 flex min-w-0 flex-col gap-3">
             {notes.data?.slice(0, 10).map((n) => (
-              <Card key={n.id}>
-                <CardContent className="pt-6">
-                  <p className="text-text">{n.content}</p>
+              <Card key={n.id} className="min-w-0">
+                <CardContent className="min-w-0 pt-6">
+                  <p className="break-words text-text">{n.content}</p>
                   <p className="mt-2 text-xs text-text-secondary">
                     {t('common.by')} {n.createdBy.name} · {new Date(n.createdAt).toLocaleDateString()}
                   </p>
@@ -453,7 +453,7 @@ export default function ElderHealthPage() {
                   href={v.youtubeUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-primary-50"
+                  className="flex min-w-0 items-center gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-primary-50"
                 >
                   {videoId ? (
                     <img
@@ -490,14 +490,14 @@ export default function ElderHealthPage() {
               <a
                 key={c.id}
                 href={`tel:${c.phone}`}
-                className="flex items-center gap-3 rounded-xl border border-border px-4 py-3 transition-colors hover:bg-primary-50"
+                className="flex min-w-0 items-center gap-3 rounded-xl border border-border px-4 py-3 transition-colors hover:bg-primary-50"
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-danger-50">
                   <Phone className="h-5 w-5 text-danger-600" />
                 </div>
                 <div className="min-w-0">
-                  <p className="font-bold text-text">{c.name}</p>
-                  <p className="text-sm text-text-secondary">{c.relationship} · {c.phone}</p>
+                  <p className="truncate font-bold text-text">{c.name}</p>
+                  <p className="truncate text-sm text-text-secondary">{c.relationship} · {c.phone}</p>
                 </div>
               </a>
             ))}
