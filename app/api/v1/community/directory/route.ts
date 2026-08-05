@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/db';
-import { requireMembership, ok } from '@/lib/community-route';
+import { requireMembership, ok, compareByFlatNumberAsc } from '@/lib/community-route';
 import { canAccessElder } from '@/lib/family-access';
 
 /** Neighbour directory. Only members can read it, and only members who haven't opted
@@ -19,13 +19,13 @@ export async function GET(req: NextRequest) {
   // shared contacts, via the canAccessElder check below.
   const isManager = guard.membership.role === 'committee' || guard.membership.role === 'admin';
 
-  const [members, sharedContacts] = await Promise.all([
+  const [membersUnsorted, sharedContacts] = await Promise.all([
     prisma.neighborhoodMember.findMany({
       where: { neighborhoodId: guard.neighborhoodId, showInDirectory: true },
       include: {
         user: { select: { id: true, name: true, phone: true, avatarUrl: true } },
       },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: 'asc' }, // tiebreaker when flat numbers are equal or both unset
     }),
     prisma.contact.findMany({
       where: {
@@ -36,6 +36,10 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: 'asc' },
     }),
   ]);
+
+  // MySQL can't natural-sort "2" before "10" for an arbitrary alphanumeric column,
+  // so registered members are re-sorted here by house/flat number ascending.
+  const members = [...membersUnsorted].sort(compareByFlatNumberAsc);
 
   const memberEntries = members.map((m) => ({
     id: `member:${m.user.id}`,
