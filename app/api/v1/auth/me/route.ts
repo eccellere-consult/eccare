@@ -53,22 +53,34 @@ export async function PUT(req: NextRequest) {
     );
   }
 
-  const user = await prisma.user.update({
-    where: { id: auth.userId },
-    data: {
-      name: body.name,
-      language: body.language,
-      secondaryLanguage: body.secondaryLanguage,
-      fontSizePref: body.fontSizePref,
-      highContrast: body.highContrast,
-      voiceEnabled: body.voiceEnabled,
-      bloodGroup: body.bloodGroup,
-      address: body.address,
-      city: body.city,
-      state: body.state,
-      pincode: body.pincode,
-    },
-  });
+  try {
+    const user = await prisma.user.update({
+      where: { id: auth.userId },
+      data: {
+        name: body.name,
+        phone: body.phone,
+        language: body.language,
+        secondaryLanguage: body.secondaryLanguage,
+        fontSizePref: body.fontSizePref,
+        highContrast: body.highContrast,
+        voiceEnabled: body.voiceEnabled,
+        bloodGroup: body.bloodGroup,
+        address: body.address,
+        city: body.city,
+        state: body.state,
+        pincode: body.pincode,
+      },
+    });
 
-  return NextResponse.json({ success: true, data: toSafeUser(user) });
+    return NextResponse.json({ success: true, data: toSafeUser(user) });
+  } catch (err) {
+    // Prisma P2002 — unique constraint (phone already used by another account).
+    if (err && typeof err === 'object' && 'code' in err && err.code === 'P2002') {
+      return NextResponse.json(
+        { success: false, error: { code: 'ALREADY_IN_USE', message: 'That phone number is already in use.' } },
+        { status: 409 },
+      );
+    }
+    throw err;
+  }
 }

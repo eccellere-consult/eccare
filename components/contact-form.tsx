@@ -94,7 +94,11 @@ export function ContactForm({
     }
   }
 
-  const canShare = inCommunity && (category === 'serviceProvider' || category === 'hospital');
+  const canShare = inCommunity && (category === 'serviceProvider' || category === 'hospital' || category === 'neighbor');
+  const shareLabel =
+    category === 'neighbor'
+      ? "Also show in your community's Neighbours directory"
+      : "Also share with your community's Vendors directory";
 
   return (
     <Card>
@@ -168,7 +172,7 @@ export function ContactForm({
                 onChange={(e) => setShareWithCommunity(e.target.checked)}
                 className="h-5 w-5 rounded border-border"
               />
-              Also share with your community&rsquo;s Vendors directory
+              {shareLabel}
             </label>
           )}
 

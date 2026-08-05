@@ -138,6 +138,12 @@ model Contact {
   providerType    String? // sub-type when category = serviceProvider (e.g. "Plumber")
   notes           String?         @db.Text
   sharedListingId String?         @unique // set when promoted to the community Vendors directory
+  // Opt-in flag for category = neighbor: shows this contact (name + phone) in the
+  // community's "Your neighbours" directory alongside registered members. No separate
+  // promoted record the way Vendors sharing gets one — a phone-book entry visible only
+  // to fellow members of the elder's own community is low-stakes enough not to need
+  // committee/admin verification.
+  shareWithNeighbours Boolean      @default(false)
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
