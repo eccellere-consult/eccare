@@ -16,6 +16,8 @@ import {
   Moon,
   Loader2,
   Flower2,
+  Bell,
+  X,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,6 +42,15 @@ interface Reminder {
   scheduledAt: string;
   status: string;
   medication: { name: string; dosage: string; instructions: string | null; endDate: string | null };
+}
+
+/** An informal one-off reminder — see prisma/schema.prisma's Reminder model.
+ *  Named distinctly from `Reminder` above (that's the medicine-schedule pill box,
+ *  MedicationReminder) to avoid a collision in the same file. */
+interface VoiceReminder {
+  id: string;
+  message: string;
+  remindAt: string;
 }
 
 interface Appointment {
@@ -157,6 +168,7 @@ export default function ElderHealthPage() {
 
   const meds = useHealthData<Medication[]>('/medications');
   const reminders = useHealthData<Reminder[]>(`/reminders?date=${today}`);
+  const voiceReminders = useHealthData<VoiceReminder[]>('/voice-reminders');
   const appts = useHealthData<Appointment[]>('/appointments');
   const notes = useHealthData<HealthNote[]>('/notes');
   const food = useHealthData<FoodRequest[]>('/food-requests');
@@ -174,6 +186,17 @@ export default function ElderHealthPage() {
   const [confirmingSlot, setConfirmingSlot] = useState<MedicineSlot | null>(null);
   const [slotError, setSlotError] = useState('');
   const [foodBusy, setFoodBusy] = useState(false);
+  const [dismissingReminderId, setDismissingReminderId] = useState<string | null>(null);
+
+  async function dismissVoiceReminder(id: string) {
+    setDismissingReminderId(id);
+    try {
+      await healthApi.del(`/voice-reminders/${id}`);
+      voiceReminders.reload();
+    } finally {
+      setDismissingReminderId(null);
+    }
+  }
 
   async function confirmSlot(slot: MedicineSlot, reminderIds: string[]) {
     setConfirmingSlot(slot);
@@ -300,6 +323,51 @@ export default function ElderHealthPage() {
         )}
       </section>
 
+      {/* Reminders — informal one-offs created via "Remind me to..." by voice,
+          distinct from the medicine pill box above. Hidden entirely when empty,
+          same as Wellness below, rather than showing an empty-state card most
+          elders will never fill. */}
+      {(voiceReminders.data?.length ?? 0) > 0 && (
+        <section className="mt-8">
+          <h2 className="flex items-center gap-2 text-lg font-bold text-text">
+            <Bell className="h-5 w-5 text-primary-600" />
+            Reminders
+          </h2>
+          <div className="mt-3 flex flex-col gap-2">
+            {voiceReminders.data?.map((r) => (
+              <div
+                key={r.id}
+                className="flex min-w-0 items-center gap-3 rounded-xl border border-border px-4 py-3"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-50">
+                  <Bell className="h-5 w-5 text-primary-600" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="break-words font-bold text-text">{r.message}</p>
+                  <p className="text-sm text-text-secondary">
+                    {new Date(r.remindAt).toLocaleString([], {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                </div>
+                <button
+                  onClick={() => dismissVoiceReminder(r.id)}
+                  disabled={dismissingReminderId === r.id}
+                  aria-label={`Dismiss reminder: ${r.message}`}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-text-secondary hover:bg-primary-50 disabled:opacity-50"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Upcoming appointments */}
       <section className="mt-8">
         <h2 className="flex items-center gap-2 text-lg font-bold text-text">
@@ -313,17 +381,17 @@ export default function ElderHealthPage() {
         ) : (
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {appts.data?.map((a) => (
-              <Card key={a.id}>
-                <CardContent className="pt-6">
-                  <p className="font-bold text-text">{a.doctorName}</p>
-                  <p className="text-sm text-text-secondary">
+              <Card key={a.id} className="min-w-0">
+                <CardContent className="min-w-0 pt-6">
+                  <p className="break-words font-bold text-text">{a.doctorName}</p>
+                  <p className="break-words text-sm text-text-secondary">
                     {a.specialty && `${a.specialty} · `}
                     {new Date(a.datetime).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
                     {' '}{t('elder.health.atTimeJoiner')}{' '}
                     {new Date(a.datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
-                  {a.hospital && <p className="mt-1 text-sm text-text-secondary">{a.hospital}</p>}
-                  {a.notes && <p className="mt-2 text-sm text-text-secondary">{a.notes}</p>}
+                  {a.hospital && <p className="mt-1 break-words text-sm text-text-secondary">{a.hospital}</p>}
+                  {a.notes && <p className="mt-2 break-words text-sm text-text-secondary">{a.notes}</p>}
                 </CardContent>
               </Card>
             ))}
@@ -342,11 +410,11 @@ export default function ElderHealthPage() {
         ) : (notes.data?.length ?? 0) === 0 ? (
           <Card className="mt-3"><CardContent className="py-8 text-center text-text-secondary">{t('elder.health.noHealthNotes')}</CardContent></Card>
         ) : (
-          <div className="mt-3 flex flex-col gap-3">
+          <div className="mt-3 flex min-w-0 flex-col gap-3">
             {notes.data?.slice(0, 10).map((n) => (
-              <Card key={n.id}>
-                <CardContent className="pt-6">
-                  <p className="text-text">{n.content}</p>
+              <Card key={n.id} className="min-w-0">
+                <CardContent className="min-w-0 pt-6">
+                  <p className="break-words text-text">{n.content}</p>
                   <p className="mt-2 text-xs text-text-secondary">
                     {t('common.by')} {n.createdBy.name} · {new Date(n.createdAt).toLocaleDateString()}
                   </p>
@@ -453,7 +521,7 @@ export default function ElderHealthPage() {
                   href={v.youtubeUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-primary-50"
+                  className="flex min-w-0 items-center gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-primary-50"
                 >
                   {videoId ? (
                     <img
@@ -490,14 +558,14 @@ export default function ElderHealthPage() {
               <a
                 key={c.id}
                 href={`tel:${c.phone}`}
-                className="flex items-center gap-3 rounded-xl border border-border px-4 py-3 transition-colors hover:bg-primary-50"
+                className="flex min-w-0 items-center gap-3 rounded-xl border border-border px-4 py-3 transition-colors hover:bg-primary-50"
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-danger-50">
                   <Phone className="h-5 w-5 text-danger-600" />
                 </div>
                 <div className="min-w-0">
-                  <p className="font-bold text-text">{c.name}</p>
-                  <p className="text-sm text-text-secondary">{c.relationship} · {c.phone}</p>
+                  <p className="truncate font-bold text-text">{c.name}</p>
+                  <p className="truncate text-sm text-text-secondary">{c.relationship} · {c.phone}</p>
                 </div>
               </a>
             ))}

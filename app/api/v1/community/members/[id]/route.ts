@@ -6,6 +6,12 @@ import { requireMembership, invalidInput, ok } from '@/lib/community-route';
 const schema = z.object({
   role: z.enum(['member', 'committee', 'admin']).optional(),
   flatNumber: z.string().max(40).nullable().optional(),
+  // Corrects the resident's actual account name (User.name) — e.g. a typo made at
+  // registration, or a placeholder like "Test Resident" left over from onboarding.
+  // Deliberately a real account-wide rename, not a community-local display override:
+  // the same trust level that already lets a committee/admin promote/demote/remove
+  // a member covers fixing how their name is spelled everywhere they use EC.
+  name: z.string().trim().min(1).max(100).optional(),
 });
 
 const forbidden = (message: string) =>
@@ -30,8 +36,8 @@ const notFound = () =>
  */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const parsed = schema.safeParse(await req.json());
-  if (!parsed.success) return invalidInput('Please choose a valid role.');
-  if (parsed.data.role === undefined && parsed.data.flatNumber === undefined) {
+  if (!parsed.success) return invalidInput('Please choose a valid role, name, or flat number.');
+  if (parsed.data.role === undefined && parsed.data.flatNumber === undefined && parsed.data.name === undefined) {
     return invalidInput('Nothing to update.');
   }
 
@@ -66,14 +72,31 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
-  const updated = await prisma.neighborhoodMember.update({
-    where: { id },
-    data: {
-      ...(parsed.data.role !== undefined ? { role: parsed.data.role } : {}),
-      ...(parsed.data.flatNumber !== undefined ? { flatNumber: parsed.data.flatNumber } : {}),
-    },
-    include: { user: { select: { id: true, name: true, phone: true } } },
-  });
+  const memberUpdateData = {
+    ...(parsed.data.role !== undefined ? { role: parsed.data.role } : {}),
+    ...(parsed.data.flatNumber !== undefined ? { flatNumber: parsed.data.flatNumber } : {}),
+  };
+
+  // Name lives on User, not NeighborhoodMember — when both are being changed,
+  // run them as one transaction so a mid-write failure can't leave the two out of
+  // sync (e.g. role updated but the name change silently dropped).
+  const updated =
+    parsed.data.name !== undefined
+      ? (
+          await prisma.$transaction([
+            prisma.user.update({ where: { id: target.userId }, data: { name: parsed.data.name } }),
+            prisma.neighborhoodMember.update({
+              where: { id },
+              data: memberUpdateData,
+              include: { user: { select: { id: true, name: true, phone: true } } },
+            }),
+          ])
+        )[1]
+      : await prisma.neighborhoodMember.update({
+          where: { id },
+          data: memberUpdateData,
+          include: { user: { select: { id: true, name: true, phone: true } } },
+        });
 
   return ok(updated);
 }

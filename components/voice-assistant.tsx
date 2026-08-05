@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mic, Loader2 } from 'lucide-react';
+import { Mic, Loader2, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isSpeechRecognitionSupported, createRecognizer, speak, type Recognizer } from '@/lib/speech';
+import { isConfirmRequiredAction, type ConfirmRequiredAction } from '@/lib/voice-shared';
 
-type Status = 'idle' | 'listening' | 'thinking' | 'speaking' | 'error';
+type Status = 'idle' | 'listening' | 'thinking' | 'confirming' | 'executing' | 'speaking' | 'error';
 
 interface VoiceResult {
   intent: string;
@@ -20,6 +21,11 @@ interface EmergencyContact {
   name: string;
   phone: string;
   relationship: string;
+}
+
+interface PendingAction {
+  action: ConfirmRequiredAction;
+  actionData?: Record<string, unknown>;
 }
 
 function getLocation(): Promise<{ lat?: number; lng?: number }> {
@@ -58,19 +64,21 @@ export function VoiceAssistant() {
   const [transcript, setTranscript] = useState('');
   const [reply, setReply] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const recognizerRef = useRef<Recognizer | null>(null);
   const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const supported = isSpeechRecognitionSupported();
 
-  const scheduleDismiss = useCallback(() => {
+  const scheduleDismiss = useCallback((delayMs = 6000) => {
     if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
     dismissTimerRef.current = setTimeout(() => {
       setStatus('idle');
       setTranscript('');
       setReply('');
       setErrorMessage('');
-    }, 6000);
+      setPendingAction(null);
+    }, delayMs);
   }, []);
 
   useEffect(() => {
@@ -100,8 +108,9 @@ export function VoiceAssistant() {
       if (action === 'show_medicines' || action === 'show_appointments') {
         router.push('/elder/health');
       }
-      // book_appointment / order_food / send_family_message / set_reminder /
-      // check_status / unknown — no backing feature yet, speak-only is honest.
+      // check_status / unknown / none — no navigation, Claude's spoken response is
+      // the whole answer. The four CONFIRM_REQUIRED_ACTIONS never reach here — see
+      // handleTranscript, which routes them to the confirm step instead.
     },
     [router],
   );
@@ -122,10 +131,19 @@ export function VoiceAssistant() {
 
         const result: VoiceResult = json.data;
         setReply(result.response);
-        setStatus('speaking');
         speak(result.response);
-        await dispatchAction(result.action, result.actionData);
-        scheduleDismiss();
+
+        if (isConfirmRequiredAction(result.action)) {
+          // Wait for an explicit tap — response is phrased as a question by the
+          // system prompt, so speaking it alone is the ask; nothing runs yet.
+          setPendingAction({ action: result.action, actionData: result.actionData });
+          setStatus('confirming');
+          scheduleDismiss(20000); // longer window — this needs a decision, not a glance
+        } else {
+          setStatus('speaking');
+          await dispatchAction(result.action, result.actionData);
+          scheduleDismiss();
+        }
       } catch (err) {
         setErrorMessage(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
         setStatus('error');
@@ -135,11 +153,50 @@ export function VoiceAssistant() {
     [dispatchAction, scheduleDismiss],
   );
 
+  async function confirmPendingAction() {
+    if (!pendingAction) return;
+    setStatus('executing');
+    try {
+      const res = await fetch('/api/v1/voice/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(pendingAction),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Something went wrong.');
+
+      // A logical "couldn't do it" (e.g. no matching family member) still comes
+      // back here with success:true at the HTTP level and its own friendly
+      // message — spoken the same as a real success, not treated as an error.
+      const { message } = json.data as { success: boolean; message: string };
+      setReply(message);
+      speak(message);
+      setStatus('speaking');
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      setStatus('error');
+    } finally {
+      setPendingAction(null);
+      scheduleDismiss();
+    }
+  }
+
+  function cancelPendingAction() {
+    const message = 'Okay, no problem.';
+    setReply(message);
+    speak(message);
+    setPendingAction(null);
+    setStatus('speaking');
+    scheduleDismiss();
+  }
+
   function startListening() {
     if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
     setTranscript('');
     setReply('');
     setErrorMessage('');
+    setPendingAction(null);
 
     const recognizer = createRecognizer();
     if (!recognizer) return;
@@ -173,7 +230,9 @@ export function VoiceAssistant() {
   function handleTap() {
     if (status === 'listening') {
       recognizerRef.current?.stop();
-    } else if (status !== 'thinking') {
+    } else if (status !== 'thinking' && status !== 'executing') {
+      // Tapping the mic while a confirmation is showing abandons it in favor of
+      // whatever's said next — startListening() already clears pendingAction.
       startListening();
     }
   }
@@ -198,6 +257,24 @@ export function VoiceAssistant() {
               <p className="mt-0.5">{reply}</p>
             </div>
           )}
+          {status === 'confirming' && (
+            <div className="flex gap-2">
+              <button
+                onClick={confirmPendingAction}
+                className="flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl bg-success-600 text-base font-bold text-white shadow-lg pointer-coarse:h-16"
+              >
+                <Check className="h-5 w-5" />
+                Yes
+              </button>
+              <button
+                onClick={cancelPendingAction}
+                className="flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-border bg-surface text-base font-bold text-text shadow-lg pointer-coarse:h-16"
+              >
+                <X className="h-5 w-5" />
+                No
+              </button>
+            </div>
+          )}
           {errorMessage && (
             <div className="rounded-2xl bg-danger-50 px-4 py-2.5 text-sm text-danger-900 shadow-lg">
               {errorMessage}
@@ -215,14 +292,18 @@ export function VoiceAssistant() {
       <button
         onClick={handleTap}
         aria-label={status === 'listening' ? 'Stop listening' : 'Speak to EC'}
-        disabled={status === 'thinking'}
+        disabled={status === 'thinking' || status === 'executing'}
         className={cn(
           'flex h-16 w-16 items-center justify-center rounded-full text-white shadow-lg shadow-accent-100 transition-transform',
           status === 'listening' ? 'scale-110 animate-pulse bg-danger-600' : 'bg-accent-600 hover:bg-accent-900',
-          status === 'thinking' && 'opacity-70',
+          (status === 'thinking' || status === 'executing') && 'opacity-70',
         )}
       >
-        {status === 'thinking' ? <Loader2 className="h-7 w-7 animate-spin" /> : <Mic className="h-7 w-7" />}
+        {status === 'thinking' || status === 'executing' ? (
+          <Loader2 className="h-7 w-7 animate-spin" />
+        ) : (
+          <Mic className="h-7 w-7" />
+        )}
       </button>
     </div>
   );

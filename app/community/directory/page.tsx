@@ -69,9 +69,17 @@ export default function DirectoryPage() {
           prev?.map((x) => (x.id === n.id ? { ...x, name: editName, phone: editPhone } : x)) ?? prev,
         );
       } else if (n.source === 'member' && n.memberId) {
-        await communityApi.patch(`/community/members/${n.memberId}`, { flatNumber: editFlatNumber || null });
+        if (!editName.trim()) {
+          setEditError("Please enter this resident's name.");
+          setBusyId(null);
+          return;
+        }
+        await communityApi.patch(`/community/members/${n.memberId}`, {
+          name: editName.trim(),
+          flatNumber: editFlatNumber || null,
+        });
         setData((prev) =>
-          prev?.map((x) => (x.id === n.id ? { ...x, flatNumber: editFlatNumber || null } : x)) ?? prev,
+          prev?.map((x) => (x.id === n.id ? { ...x, name: editName.trim(), flatNumber: editFlatNumber || null } : x)) ?? prev,
         );
       }
       setEditingId(null);
@@ -144,15 +152,21 @@ export default function DirectoryPage() {
                     </div>
                   </>
                 ) : (
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor={`nb-flat-${n.id}`}>Flat / house number</Label>
-                    <Input
-                      id={`nb-flat-${n.id}`}
-                      value={editFlatNumber}
-                      onChange={(e) => setEditFlatNumber(e.target.value)}
-                      placeholder="A-101"
-                    />
-                  </div>
+                  <>
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor={`nb-name-${n.id}`}>Name</Label>
+                      <Input id={`nb-name-${n.id}`} value={editName} onChange={(e) => setEditName(e.target.value)} />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor={`nb-flat-${n.id}`}>Flat / house number</Label>
+                      <Input
+                        id={`nb-flat-${n.id}`}
+                        value={editFlatNumber}
+                        onChange={(e) => setEditFlatNumber(e.target.value)}
+                        placeholder="A-101"
+                      />
+                    </div>
+                  </>
                 )}
                 {editError && <p className="text-sm text-danger-600">{editError}</p>}
                 <div className="flex gap-2">
