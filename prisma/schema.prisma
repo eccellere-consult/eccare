@@ -67,6 +67,7 @@ model User {
   chatMessages        ChatMessage[]
   notificationPrefs   NotificationPreference[]
   geriatricListings   GeriatricCareListing[]   @relation("GeriatricListingCreator")
+  wellnessVideosAdded WellnessVideo[]
 
   // Service provider
   serviceProvider          ServiceProvider?  @relation("ServiceProviderUser")
@@ -303,6 +304,31 @@ enum DailyQuoteStatus {
   pending
   approved
   rejected
+}
+
+/// Admin-curated yoga/exercise/meditation content — a link to a YouTube video, not
+/// hosted content. Elder-facing, admin-managed, same shape as DailyQuote's
+/// admin-CRUD-then-public-read pattern.
+model WellnessVideo {
+  id          String            @id @default(cuid())
+  title       String
+  category    WellnessCategory
+  youtubeUrl  String
+  description String?           @db.Text
+  isActive    Boolean           @default(true)
+  addedById   String
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  addedBy User @relation(fields: [addedById], references: [id], onDelete: Cascade)
+
+  @@index([isActive, category])
+}
+
+enum WellnessCategory {
+  yoga
+  exercise
+  meditation
 }
 
 // ─── Emergency & Safety ─────────────────────────────────────────
