@@ -54,13 +54,17 @@ export function FamilyProfileClient({ profile }: { profile: Profile }) {
       <Card className="mt-6">
         <CardHeader>
           <CardTitle>Details</CardTitle>
-          <CardDescription>Phone: {profile.phone ?? 'not set'}</CardDescription>
+          <CardDescription>Kept up to date so the elders you care for can reach you.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSave} className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
               <Label htmlFor="p-name">Name</Label>
               <Input id="p-name" value={form.name} onChange={(e) => update('name', e.target.value)} />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="p-phone">Phone number</Label>
+              <Input id="p-phone" type="tel" value={form.phone ?? ''} onChange={(e) => update('phone', e.target.value)} />
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="p-email">Email</Label>
