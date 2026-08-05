@@ -30,6 +30,7 @@ interface Medication {
   frequency: string;
   timeSlots: string[];
   instructions: string | null;
+  endDate: string | null;
   isActive: boolean;
 }
 
@@ -54,6 +55,9 @@ interface ReviewMedication {
   frequency: string;
   timeSlots: string;
   instructions: string;
+  // "" means indefinite/ongoing — left blank on purpose since most elder medication
+  // has no end date; only set for short courses like antibiotics.
+  durationDays: string;
 }
 
 interface ReviewAppointment {
@@ -133,6 +137,12 @@ export default function FamilyHealthPage({
   // Med form
   const [medForm, setMedForm] = useState({ name: '', dosage: '', frequency: 'Daily', timeSlots: '08:00', instructions: '', prescribingDoctor: '' });
 
+  // Existing-medication edit form
+  const [editingMedId, setEditingMedId] = useState<string | null>(null);
+  const [editMedForm, setEditMedForm] = useState({ name: '', dosage: '', frequency: '', timeSlots: '', instructions: '', endDate: '' });
+  const [editMedError, setEditMedError] = useState('');
+  const [savingMed, setSavingMed] = useState(false);
+
   // Appt form
   const [apptForm, setApptForm] = useState({ doctorName: '', hospital: '', specialty: '', datetime: '', notes: '' });
 
@@ -166,6 +176,7 @@ export default function FamilyHealthPage({
             frequency: string;
             timeSlots: string[];
             instructions: string | null;
+            durationDays: number | null;
           }[];
           nextVisitDate?: string | null;
           aiProvider?: string;
@@ -191,6 +202,7 @@ export default function FamilyHealthPage({
           frequency: m.frequency,
           timeSlots: m.timeSlots.join(', '),
           instructions: m.instructions ?? '',
+          durationDays: m.durationDays != null ? String(m.durationDays) : '',
         })),
         appointment: json.data.nextVisitDate
           ? {
@@ -229,7 +241,7 @@ export default function FamilyHealthPage({
           ...r,
           medications: [
             ...r.medications,
-            { key: nextReviewKey(), name: '', dosage: '', frequency: 'Daily', timeSlots: '08:00', instructions: '' },
+            { key: nextReviewKey(), name: '', dosage: '', frequency: 'Daily', timeSlots: '08:00', instructions: '', durationDays: '' },
           ],
         },
     );
@@ -262,6 +274,7 @@ export default function FamilyHealthPage({
           frequency: m.frequency.trim() || 'As needed',
           timeSlots: m.timeSlots.split(',').map((s) => s.trim()).filter(Boolean),
           instructions: m.instructions.trim() || null,
+          durationDays: m.durationDays.trim() ? Number(m.durationDays.trim()) : null,
         })),
         appointment:
           review.includeAppointment && review.appointment
@@ -384,6 +397,44 @@ export default function FamilyHealthPage({
       await healthApi.patch(`/medications/${id}`, { isActive: !isActive });
       meds.reload();
     } catch { /* ignore */ }
+  }
+
+  function startEditMed(m: Medication) {
+    setEditingMedId(m.id);
+    setEditMedForm({
+      name: m.name,
+      dosage: m.dosage,
+      frequency: m.frequency,
+      timeSlots: m.timeSlots.join(', '),
+      instructions: m.instructions ?? '',
+      endDate: m.endDate ? m.endDate.slice(0, 10) : '',
+    });
+    setEditMedError('');
+  }
+
+  async function saveEditMed(id: string) {
+    if (!editMedForm.name.trim() || !editMedForm.dosage.trim() || !editMedForm.timeSlots.trim()) {
+      setEditMedError('Name, dosage, and at least one time are required.');
+      return;
+    }
+    setSavingMed(true);
+    setEditMedError('');
+    try {
+      await healthApi.patch(`/medications/${id}`, {
+        name: editMedForm.name.trim(),
+        dosage: editMedForm.dosage.trim(),
+        frequency: editMedForm.frequency.trim() || 'As needed',
+        timeSlots: editMedForm.timeSlots.split(',').map((s) => s.trim()).filter(Boolean),
+        instructions: editMedForm.instructions.trim() || null,
+        endDate: editMedForm.endDate || null,
+      });
+      setEditingMedId(null);
+      meds.reload();
+    } catch (err) {
+      setEditMedError(err instanceof Error ? err.message : 'Could not save changes.');
+    } finally {
+      setSavingMed(false);
+    }
   }
 
   async function cancelAppt(id: string) {
@@ -509,10 +560,14 @@ export default function FamilyHealthPage({
                           placeholder="Times, e.g. 08:00, 20:00"
                         />
                         <Input
-                          className="sm:col-span-2"
                           value={m.instructions}
                           onChange={(e) => updateReviewMed(m.key, 'instructions', e.target.value)}
                           placeholder="Instructions (optional), e.g. After meals"
+                        />
+                        <Input
+                          value={m.durationDays}
+                          onChange={(e) => updateReviewMed(m.key, 'durationDays', e.target.value.replace(/[^\d]/g, ''))}
+                          placeholder="Course length in days (blank = ongoing)"
                         />
                       </div>
                       <button
@@ -699,20 +754,76 @@ export default function FamilyHealthPage({
           <Card className="mt-3"><CardContent className="py-8 text-center text-text-secondary">No medications added yet.</CardContent></Card>
         ) : (
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            {meds.data?.map((m) => (
-              <Card key={m.id} className={m.isActive ? '' : 'opacity-60'}>
-                <CardContent className="flex items-start justify-between gap-3 pt-6">
-                  <div className="min-w-0">
-                    <p className="font-bold text-text">{m.name} — {m.dosage}</p>
-                    <p className="text-sm text-text-secondary">{m.frequency} · {(m.timeSlots as string[]).join(', ')}</p>
-                    {m.instructions && <p className="mt-1 text-sm text-text-secondary">{m.instructions}</p>}
-                  </div>
-                  <Button size="sm" variant="outline" onClick={() => toggleMed(m.id, m.isActive)}>
-                    {m.isActive ? 'Pause' : 'Resume'}
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+            {meds.data?.map((m) =>
+              editingMedId === m.id ? (
+                <Card key={m.id} className="sm:col-span-2">
+                  <CardContent className="flex flex-col gap-3 pt-6">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="flex flex-col gap-1">
+                        <Label htmlFor={`edit-name-${m.id}`}>Medicine name</Label>
+                        <Input id={`edit-name-${m.id}`} value={editMedForm.name} onChange={(e) => setEditMedForm((f) => ({ ...f, name: e.target.value }))} />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <Label htmlFor={`edit-dosage-${m.id}`}>Dosage</Label>
+                        <Input id={`edit-dosage-${m.id}`} value={editMedForm.dosage} onChange={(e) => setEditMedForm((f) => ({ ...f, dosage: e.target.value }))} />
+                      </div>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="flex flex-col gap-1">
+                        <Label htmlFor={`edit-frequency-${m.id}`}>Frequency</Label>
+                        <Input id={`edit-frequency-${m.id}`} value={editMedForm.frequency} onChange={(e) => setEditMedForm((f) => ({ ...f, frequency: e.target.value }))} />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <Label htmlFor={`edit-times-${m.id}`}>Times (comma-separated, 24h)</Label>
+                        <Input id={`edit-times-${m.id}`} value={editMedForm.timeSlots} onChange={(e) => setEditMedForm((f) => ({ ...f, timeSlots: e.target.value }))} placeholder="08:00, 20:00" />
+                      </div>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="flex flex-col gap-1">
+                        <Label htmlFor={`edit-instructions-${m.id}`}>Instructions (optional)</Label>
+                        <Input id={`edit-instructions-${m.id}`} value={editMedForm.instructions} onChange={(e) => setEditMedForm((f) => ({ ...f, instructions: e.target.value }))} placeholder="After meals" />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <Label htmlFor={`edit-enddate-${m.id}`}>Ends on (optional — leave blank if ongoing)</Label>
+                        <Input id={`edit-enddate-${m.id}`} type="date" value={editMedForm.endDate} onChange={(e) => setEditMedForm((f) => ({ ...f, endDate: e.target.value }))} />
+                      </div>
+                    </div>
+                    {editMedError && <p className="text-sm text-danger-600">{editMedError}</p>}
+                    <div className="flex gap-2">
+                      <Button size="sm" disabled={savingMed} onClick={() => saveEditMed(m.id)}>
+                        {savingMed ? 'Saving…' : 'Save'}
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setEditingMedId(null)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card key={m.id} className={m.isActive ? '' : 'opacity-60'}>
+                  <CardContent className="flex items-start justify-between gap-3 pt-6">
+                    <div className="min-w-0">
+                      <p className="font-bold text-text">{m.name} — {m.dosage}</p>
+                      <p className="text-sm text-text-secondary">{m.frequency} · {(m.timeSlots as string[]).join(', ')}</p>
+                      {m.instructions && <p className="mt-1 text-sm text-text-secondary">{m.instructions}</p>}
+                      {m.endDate && (
+                        <p className="mt-1 text-xs text-accent-600">
+                          Course ends {new Date(m.endDate).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 flex-col gap-2">
+                      <Button size="sm" variant="outline" onClick={() => startEditMed(m)}>
+                        Edit
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => toggleMed(m.id, m.isActive)}>
+                        {m.isActive ? 'Pause' : 'Resume'}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ),
+            )}
           </div>
         )}
       </section>

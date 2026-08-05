@@ -8,6 +8,7 @@ export interface ExtractedMedication {
   timeSlots: string[];
   instructions: string | null;
   duration: string | null;
+  durationDays: number | null;
 }
 
 export interface PrescriptionExtraction {
@@ -35,7 +36,8 @@ Return ONLY a valid JSON object with this exact shape:
       "frequency": "e.g. Once daily, Twice daily, Three times daily",
       "timeSlots": ["08:00", "20:00"],
       "instructions": "e.g. After meals, Before bed" or null,
-      "duration": "e.g. 30 days, 2 weeks" or null
+      "duration": "e.g. 30 days, 2 weeks" or null,
+      "durationDays": 30 or null
     }
   ],
   "notes": "Any other relevant notes from the prescription" or null,
@@ -46,6 +48,21 @@ Rules:
 - timeSlots must be in 24-hour "HH:MM" format
 - For "once daily" use ["08:00"], "twice daily" use ["08:00", "20:00"], "three times daily" use ["08:00", "14:00", "20:00"]
 - If a time is specified (e.g. "at bedtime"), use the appropriate time like ["21:00"]
+- Indian prescriptions very commonly write dosage as a shorthand code instead of
+  words — a sequence of 1s and 0s (with dashes, spaces, or slashes between them)
+  meaning morning-afternoon-evening-night, where 1 = take a dose then and 0 = skip.
+  Recognize this pattern (e.g. "1-0-1", "1 0 0 1", "1-1-1", "0-0-1") and convert it to
+  timeSlots using ["08:00" morning, "14:00" afternoon, "18:00" evening, "22:00" night]
+  for whichever positions are 1. A 3-digit code (no afternoon slot) means
+  morning-evening-night — map positions to morning/evening/night in that case, not
+  morning/afternoon/evening. If you're not confident it's this shorthand rather than
+  some other number (e.g. a dosage strength), don't force-fit it — use the descriptive
+  frequency rules above instead.
+- duration is the free-text course length as written (e.g. "5 days", "2 weeks", "1
+  month"). durationDays is the same thing converted to a plain integer number of days
+  (treat a week as 7 days, a month as 30 days) — null if no duration is mentioned or
+  it reads as an ongoing/indefinite prescription (e.g. for a chronic condition like
+  blood pressure or diabetes, which normally has no end date).
 - If the image is not a prescription or is unreadable, return: {"doctorName":null,"hospitalName":null,"prescriptionDate":null,"medications":[],"notes":"Could not read prescription. Please upload a clearer image.","nextVisitDate":null}
 - Extract ALL medications listed, do not skip any
 - Be accurate with dosage and frequency — these affect patient safety
@@ -69,6 +86,10 @@ function parseExtraction(text: string): PrescriptionExtraction {
     const parsed = JSON.parse(jsonMatch[0]) as PrescriptionExtraction;
     if (!Array.isArray(parsed.medications)) parsed.medications = [];
     if (parsed.nextVisitDate === undefined) parsed.nextVisitDate = null;
+    for (const med of parsed.medications) {
+      if (med.durationDays === undefined) med.durationDays = null;
+      if (med.duration === undefined) med.duration = null;
+    }
     return parsed;
   } catch {
     return { ...FALLBACK_RESULT, notes: 'AI returned invalid data. Please try again.' };
