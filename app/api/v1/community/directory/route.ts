@@ -13,6 +13,12 @@ export async function GET(req: NextRequest) {
   const guard = await requireMembership(req);
   if (guard.error) return guard.error;
 
+  // A community's own committee/admin, or a platform admin (who reaches this same
+  // 'admin' role via requireMembership()'s bypass), can manage every entry — not
+  // just ones they personally added. Ordinary residents still only manage their own
+  // shared contacts, via the canAccessElder check below.
+  const isManager = guard.membership.role === 'committee' || guard.membership.role === 'admin';
+
   const [members, sharedContacts] = await Promise.all([
     prisma.neighborhoodMember.findMany({
       where: { neighborhoodId: guard.neighborhoodId, showInDirectory: true },
@@ -35,6 +41,7 @@ export async function GET(req: NextRequest) {
     id: `member:${m.user.id}`,
     userId: m.user.id,
     contactId: null,
+    memberId: m.id,
     name: m.user.name,
     // Phone is deliberately included — "call direct" is the point of the directory,
     // and it's already scoped to fellow members who opted in.
@@ -44,7 +51,11 @@ export async function GET(req: NextRequest) {
     role: m.role,
     isSelf: m.user.id === guard.auth.userId,
     source: 'member' as const,
-    canManage: false,
+    // Editing here means the flat/house number (via PATCH /community/members/[id]);
+    // role changes stay on the dedicated member-management page. Deleting removes
+    // the membership entirely — they'd need to rejoin by join code.
+    canManage: isManager,
+    canModerate: false,
   }));
 
   const contactEntries = await Promise.all(
@@ -52,6 +63,7 @@ export async function GET(req: NextRequest) {
       id: `contact:${c.id}`,
       userId: null,
       contactId: c.id,
+      memberId: null,
       name: c.name,
       phone: c.phone,
       avatarUrl: null,
@@ -59,11 +71,16 @@ export async function GET(req: NextRequest) {
       role: null,
       isSelf: false,
       source: 'contact' as const,
-      // Same authorization as the Contacts page itself (canAccessElder) — the elder or
-      // any of their linked family members can manage it here, not only whoever
-      // happened to click "add". Matches PATCH/DELETE /api/v1/contacts/[id] exactly, so
-      // this never shows a control the API would then refuse.
+      // Full edit/delete of the actual contact record — same authorization as the
+      // Contacts page itself (canAccessElder). Never true for a manager who isn't
+      // also family — a moderator shouldn't be able to rename or delete someone
+      // else's private contact-book entry outright.
       canManage: await canAccessElder(guard.auth.userId, c.elderUserId),
+      // A community's own committee/admin (or platform admin) can instead moderate
+      // what's published in *their* directory — remove-from-directory only (see
+      // DELETE /api/v1/community/directory/[contactId], which unpublishes rather
+      // than deleting the owner's personal contact).
+      canModerate: isManager,
     })),
   );
 
