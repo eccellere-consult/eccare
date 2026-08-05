@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthUser, toSafeUser } from '@/lib/auth';
 import { isSupportedLanguage } from '@/lib/i18n/languages';
+import { isValidEmail, isValidPhone, EMAIL_FORMAT_MESSAGE, PHONE_FORMAT_MESSAGE } from '@/lib/validation';
 
 export async function GET(req: NextRequest) {
   const auth = await getAuthUser(req);
@@ -52,14 +53,31 @@ export async function PUT(req: NextRequest) {
       { status: 400 },
     );
   }
+  // An empty string means the field was cleared in the form — treat that as "unset"
+  // (null), not as an invalid format for whatever was typed.
+  const email = body.email === '' ? null : body.email;
+  const phone = body.phone === '' ? null : body.phone;
+
+  if (email != null && !isValidEmail(email)) {
+    return NextResponse.json(
+      { success: false, error: { code: 'VALIDATION_ERROR', message: EMAIL_FORMAT_MESSAGE } },
+      { status: 400 },
+    );
+  }
+  if (phone != null && !isValidPhone(phone)) {
+    return NextResponse.json(
+      { success: false, error: { code: 'VALIDATION_ERROR', message: PHONE_FORMAT_MESSAGE } },
+      { status: 400 },
+    );
+  }
 
   try {
     const user = await prisma.user.update({
       where: { id: auth.userId },
       data: {
         name: body.name,
-        email: body.email,
-        phone: body.phone,
+        email,
+        phone,
         language: body.language,
         secondaryLanguage: body.secondaryLanguage,
         fontSizePref: body.fontSizePref,
