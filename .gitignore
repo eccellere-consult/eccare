@@ -27,6 +27,8 @@ public/uploads/prescriptions/*
 !public/uploads/prescriptions/.gitkeep
 public/uploads/certifications/*
 !public/uploads/certifications/.gitkeep
+public/uploads/catalog/*
+!public/uploads/catalog/.gitkeep
 
 # OS
 .DS_Store

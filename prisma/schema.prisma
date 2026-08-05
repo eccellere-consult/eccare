@@ -76,6 +76,10 @@ model User {
   contactsOwned Contact[] @relation("ContactElder")
   contactsAdded Contact[] @relation("ContactAdder")
 
+  // Orders (catalog checkout)
+  ordersAsElder  Order[] @relation("OrderElder")
+  ordersPlaced   Order[] @relation("OrderPlacer")
+
   @@index([phone])
   @@index([role])
 }
@@ -708,6 +712,8 @@ model ServiceProvider {
   user       User  @relation("ServiceProviderUser", fields: [userId], references: [id], onDelete: Cascade)
   verifiedBy User? @relation("ServiceProviderVerifier", fields: [verifiedById], references: [id])
   communityListings CommunityProviderListing[]
+  catalogItems       CatalogItem[]
+  orders             Order[]
 
   @@index([verificationStatus])
 }
@@ -744,4 +750,71 @@ enum CPLStatus {
   communityApproved
   approved
   rejected
+}
+
+/// A provider's browsable products/services — name, price, photo. Elders and family
+/// browse these from a community's Vendors detail page and check out per-provider.
+model CatalogItem {
+  id          String   @id @default(cuid())
+  providerId  String
+  name        String
+  description String?  @db.Text
+  price       Decimal  @db.Decimal(10, 2)
+  imagePath   String?
+  category    String?
+  inStock     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  provider   ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+
+  @@index([providerId])
+}
+
+/// elderUserId is whose household the order is for; placedByUserId is who actually
+/// checked out (elder or caregiver) — same split as Contact's elderUserId/addedById.
+/// Checkout is deliberately per-provider, not a multi-vendor cart.
+model Order {
+  id                String      @id @default(cuid())
+  elderUserId       String
+  placedByUserId    String
+  providerId        String
+  status            OrderStatus @default(pending)
+  totalAmount       Decimal     @db.Decimal(10, 2)
+  deliveryAddress   String      @db.Text
+  razorpayOrderId   String?     @unique
+  razorpayPaymentId String?
+  paidAt            DateTime?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  elderUser User            @relation("OrderElder", fields: [elderUserId], references: [id], onDelete: Cascade)
+  placedBy  User            @relation("OrderPlacer", fields: [placedByUserId], references: [id], onDelete: Cascade)
+  provider  ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  items     OrderItem[]
+
+  @@index([elderUserId])
+  @@index([providerId])
+}
+
+/// name/price are snapshotted at order time — survives the catalog item being edited
+/// or deleted afterward, so past orders always show what was actually bought.
+model OrderItem {
+  id            String  @id @default(cuid())
+  orderId       String
+  catalogItemId String?
+  name          String
+  price         Decimal @db.Decimal(10, 2)
+  quantity      Int
+
+  order       Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  catalogItem CatalogItem? @relation(fields: [catalogItemId], references: [id], onDelete: SetNull)
+}
+
+enum OrderStatus {
+  pending
+  paid
+  confirmed
+  cancelled
 }
