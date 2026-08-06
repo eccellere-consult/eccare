@@ -24,6 +24,8 @@ import {
   Flower2,
   Camera,
   MessageCircle,
+  IndianRupee,
+  Settings,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -49,6 +51,7 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
       { label: 'Community', href: '/community', icon: Building2 },
       { label: 'Services', href: '/services', icon: Sparkles },
       { label: 'Orders', href: '/elder/orders', icon: PackageCheck },
+      { label: 'Payments', href: '/elder/payments', icon: IndianRupee },
       { label: 'Memories', href: '/elder/memories', icon: Camera },
       { label: 'Profile', href: '/elder/profile', icon: User },
     ],
@@ -62,6 +65,7 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
       { label: 'Community', href: '/community', icon: Building2 },
       { label: 'Services', href: '/services', icon: Sparkles },
       { label: 'Orders', href: '/family/orders', icon: PackageCheck },
+      { label: 'Payments', href: '/family/payments', icon: IndianRupee },
       { label: 'Memories', href: '/family/memories', icon: Camera },
       { label: 'SOS History', href: '/family/sos-history', icon: AlertTriangle },
       { label: 'Invite Elder', href: '/family/invite', icon: UserPlus },
@@ -80,6 +84,7 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
       { label: 'Wellness', href: '/admin/wellness', icon: Flower2 },
       { label: 'Providers', href: '/admin/providers', icon: Briefcase },
       { label: 'WhatsApp Invite', href: '/admin/invite', icon: MessageCircle },
+      { label: 'Settings', href: '/admin/settings', icon: Settings },
       { label: 'Profile', href: '/admin/profile', icon: User },
     ],
   },

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { verifyWebhookSignature } from '@/lib/razorpay';
+import { getPlatformFeePercent, computePlatformFee } from '@/lib/platform-settings';
 
 /** Reliability backstop for the client-side verify-payment call — covers cases like
  *  the browser closing right after a successful charge, before the client ever got
@@ -28,9 +29,14 @@ export async function POST(req: NextRequest) {
     if (razorpayOrderId && razorpayPaymentId) {
       const order = await prisma.order.findUnique({ where: { razorpayOrderId } });
       if (order && order.status === 'pending') {
+        const feePercent = await getPlatformFeePercent();
+        const totalAmount = Number(order.totalAmount);
+        const platformFeeAmount = computePlatformFee(totalAmount, feePercent);
+        const netAmountForProvider = Math.round((totalAmount - platformFeeAmount) * 100) / 100;
+
         await prisma.order.update({
           where: { id: order.id },
-          data: { status: 'paid', razorpayPaymentId, paidAt: new Date() },
+          data: { status: 'paid', razorpayPaymentId, paidAt: new Date(), platformFeeAmount, netAmountForProvider },
         });
       }
     }

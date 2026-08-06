@@ -91,6 +91,11 @@ model User {
   // Voice-created informal reminders — distinct from `reminders` (MedicationReminder)
   voiceReminders Reminder[]
 
+  // Residents' association fees
+  communityFeesCreated CommunityFee[] @relation("CommunityFeeCreator")
+  feeChargesOwed       FeeCharge[]    @relation("FeeChargeResident")
+  feeChargesPaid       FeeCharge[]    @relation("FeeChargePayer")
+
   @@index([phone])
   @@index([role])
 }
@@ -112,6 +117,26 @@ model Reminder {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, remindAt])
+}
+
+/** Platform-wide configuration a platform admin can edit — currently just the
+ *  commission rate. Deliberately a singleton (one row, id always "singleton") rather
+ *  than a generic key-value settings table — there's exactly one setting today, and
+ *  a real column with a real type beats a stringly-typed key/value row for the one
+ *  thing that actually needs editing. Add more typed columns here if more settings
+ *  show up before this ever needs to become a real table-per-setting design. */
+model PlatformSettings {
+  id                String   @id @default("singleton")
+  // Commission EC takes on both provider-service orders and community fee
+  // payments — see Order.platformFeeAmount / FeeCharge.platformFeeAmount. No real
+  // Razorpay split-payment (Route) integration exists — every payment still lands
+  // 100% in EC's own Razorpay account; this rate is recorded on each transaction
+  // for accounting so vendors/associations can be settled manually outside the
+  // app. Snapshotted onto each paid Order/FeeCharge at payment time, not looked up
+  // live, so changing this later never rewrites the commission on past transactions.
+  platformFeePercent Decimal @default(5) @db.Decimal(5, 2)
+  updatedAt         DateTime @updatedAt
+  updatedById       String?
 }
 
 /** A single-use, short-lived token emailed to a user to let them reset their
@@ -517,6 +542,7 @@ model Neighborhood {
   notices        Notice[]
   whatsAppGroups WhatsAppGroupLink[]
   messages       ChatMessage[]
+  fees           CommunityFee[]
   sosEvents      SOSEvent[]
   providerListings CommunityProviderListing[]
 
@@ -542,9 +568,89 @@ model NeighborhoodMember {
 
   neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feeCharges   FeeCharge[]
 
   @@unique([neighborhoodId, userId])
   @@index([neighborhoodId, role])
+}
+
+/// A recurring or one-time fee the management committee/admin defines for their
+/// community — e.g. "Monthly Maintenance" at a flat rate per flat. Generating
+/// charges for a billing cycle (see FeeCharge) is a deliberate committee action,
+/// not automatic — this app has no background-job/cron infrastructure anywhere
+/// else either, and billing residents is exactly the kind of thing that shouldn't
+/// silently happen without someone actually deciding to run it this month.
+model CommunityFee {
+  id             String       @id @default(cuid())
+  neighborhoodId String
+  label          String
+  defaultAmount  Decimal      @db.Decimal(10, 2)
+  frequency      FeeFrequency @default(monthly)
+  // Stops future charge generation without deleting the fee definition or its
+  // billing history — same soft-off pattern as WellnessVideo.isActive.
+  isActive       Boolean      @default(true)
+  createdById    String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  createdBy    User         @relation("CommunityFeeCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  charges      FeeCharge[]
+
+  @@index([neighborhoodId])
+}
+
+enum FeeFrequency {
+  monthly
+  one_time
+}
+
+/// One actual bill issued to one flat/resident for one billing period — generated
+/// from a CommunityFee, one row per (fee, member, period). The unique constraint
+/// below is what makes "generate this month's charges" safe to click twice: a
+/// period already billed is simply skipped, never double-charged.
+model FeeCharge {
+  id                  String          @id @default(cuid())
+  communityFeeId      String
+  neighborhoodMemberId String
+  // Denormalized from NeighborhoodMember.userId at generation time — same reasoning
+  // as Order.elderUserId: lets payment access control (canAccessElder) and the
+  // resident's own "what do I owe" query work without an extra join, and survives
+  // the member later leaving the community (their past bills don't vanish).
+  residentUserId      String
+  // "2026-08" for a monthly cycle, "one-time" for a one_time fee — see the unique
+  // constraint below.
+  period              String
+  // Snapshotted from CommunityFee.defaultAmount when this charge was generated —
+  // editable afterward (per-flat override) while still unpaid, but a later change
+  // to the fee's own default never rewrites bills already issued.
+  amount              Decimal         @db.Decimal(10, 2)
+  dueDate             DateTime
+  status              FeeChargeStatus @default(due)
+  razorpayOrderId     String?         @unique
+  razorpayPaymentId   String?
+  paidAt              DateTime?
+  paidByUserId        String?
+  // Same platform-fee snapshot pattern as Order — see lib/platform-settings.ts.
+  platformFeeAmount       Decimal?    @db.Decimal(10, 2)
+  netAmountForAssociation Decimal?    @db.Decimal(10, 2)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  communityFee       CommunityFee       @relation(fields: [communityFeeId], references: [id], onDelete: Cascade)
+  neighborhoodMember NeighborhoodMember @relation(fields: [neighborhoodMemberId], references: [id], onDelete: Cascade)
+  resident           User               @relation("FeeChargeResident", fields: [residentUserId], references: [id], onDelete: Cascade)
+  paidBy             User?              @relation("FeeChargePayer", fields: [paidByUserId], references: [id])
+
+  @@unique([communityFeeId, neighborhoodMemberId, period])
+  @@index([residentUserId])
+  @@index([neighborhoodMemberId])
+}
+
+enum FeeChargeStatus {
+  due
+  paid
+  waived
 }
 
 model CommunityEvent {
@@ -889,6 +995,11 @@ model Order {
   razorpayOrderId   String?     @unique
   razorpayPaymentId String?
   paidAt            DateTime?
+  // Snapshotted from PlatformSettings.platformFeePercent at the moment payment is
+  // verified — see lib/platform-settings.ts. Null until paid; a rate change later
+  // never rewrites what a past order actually recorded.
+  platformFeeAmount      Decimal?     @db.Decimal(10, 2)
+  netAmountForProvider   Decimal?     @db.Decimal(10, 2)
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
 
