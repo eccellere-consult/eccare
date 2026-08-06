@@ -26,8 +26,14 @@ export async function GET(req: NextRequest) {
     return fail('FORBIDDEN', "You don't have access to this elder's orders.", 403);
   }
 
+  // Same filter as GET /api/v1/provider/orders, and for the same reason: a
+  // 'pending' row exists purely so the Razorpay webhook has something to
+  // reconcile against if the browser closes mid-payment (see POST below) — it is
+  // not a real commitment yet, and showing it here made every abandoned/dismissed
+  // checkout attempt look like "an order was placed" even though no payment ever
+  // happened. It genuinely never was one.
   const orders = await prisma.order.findMany({
-    where: { elderUserId },
+    where: { elderUserId, status: { in: ['paid', 'confirmed', 'cancelled'] } },
     include: { items: true, provider: { select: { businessName: true } } },
     orderBy: { createdAt: 'desc' },
   });

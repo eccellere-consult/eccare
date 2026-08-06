@@ -144,7 +144,16 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
             setError('Payment could not be verified. Please contact support before trying again.');
           }
         },
-        modal: { ondismiss: () => setBusy(false) },
+        modal: {
+          // Cancels the 'pending' Order created above so a dismissed/abandoned
+          // checkout doesn't leave an orphaned unpaid row behind — fire-and-forget
+          // is fine here, the row is already excluded from the elder/family's own
+          // order list regardless (see GET /api/v1/orders), this just cleans it up.
+          ondismiss: () => {
+            fetch(`/api/v1/orders/${orderId}/cancel`, { method: 'POST', credentials: 'include' }).catch(() => {});
+            setBusy(false);
+          },
+        },
       });
       razorpay.open();
     } catch (err) {
