@@ -15,6 +15,7 @@ import {
   Settings,
   ShieldAlert,
   UserCog,
+  IndianRupee,
   type LucideIcon,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -48,6 +49,13 @@ const MEMBERS_TILE = {
   label: 'Members',
   sub: 'Promote to committee or admin',
   icon: UserCog,
+};
+
+const FEES_TILE = {
+  href: '/community/fees',
+  label: 'Association fees',
+  sub: 'Set up dues, see who’s paid',
+  icon: IndianRupee,
 };
 
 export function CommunityHubClient() {
@@ -138,7 +146,7 @@ export function CommunityHubClient() {
       </Card>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {(membership.role === 'member' ? BASE_TILES : [...BASE_TILES, MEMBERS_TILE]).map(({ href, label, sub, icon: Icon }) => (
+        {(membership.role === 'member' ? BASE_TILES : [...BASE_TILES, MEMBERS_TILE, FEES_TILE]).map(({ href, label, sub, icon: Icon }) => (
           <Link key={href} href={href}>
             <Card className="flex h-full items-center gap-4 p-5 transition-shadow hover:shadow-md">
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-50">
