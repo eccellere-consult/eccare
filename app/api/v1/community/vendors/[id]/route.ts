@@ -8,6 +8,10 @@ const patchSchema = z.object({
   verified: z.boolean().optional(),
   name: z.string().min(1).max(160).optional(),
   category: z.string().min(1).max(60).optional(),
+  homeMaintenanceCategory: z
+    .enum(['leakage', 'cleaning', 'maid', 'cook', 'painting', 'gardening', 'electrical', 'carpentry', 'other'])
+    .nullable()
+    .optional(),
   phone: z.string().min(3).max(20).optional(),
   address: z.string().max(500).optional(),
   description: z.string().max(2000).optional(),

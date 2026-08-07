@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 interface Query {
   id: string;
   type: 'committee' | 'helpdesk';
+  category: HelpdeskCategory | null;
   subject: string;
   body: string;
   status: 'open' | 'in_progress' | 'resolved' | 'closed';
@@ -22,25 +23,44 @@ interface Query {
 }
 interface Me { memberships: { role: string }[] }
 
+type HelpdeskCategory = 'water' | 'electricity' | 'cleaning' | 'safety' | 'cultural' | 'driver' | 'other';
+const HELPDESK_CATEGORIES: { key: HelpdeskCategory; label: string }[] = [
+  { key: 'water', label: 'Water' },
+  { key: 'electricity', label: 'Electricity' },
+  { key: 'cleaning', label: 'Cleaning' },
+  { key: 'safety', label: 'Safety' },
+  { key: 'cultural', label: 'Cultural' },
+  { key: 'driver', label: 'Driver' },
+  { key: 'other', label: 'Other' },
+];
+
 export default function QueriesPage() {
   const { data: me } = useCommunityData<Me>('/community/me');
   const { data, loading, error, reload } = useCommunityData<Query[]>('/community/queries');
   const canManageStatus = me?.memberships?.[0]?.role !== 'member';
   const [showForm, setShowForm] = useState(false);
   const [type, setType] = useState<'committee' | 'helpdesk'>('committee');
+  const [category, setCategory] = useState<HelpdeskCategory | ''>('');
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<HelpdeskCategory | ''>('');
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setFormError('');
     try {
-      await communityApi.post('/community/queries', { type, subject, body });
+      await communityApi.post('/community/queries', {
+        type,
+        category: type === 'helpdesk' && category ? category : undefined,
+        subject,
+        body,
+      });
       setSubject('');
       setBody('');
+      setCategory('');
       setShowForm(false);
       reload();
     } catch (err) {
@@ -50,6 +70,10 @@ export default function QueriesPage() {
     }
   }
 
+  const visibleQueries = (data ?? []).filter(
+    (q) => !categoryFilter || (q.type === 'helpdesk' && q.category === categoryFilter),
+  );
+
   return (
     <CommunityPageFrame
       title="Committee & Help desk"
@@ -57,10 +81,28 @@ export default function QueriesPage() {
       action={<Button onClick={() => setShowForm((s) => !s)}>{showForm ? 'Cancel' : 'Raise a query'}</Button>}
       loading={loading}
       error={error}
-      isEmpty={!showForm && (data?.length ?? 0) === 0}
+      isEmpty={!showForm && visibleQueries.length === 0}
       emptyMessage="No queries raised yet."
     >
       <div className="flex flex-col gap-4">
+        {canManageStatus && (data ?? []).some((q) => q.type === 'helpdesk') && (
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant={categoryFilter === '' ? 'primary' : 'outline'} onClick={() => setCategoryFilter('')}>
+              All
+            </Button>
+            {HELPDESK_CATEGORIES.map((c) => (
+              <Button
+                key={c.key}
+                size="sm"
+                variant={categoryFilter === c.key ? 'primary' : 'outline'}
+                onClick={() => setCategoryFilter(categoryFilter === c.key ? '' : c.key)}
+              >
+                {c.label}
+              </Button>
+            ))}
+          </div>
+        )}
+
         {showForm && (
           <Card>
             <CardContent className="pt-6">
@@ -86,6 +128,22 @@ export default function QueriesPage() {
                     ))}
                   </div>
                 </div>
+                {type === 'helpdesk' && (
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="hd-category">Category (optional)</Label>
+                    <select
+                      id="hd-category"
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value as HelpdeskCategory | '')}
+                      className="flex h-11 w-full rounded-xl border border-border bg-surface px-4 py-2 text-base text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+                    >
+                      <option value="">Choose a category</option>
+                      {HELPDESK_CATEGORIES.map((c) => (
+                        <option key={c.key} value={c.key}>{c.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="subject">Subject</Label>
                   <Input id="subject" value={subject} onChange={(e) => setSubject(e.target.value)} />
@@ -109,7 +167,7 @@ export default function QueriesPage() {
           </Card>
         )}
 
-        {data?.map((q) => (
+        {visibleQueries.map((q) => (
           <QueryThread key={q.id} query={q} canManageStatus={canManageStatus} onUpdated={reload} />
         ))}
       </div>

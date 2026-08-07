@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 interface QuerySummary {
   id: string;
   type: 'committee' | 'helpdesk';
+  category?: string | null;
   subject: string;
   body: string;
   status: 'open' | 'in_progress' | 'resolved' | 'closed';
@@ -132,6 +133,7 @@ export function QueryThread({
           </div>
           <div className="flex gap-2">
             <Badge variant="muted">{query.type === 'committee' ? 'Committee' : 'Help desk'}</Badge>
+            {query.category && <Badge variant="accent">{query.category}</Badge>}
             <Badge variant={STATUS_VARIANT[status]}>{status.replace('_', ' ')}</Badge>
           </div>
         </button>

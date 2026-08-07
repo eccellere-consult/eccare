@@ -740,6 +740,11 @@ model LocalListing {
   neighborhoodId String?
   name           String
   category       String
+  // Optional structured tag for the Home Services filtered view — distinct from the
+  // free-text `category` above, which stays whatever the adder typed (e.g.
+  // "Electrician", "Plumber"). Null means "not tagged as a home-maintenance vendor",
+  // not "unknown" — most vendors (grocers, tutors, etc.) legitimately have none.
+  homeMaintenanceCategory HomeMaintenanceCategory?
   phone          String
   address        String?  @db.Text
   description    String?  @db.Text
@@ -754,11 +759,38 @@ model LocalListing {
   providerListing  CommunityProviderListing?
 
   @@index([neighborhoodId, category])
+  @@index([neighborhoodId, homeMaintenanceCategory])
+}
+
+enum HomeMaintenanceCategory {
+  leakage
+  cleaning
+  maid
+  cook
+  painting
+  gardening
+  electrical
+  carpentry
+  other
 }
 
 enum QueryType {
   committee
   helpdesk
+}
+
+/// Structured category for a helpdesk-type CommitteeQuery — only meaningful when
+/// type = helpdesk; committee-type queries stay uncategorized. Lets the committee
+/// queue filter/group tickets instead of reading every one to find the water-supply
+/// complaints.
+enum HelpdeskCategory {
+  water
+  electricity
+  cleaning
+  safety
+  cultural
+  driver
+  other
 }
 
 enum QueryStatus {
@@ -772,15 +804,16 @@ enum QueryStatus {
 /// committee, and general help-desk requests. Distinguished by `type` rather than
 /// duplicated into two near-identical models.
 model CommitteeQuery {
-  id             String      @id @default(cuid())
+  id             String            @id @default(cuid())
   neighborhoodId String
   userId         String
-  type           QueryType   @default(committee)
+  type           QueryType         @default(committee)
+  category       HelpdeskCategory?
   subject        String
-  body           String      @db.Text
-  status         QueryStatus @default(open)
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  body           String            @db.Text
+  status         QueryStatus       @default(open)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 
   neighborhood Neighborhood          @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
   user         User                  @relation("QueryAuthor", fields: [userId], references: [id], onDelete: Cascade)
