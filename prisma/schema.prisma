@@ -96,6 +96,9 @@ model User {
   feeChargesOwed       FeeCharge[]    @relation("FeeChargeResident")
   feeChargesPaid       FeeCharge[]    @relation("FeeChargePayer")
 
+  // Marketplace (buy/sell/rent/lend)
+  marketplaceListings MarketplaceListing[] @relation("MarketplaceListingPoster")
+
   @@index([phone])
   @@index([role])
 }
@@ -545,6 +548,7 @@ model Neighborhood {
   fees           CommunityFee[]
   sosEvents      SOSEvent[]
   providerListings CommunityProviderListing[]
+  marketplaceListings MarketplaceListing[]
 
   @@index([pincode])
 }
@@ -840,6 +844,46 @@ model ChatMessage {
   sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([neighborhoodId, createdAt])
+}
+
+/// Community Buzz — buy/sell/rent/lend items. "wanted" is the borrow-side counterpart
+/// (a resident posts what they're looking for rather than what they have) — kept as
+/// one model with a type field rather than a parallel WantedListing table, same
+/// reasoning as CommitteeQuery's committee/helpdesk split.
+model MarketplaceListing {
+  id                   String                    @id @default(cuid())
+  neighborhoodId       String
+  postedById           String
+  listingType          MarketplaceListingType
+  title                String
+  description          String?                   @db.Text
+  // Null for lend (free) and wanted (nothing to price yet) — sell/rent set this.
+  price                Decimal?                  @db.Decimal(10, 2)
+  priceUnit            String? // "per day", "one-time", etc. — free text, rent-specific
+  imagePath            String?
+  contactPhone         String
+  preferredContactTime String?
+  status               MarketplaceListingStatus @default(active)
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+
+  neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  postedBy     User         @relation("MarketplaceListingPoster", fields: [postedById], references: [id], onDelete: Cascade)
+
+  @@index([neighborhoodId, listingType, status])
+}
+
+enum MarketplaceListingType {
+  sell
+  rent
+  lend
+  wanted
+}
+
+enum MarketplaceListingStatus {
+  active
+  reserved
+  closed
 }
 
 model NotificationPreference {
