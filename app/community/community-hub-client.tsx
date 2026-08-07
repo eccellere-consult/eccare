@@ -22,6 +22,7 @@ import {
   FileText,
   Wallet,
   Palette,
+  Film,
   type LucideIcon,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -41,6 +42,7 @@ interface MeResponse {
 const BASE_TILES: { href: string; label: string; sub: string; icon: LucideIcon }[] = [
   { href: '/community/announcements', label: 'Announcements', sub: 'Notices from the committee', icon: Megaphone },
   { href: '/community/events', label: 'Events', sub: "What's happening nearby", icon: Calendar },
+  { href: '/community/entertainment', label: 'Entertainment & Social', sub: 'Cultural activities, tours, movies', icon: Film },
   { href: '/community/directory', label: 'Neighbours', sub: 'Say hello or call', icon: Users },
   { href: '/community/helplines', label: 'Helplines', sub: 'Emergency numbers', icon: Phone },
   { href: '/community/vendors', label: 'Vendors', sub: 'Trusted local services', icon: Store },
