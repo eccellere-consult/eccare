@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Percent } from 'lucide-react';
+import { Percent, Megaphone } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { communityApi, useCommunityData } from '@/lib/community-client';
 
 interface Settings {
   platformFeePercent: number;
+  elderCareAdPricePerMonth: number;
 }
 
 export default function AdminSettingsPage() {
@@ -19,8 +20,16 @@ export default function AdminSettingsPage() {
   const [saveError, setSaveError] = useState('');
   const [saved, setSaved] = useState(false);
 
+  const [adPrice, setAdPrice] = useState('');
+  const [adBusy, setAdBusy] = useState(false);
+  const [adError, setAdError] = useState('');
+  const [adSaved, setAdSaved] = useState(false);
+
   useEffect(() => {
-    if (data) setValue(String(data.platformFeePercent));
+    if (data) {
+      setValue(String(data.platformFeePercent));
+      setAdPrice(String(data.elderCareAdPricePerMonth));
+    }
   }, [data]);
 
   async function save(e: React.FormEvent) {
@@ -42,6 +51,28 @@ export default function AdminSettingsPage() {
       setSaveError(err instanceof Error ? err.message : 'Could not save.');
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function saveAdPrice(e: React.FormEvent) {
+    e.preventDefault();
+    setAdBusy(true);
+    setAdError('');
+    setAdSaved(false);
+    const amount = Number(adPrice);
+    if (Number.isNaN(amount) || amount < 0) {
+      setAdError('Please enter a valid amount.');
+      setAdBusy(false);
+      return;
+    }
+    try {
+      await communityApi.patch('/admin/settings', { elderCareAdPricePerMonth: amount });
+      setAdSaved(true);
+      reload();
+    } catch (err) {
+      setAdError(err instanceof Error ? err.message : 'Could not save.');
+    } finally {
+      setAdBusy(false);
     }
   }
 
@@ -89,6 +120,45 @@ export default function AdminSettingsPage() {
               {saved && <p className="text-sm font-semibold text-success-600">Saved.</p>}
               <Button type="submit" disabled={busy} className="self-start">
                 {busy ? 'Saving…' : 'Save'}
+              </Button>
+            </form>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6 max-w-md">
+        <CardContent className="pt-6">
+          <h2 className="flex items-center gap-2 font-bold text-text">
+            <Megaphone className="h-5 w-5 text-primary-600" />
+            Elder Care Services — featured ad price
+          </h2>
+          <p className="mt-1 text-sm text-text-secondary">
+            What a verified provider pays (via Razorpay) to be featured at the top of the Elder Care
+            Services directory for 30 days. This is EC&apos;s own ad revenue, not a fee on a vendor payment.
+          </p>
+
+          {loading ? (
+            <p className="mt-4 text-text-secondary">Loading…</p>
+          ) : error ? (
+            <p className="mt-4 text-danger-600">{error}</p>
+          ) : (
+            <form onSubmit={saveAdPrice} className="mt-4 flex flex-col gap-3">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="ad-price">Price per 30 days (₹)</Label>
+                <Input
+                  id="ad-price"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={adPrice}
+                  onChange={(e) => setAdPrice(e.target.value)}
+                  className="w-32"
+                />
+              </div>
+              {adError && <p className="text-sm text-danger-600">{adError}</p>}
+              {adSaved && <p className="text-sm font-semibold text-success-600">Saved.</p>}
+              <Button type="submit" disabled={adBusy} className="self-start">
+                {adBusy ? 'Saving…' : 'Save'}
               </Button>
             </form>
           )}

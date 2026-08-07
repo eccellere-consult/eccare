@@ -31,6 +31,10 @@ public/uploads/catalog/*
 !public/uploads/catalog/.gitkeep
 public/uploads/memories/*
 !public/uploads/memories/.gitkeep
+public/uploads/marketplace/*
+!public/uploads/marketplace/.gitkeep
+public/uploads/community-documents/*
+!public/uploads/community-documents/.gitkeep
 
 # OS
 .DS_Store

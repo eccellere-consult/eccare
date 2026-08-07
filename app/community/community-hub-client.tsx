@@ -16,6 +16,13 @@ import {
   ShieldAlert,
   UserCog,
   IndianRupee,
+  Tag,
+  Briefcase,
+  Wrench,
+  FileText,
+  Wallet,
+  Palette,
+  Film,
   type LucideIcon,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -35,12 +42,19 @@ interface MeResponse {
 const BASE_TILES: { href: string; label: string; sub: string; icon: LucideIcon }[] = [
   { href: '/community/announcements', label: 'Announcements', sub: 'Notices from the committee', icon: Megaphone },
   { href: '/community/events', label: 'Events', sub: "What's happening nearby", icon: Calendar },
+  { href: '/community/entertainment', label: 'Entertainment & Social', sub: 'Cultural activities, tours, movies', icon: Film },
   { href: '/community/directory', label: 'Neighbours', sub: 'Say hello or call', icon: Users },
   { href: '/community/helplines', label: 'Helplines', sub: 'Emergency numbers', icon: Phone },
   { href: '/community/vendors', label: 'Vendors', sub: 'Trusted local services', icon: Store },
+  { href: '/community/home-services', label: 'Home services', sub: 'Leakage, cleaning, maid, cook & more', icon: Wrench },
   { href: '/community/queries', label: 'Committee & Help', sub: 'Raise a query', icon: MessageSquareWarning },
   { href: '/community/chat', label: 'Community Buzz', sub: 'Chat with neighbours', icon: MessagesSquare },
   { href: '/community/groups', label: 'WhatsApp groups', sub: 'Join the conversation', icon: LifeBuoy },
+  { href: '/community/marketplace', label: 'Buy, sell & lend', sub: 'Old items, rentals, and things to borrow', icon: Tag },
+  { href: '/community/jobs', label: 'Jobs & resources', sub: 'Offer or find local work and help', icon: Briefcase },
+  { href: '/community/documents', label: 'Documents', sub: 'Bylaws, AGM minutes, notices', icon: FileText },
+  { href: '/community/accounts', label: 'Accounts', sub: "What's collected and spent", icon: Wallet },
+  { href: '/community/hobbies', label: 'Hobbies & interests', sub: 'Art, music, dance, books & more', icon: Palette },
   { href: '/community/settings', label: 'Notifications', sub: 'Choose what you hear about', icon: Settings },
 ];
 

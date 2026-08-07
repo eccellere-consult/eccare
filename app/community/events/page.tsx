@@ -1,37 +1,25 @@
 'use client';
 
 import { useState } from 'react';
-import { MapPin, Clock } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CommunityPageFrame } from '@/components/community/page-frame';
+import { EventCard, EVENT_CATEGORY_LABEL, type CommunityEventData } from '@/components/community/event-card';
 import { communityApi, useCommunityData } from '@/lib/community-client';
-import { cn } from '@/lib/utils';
 
-interface CommunityEvent {
-  id: string;
-  title: string;
-  description: string | null;
-  location: string | null;
-  startsAt: string;
-  goingCount: number;
-  myRsvp: 'going' | 'maybe' | 'not_going' | null;
-  createdBy: { name: string };
-}
-
-const RSVPS = [
-  { value: 'going', label: 'Going' },
-  { value: 'maybe', label: 'Maybe' },
-  { value: 'not_going', label: "Can't" },
-] as const;
+const CATEGORY_OPTIONS = (Object.keys(EVENT_CATEGORY_LABEL) as CommunityEventData['category'][]).map((key) => ({
+  key,
+  label: EVENT_CATEGORY_LABEL[key],
+}));
 
 export default function EventsPage() {
-  const { data, loading, error, reload } = useCommunityData<CommunityEvent[]>('/community/events');
+  const { data, loading, error, reload } = useCommunityData<CommunityEventData[]>('/community/events');
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
+  const [category, setCategory] = useState<CommunityEventData['category']>('other');
   const [startsAt, setStartsAt] = useState('');
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState('');
@@ -44,10 +32,12 @@ export default function EventsPage() {
       await communityApi.post('/community/events', {
         title,
         location: location || undefined,
+        category,
         startsAt: new Date(startsAt).toISOString(),
       });
       setTitle('');
       setLocation('');
+      setCategory('other');
       setStartsAt('');
       setShowForm(false);
       reload();
@@ -83,6 +73,19 @@ export default function EventsPage() {
                   <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Diwali celebration" />
                 </div>
                 <div className="flex flex-col gap-2">
+                  <Label htmlFor="ev-category">Category</Label>
+                  <select
+                    id="ev-category"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value as CommunityEventData['category'])}
+                    className="flex h-11 w-full rounded-xl border border-border bg-surface px-4 py-2 text-base text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+                  >
+                    {CATEGORY_OPTIONS.map((c) => (
+                      <option key={c.key} value={c.key}>{c.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-2">
                   <Label htmlFor="startsAt">Date and time</Label>
                   <Input id="startsAt" type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
                 </div>
@@ -100,40 +103,7 @@ export default function EventsPage() {
         )}
 
         {data?.map((ev) => (
-          <Card key={ev.id}>
-            <CardContent className="pt-6">
-              <h2 className="text-lg font-bold text-text">{ev.title}</h2>
-              <p className="mt-1 flex items-center gap-1.5 text-sm text-text-secondary">
-                <Clock className="h-3.5 w-3.5" />
-                {new Date(ev.startsAt).toLocaleString()}
-              </p>
-              {ev.location && (
-                <p className="mt-0.5 flex items-center gap-1.5 text-sm text-text-secondary">
-                  <MapPin className="h-3.5 w-3.5" />
-                  {ev.location}
-                </p>
-              )}
-              {ev.description && <p className="mt-2 text-text">{ev.description}</p>}
-
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                {RSVPS.map((r) => (
-                  <button
-                    key={r.value}
-                    onClick={() => rsvp(ev.id, r.value)}
-                    className={cn(
-                      'rounded-xl border px-4 py-2 text-sm font-semibold min-h-tap',
-                      ev.myRsvp === r.value
-                        ? 'border-primary-600 bg-primary-600 text-white'
-                        : 'border-border bg-surface text-text hover:bg-primary-50',
-                    )}
-                  >
-                    {r.label}
-                  </button>
-                ))}
-                <span className="ml-auto text-sm text-text-secondary">{ev.goingCount} going</span>
-              </div>
-            </CardContent>
-          </Card>
+          <EventCard key={ev.id} event={ev} onRsvp={rsvp} showCategory />
         ))}
       </div>
     </CommunityPageFrame>

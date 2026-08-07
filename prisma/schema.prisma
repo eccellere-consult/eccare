@@ -96,6 +96,20 @@ model User {
   feeChargesOwed       FeeCharge[]    @relation("FeeChargeResident")
   feeChargesPaid       FeeCharge[]    @relation("FeeChargePayer")
 
+  // Marketplace (buy/sell/rent/lend)
+  marketplaceListings MarketplaceListing[] @relation("MarketplaceListingPoster")
+
+  // Jobs & resources classifieds
+  jobPostings CommunityJobPosting[] @relation("JobPostingPoster")
+
+  // Association ops
+  documentsUploaded CommunityDocument[]  @relation("DocumentUploader")
+  expensesAdded     AssociationExpense[] @relation("ExpenseAdder")
+
+  // Hobby / interest groups
+  hobbyGroupsCreated    HobbyGroup[]       @relation("HobbyGroupCreator")
+  hobbyGroupMemberships HobbyGroupMember[]
+
   @@index([phone])
   @@index([role])
 }
@@ -135,6 +149,9 @@ model PlatformSettings {
   // app. Snapshotted onto each paid Order/FeeCharge at payment time, not looked up
   // live, so changing this later never rewrites the commission on past transactions.
   platformFeePercent Decimal @default(5) @db.Decimal(5, 2)
+  // Flat monthly fee a verified provider pays (via Razorpay) to be featured at the
+  // top of /services/elder-care for 30 days — see ServiceProvider.isFeatured.
+  elderCareAdPricePerMonth Decimal @default(499) @db.Decimal(10, 2)
   updatedAt         DateTime @updatedAt
   updatedById       String?
 }
@@ -545,6 +562,11 @@ model Neighborhood {
   fees           CommunityFee[]
   sosEvents      SOSEvent[]
   providerListings CommunityProviderListing[]
+  marketplaceListings MarketplaceListing[]
+  jobPostings    CommunityJobPosting[]
+  documents      CommunityDocument[]
+  expenses       AssociationExpense[]
+  hobbyGroups    HobbyGroup[]
 
   @@index([pincode])
 }
@@ -654,16 +676,21 @@ enum FeeChargeStatus {
 }
 
 model CommunityEvent {
-  id             String   @id @default(cuid())
+  id             String        @id @default(cuid())
   neighborhoodId String
   title          String
-  description    String?  @db.Text
+  description    String?       @db.Text
   location       String?
+  // Powers the /community/entertainment curated view (cultural/local_tour/movie/
+  // social) without a parallel model — this is squarely "events", just needing a
+  // category. `other` covers maintenance windows, AGM notices, etc. that aren't
+  // social in nature and shouldn't show up in that curated view.
+  category       EventCategory @default(other)
   startsAt       DateTime
   endsAt         DateTime?
   createdById    String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   neighborhood Neighborhood         @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
   createdBy    User                 @relation("EventCreator", fields: [createdById], references: [id], onDelete: Cascade)
@@ -676,6 +703,14 @@ enum RsvpStatus {
   going
   maybe
   not_going
+}
+
+enum EventCategory {
+  cultural
+  local_tour
+  movie
+  social
+  other
 }
 
 model CommunityEventRsvp {
@@ -732,6 +767,11 @@ model LocalListing {
   neighborhoodId String?
   name           String
   category       String
+  // Optional structured tag for the Home Services filtered view — distinct from the
+  // free-text `category` above, which stays whatever the adder typed (e.g.
+  // "Electrician", "Plumber"). Null means "not tagged as a home-maintenance vendor",
+  // not "unknown" — most vendors (grocers, tutors, etc.) legitimately have none.
+  homeMaintenanceCategory HomeMaintenanceCategory?
   phone          String
   address        String?  @db.Text
   description    String?  @db.Text
@@ -746,11 +786,38 @@ model LocalListing {
   providerListing  CommunityProviderListing?
 
   @@index([neighborhoodId, category])
+  @@index([neighborhoodId, homeMaintenanceCategory])
+}
+
+enum HomeMaintenanceCategory {
+  leakage
+  cleaning
+  maid
+  cook
+  painting
+  gardening
+  electrical
+  carpentry
+  other
 }
 
 enum QueryType {
   committee
   helpdesk
+}
+
+/// Structured category for a helpdesk-type CommitteeQuery — only meaningful when
+/// type = helpdesk; committee-type queries stay uncategorized. Lets the committee
+/// queue filter/group tickets instead of reading every one to find the water-supply
+/// complaints.
+enum HelpdeskCategory {
+  water
+  electricity
+  cleaning
+  safety
+  cultural
+  driver
+  other
 }
 
 enum QueryStatus {
@@ -764,15 +831,16 @@ enum QueryStatus {
 /// committee, and general help-desk requests. Distinguished by `type` rather than
 /// duplicated into two near-identical models.
 model CommitteeQuery {
-  id             String      @id @default(cuid())
+  id             String            @id @default(cuid())
   neighborhoodId String
   userId         String
-  type           QueryType   @default(committee)
+  type           QueryType         @default(committee)
+  category       HelpdeskCategory?
   subject        String
-  body           String      @db.Text
-  status         QueryStatus @default(open)
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  body           String            @db.Text
+  status         QueryStatus       @default(open)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 
   neighborhood Neighborhood          @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
   user         User                  @relation("QueryAuthor", fields: [userId], references: [id], onDelete: Cascade)
@@ -840,6 +908,175 @@ model ChatMessage {
   sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([neighborhoodId, createdAt])
+}
+
+/// Community Buzz — buy/sell/rent/lend items. "wanted" is the borrow-side counterpart
+/// (a resident posts what they're looking for rather than what they have) — kept as
+/// one model with a type field rather than a parallel WantedListing table, same
+/// reasoning as CommitteeQuery's committee/helpdesk split.
+model MarketplaceListing {
+  id                   String                    @id @default(cuid())
+  neighborhoodId       String
+  postedById           String
+  listingType          MarketplaceListingType
+  title                String
+  description          String?                   @db.Text
+  // Null for lend (free) and wanted (nothing to price yet) — sell/rent set this.
+  price                Decimal?                  @db.Decimal(10, 2)
+  priceUnit            String? // "per day", "one-time", etc. — free text, rent-specific
+  imagePath            String?
+  contactPhone         String
+  preferredContactTime String?
+  status               MarketplaceListingStatus @default(active)
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+
+  neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  postedBy     User         @relation("MarketplaceListingPoster", fields: [postedById], references: [id], onDelete: Cascade)
+
+  @@index([neighborhoodId, listingType, status])
+}
+
+enum MarketplaceListingType {
+  sell
+  rent
+  lend
+  wanted
+}
+
+enum MarketplaceListingStatus {
+  active
+  reserved
+  closed
+}
+
+/// Community Buzz — classifieds distinct from MarketplaceListing (items): jobs and
+/// informal resources/skills residents offer or need. "resource" covers things like
+/// "maid available" or "looking for a driver" that aren't quite a job listing or a
+/// physical item for sale.
+model CommunityJobPosting {
+  id                   String              @id @default(cuid())
+  neighborhoodId       String
+  postedById           String
+  postingType          JobPostingType
+  title                String
+  description          String?             @db.Text
+  compensation         String? // free text — "₹500/day", "negotiable", etc.
+  contactPhone         String
+  preferredContactTime String?
+  status               JobPostingStatus    @default(active)
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  postedBy     User         @relation("JobPostingPoster", fields: [postedById], references: [id], onDelete: Cascade)
+
+  @@index([neighborhoodId, postingType, status])
+}
+
+enum JobPostingType {
+  job_offered
+  job_wanted
+  resource_offered
+  resource_wanted
+}
+
+enum JobPostingStatus {
+  active
+  closed
+}
+
+/// Committee-uploaded files (bylaws, AGM minutes, notices-as-files) — distinct from
+/// Notice, which is a text announcement. All members can view/download; only
+/// committee/admin can upload or delete.
+model CommunityDocument {
+  id             String           @id @default(cuid())
+  neighborhoodId String
+  title          String
+  category       DocumentCategory @default(other)
+  fileName       String
+  filePath       String
+  fileType       String
+  uploadedById   String
+  createdAt      DateTime         @default(now())
+
+  neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  uploadedBy   User         @relation("DocumentUploader", fields: [uploadedById], references: [id], onDelete: Cascade)
+
+  @@index([neighborhoodId, category])
+}
+
+enum DocumentCategory {
+  bylaws
+  minutes
+  notice
+  other
+}
+
+/// A manually-logged association expense — deliberately not a real accounting
+/// system, just a structured record the committee enters so /community/accounts can
+/// show collected-vs-spent transparency to residents, built from data (paid
+/// FeeCharge rows) that already exists rather than re-deriving income separately.
+model AssociationExpense {
+  id             String   @id @default(cuid())
+  neighborhoodId String
+  label          String
+  amount         Decimal  @db.Decimal(10, 2)
+  category       String?
+  spentOn        DateTime
+  notes          String?  @db.Text
+  receiptPath    String?
+  addedById      String
+  createdAt      DateTime @default(now())
+
+  neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  addedBy      User         @relation("ExpenseAdder", fields: [addedById], references: [id], onDelete: Cascade)
+
+  @@index([neighborhoodId, spentOn])
+}
+
+/// Community Buzz — hobby/interest groups. Deliberately no in-group chat/discussion
+/// thread for v1: ChatMessage-style messaging is a real moderation surface, and
+/// shouldn't be bundled opportunistically into an easier win. v1 is browse/create/
+/// join/leave plus a visible member list (so members can actually coordinate).
+model HobbyGroup {
+  id             String        @id @default(cuid())
+  neighborhoodId String
+  name           String
+  category       HobbyCategory
+  description    String?       @db.Text
+  createdById    String
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  neighborhood Neighborhood       @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  createdBy    User               @relation("HobbyGroupCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  members      HobbyGroupMember[]
+
+  @@index([neighborhoodId, category])
+}
+
+enum HobbyCategory {
+  art
+  music
+  dance
+  theatre
+  books
+  discussion
+  teaching
+  other
+}
+
+model HobbyGroupMember {
+  id           String   @id @default(cuid())
+  hobbyGroupId String
+  userId       String
+  joinedAt     DateTime @default(now())
+
+  hobbyGroup HobbyGroup @relation(fields: [hobbyGroupId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([hobbyGroupId, userId])
 }
 
 model NotificationPreference {
@@ -915,6 +1152,18 @@ model ServiceProvider {
   rejectionReason       String?
   verifiedAt            DateTime?
   verifiedById          String?
+  // Elder Care Services directory — a verified provider self-tags into one of these
+  // to appear on /services/elder-care. Null means "not offering elder-care services",
+  // not "unknown" — most providers (grocers, electricians) legitimately have none.
+  elderCareCategory     ElderCareCategory?
+  // Paid advertisement: a flat monthly fee (PlatformSettings.elderCareAdPricePerMonth)
+  // bumps this provider to the top of the elder-care directory with a "Featured"
+  // badge for 30 days. This is EC's own ad revenue — no platform-fee split applies,
+  // unlike Order/FeeCharge which are payments passing through to a vendor/association.
+  isFeatured            Boolean                    @default(false)
+  featuredUntil         DateTime?
+  featuredOrderId       String?                    @unique
+  featuredPaidAt        DateTime?
   createdAt             DateTime                   @default(now())
   updatedAt             DateTime                   @updatedAt
 
@@ -925,6 +1174,15 @@ model ServiceProvider {
   orders             Order[]
 
   @@index([verificationStatus])
+  @@index([elderCareCategory])
+}
+
+enum ElderCareCategory {
+  home_treatment
+  home_nursing
+  companion_service
+  local_errands
+  other
 }
 
 /// Connects a registered ServiceProvider to one community's Vendors directory.
