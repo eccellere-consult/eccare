@@ -7,6 +7,7 @@ import {
   Truck,
   Car,
   ShoppingBag,
+  Receipt,
   ExternalLink,
   type LucideIcon,
 } from 'lucide-react';
@@ -86,6 +87,16 @@ const SERVICE_CATEGORIES: ServiceCategory[] = [
     providers: [
       { name: 'Amazon', url: 'https://www.amazon.in' },
       { name: 'Flipkart', url: 'https://www.flipkart.com' },
+    ],
+  },
+  {
+    key: 'bills',
+    label: 'Bill payments',
+    description: 'Electricity, water, mobile, DTH, and property tax — all in one place',
+    icon: Receipt,
+    providers: [
+      { name: 'Paytm', url: 'https://paytm.com/electricity-bill-payment' },
+      { name: 'PhonePe', url: 'https://www.phonepe.com' },
     ],
   },
 ];
