@@ -654,16 +654,21 @@ enum FeeChargeStatus {
 }
 
 model CommunityEvent {
-  id             String   @id @default(cuid())
+  id             String        @id @default(cuid())
   neighborhoodId String
   title          String
-  description    String?  @db.Text
+  description    String?       @db.Text
   location       String?
+  // Powers the /community/entertainment curated view (cultural/local_tour/movie/
+  // social) without a parallel model — this is squarely "events", just needing a
+  // category. `other` covers maintenance windows, AGM notices, etc. that aren't
+  // social in nature and shouldn't show up in that curated view.
+  category       EventCategory @default(other)
   startsAt       DateTime
   endsAt         DateTime?
   createdById    String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   neighborhood Neighborhood         @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
   createdBy    User                 @relation("EventCreator", fields: [createdById], references: [id], onDelete: Cascade)
@@ -676,6 +681,14 @@ enum RsvpStatus {
   going
   maybe
   not_going
+}
+
+enum EventCategory {
+  cultural
+  local_tour
+  movie
+  social
+  other
 }
 
 model CommunityEventRsvp {
