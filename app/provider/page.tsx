@@ -43,7 +43,7 @@ export default async function ProviderHomePage() {
 
       {provider && (
         <div className="mt-6">
-          <ProviderProfileClient initial={provider} />
+          <ProviderProfileClient initial={{ ...provider, featuredUntil: provider.featuredUntil?.toISOString() ?? null }} />
         </div>
       )}
 

@@ -1,12 +1,21 @@
 'use client';
 
 import { useState } from 'react';
-import { FileText, Upload } from 'lucide-react';
+import { FileText, Upload, Megaphone } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+
+type ElderCareCategory = 'home_treatment' | 'home_nursing' | 'companion_service' | 'local_errands' | 'other';
+const ELDER_CARE_CATEGORIES: { key: ElderCareCategory; label: string }[] = [
+  { key: 'home_treatment', label: 'Home treatment' },
+  { key: 'home_nursing', label: 'Home nursing' },
+  { key: 'companion_service', label: 'Companion service' },
+  { key: 'local_errands', label: 'Local errands' },
+  { key: 'other', label: 'Other' },
+];
 
 interface ServiceProvider {
   businessName: string;
@@ -19,6 +28,26 @@ interface ServiceProvider {
   certificationFilePath: string | null;
   verificationStatus: 'pending' | 'verified' | 'rejected';
   rejectionReason: string | null;
+  elderCareCategory: ElderCareCategory | null;
+  isFeatured: boolean;
+  featuredUntil: string | null;
+}
+
+declare global {
+  interface Window {
+    Razorpay: new (options: Record<string, unknown>) => { open: () => void };
+  }
+}
+
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (window.Razorpay) return resolve(true);
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
 }
 
 const STATUS_VARIANT = { pending: 'accent', verified: 'success', rejected: 'danger' } as const;
@@ -45,11 +74,14 @@ export function ProviderProfileClient({ initial }: { initial: ServiceProvider })
   const [serviceArea, setServiceArea] = useState(initial.serviceArea ?? '');
   const [phone, setPhone] = useState(initial.phone ?? '');
   const [address, setAddress] = useState(initial.address ?? '');
+  const [elderCareCategory, setElderCareCategory] = useState<ElderCareCategory | ''>(initial.elderCareCategory ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [adBusy, setAdBusy] = useState(false);
+  const [adError, setAdError] = useState('');
 
   async function saveProfile(e: React.FormEvent) {
     e.preventDefault();
@@ -67,6 +99,7 @@ export function ProviderProfileClient({ initial }: { initial: ServiceProvider })
           serviceArea: serviceArea || undefined,
           phone: phone || undefined,
           address: address || undefined,
+          elderCareCategory: elderCareCategory || null,
         }),
       });
       setProvider(updated);
@@ -75,6 +108,49 @@ export function ProviderProfileClient({ initial }: { initial: ServiceProvider })
       setError(err instanceof Error ? err.message : 'Could not save.');
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function getFeatured() {
+    setAdBusy(true);
+    setAdError('');
+    try {
+      const order = await api('/provider/featured-ad', { method: 'POST' });
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) throw new Error('Could not load the payment page. Please check your connection and try again.');
+
+      const razorpay = new window.Razorpay({
+        key: order.keyId,
+        amount: order.amount,
+        currency: 'INR',
+        order_id: order.razorpayOrderId,
+        name: 'EC',
+        description: 'Elder Care Services — featured listing (30 days)',
+        handler: async (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
+          try {
+            const updated = await api('/provider/featured-ad/verify-payment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpayOrderId: response.razorpay_order_id,
+                razorpaySignature: response.razorpay_signature,
+              }),
+            });
+            setProvider(updated);
+          } catch (err) {
+            setAdError(err instanceof Error ? err.message : 'Payment could not be verified. Please contact support.');
+          } finally {
+            setAdBusy(false);
+          }
+        },
+        modal: { ondismiss: () => setAdBusy(false) },
+        theme: { color: '#0B5563' },
+      });
+      razorpay.open();
+    } catch (err) {
+      setAdError(err instanceof Error ? err.message : 'Could not start payment. Please try again.');
+      setAdBusy(false);
     }
   }
 
@@ -150,6 +226,23 @@ export function ProviderProfileClient({ initial }: { initial: ServiceProvider })
               <Label htmlFor="address">Address</Label>
               <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} />
             </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="elderCareCategory">Elder Care Services category (optional)</Label>
+              <select
+                id="elderCareCategory"
+                value={elderCareCategory}
+                onChange={(e) => setElderCareCategory(e.target.value as ElderCareCategory | '')}
+                className="flex h-11 w-full rounded-xl border border-border bg-surface px-4 py-2 text-base text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+              >
+                <option value="">Not an elder-care provider</option>
+                {ELDER_CARE_CATEGORIES.map((c) => (
+                  <option key={c.key} value={c.key}>{c.label}</option>
+                ))}
+              </select>
+              <p className="text-xs text-text-secondary">
+                Pick a category to appear in the Elder Care Services directory that families browse.
+              </p>
+            </div>
             {error && <p className="text-sm text-danger-600">{error}</p>}
             {saved && !error && <p className="text-sm text-success-600">Saved.</p>}
             <Button type="submit" disabled={busy || !businessName.trim() || !category.trim()} className="self-start">
@@ -189,6 +282,36 @@ export function ProviderProfileClient({ initial }: { initial: ServiceProvider })
           {uploadError && <p className="mt-2 text-sm text-danger-600">{uploadError}</p>}
         </CardContent>
       </Card>
+
+      {provider.elderCareCategory && (
+        <Card className="border-accent-100 bg-accent-50">
+          <CardContent className="flex flex-wrap items-center justify-between gap-4 pt-6">
+            <div className="flex items-start gap-3">
+              <Megaphone className="h-6 w-6 shrink-0 text-accent-600" />
+              <div>
+                <p className="font-bold text-text">Elder Care Services featured listing</p>
+                {provider.isFeatured && provider.featuredUntil ? (
+                  <p className="mt-1 text-sm text-text-secondary">
+                    Featured until {new Date(provider.featuredUntil).toLocaleDateString()}.
+                  </p>
+                ) : (
+                  <p className="mt-1 text-sm text-text-secondary">
+                    Pay a flat fee to appear at the top of the Elder Care Services directory for 30 days.
+                  </p>
+                )}
+                {adError && <p className="mt-1 text-sm text-danger-600">{adError}</p>}
+              </div>
+            </div>
+            {provider.verificationStatus === 'verified' ? (
+              <Button onClick={getFeatured} disabled={adBusy}>
+                {adBusy ? 'Opening payment…' : provider.isFeatured ? 'Extend 30 days' : 'Get featured'}
+              </Button>
+            ) : (
+              <p className="text-sm text-text-secondary">Verification required first.</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

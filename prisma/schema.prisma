@@ -135,6 +135,9 @@ model PlatformSettings {
   // app. Snapshotted onto each paid Order/FeeCharge at payment time, not looked up
   // live, so changing this later never rewrites the commission on past transactions.
   platformFeePercent Decimal @default(5) @db.Decimal(5, 2)
+  // Flat monthly fee a verified provider pays (via Razorpay) to be featured at the
+  // top of /services/elder-care for 30 days — see ServiceProvider.isFeatured.
+  elderCareAdPricePerMonth Decimal @default(499) @db.Decimal(10, 2)
   updatedAt         DateTime @updatedAt
   updatedById       String?
 }
@@ -915,6 +918,18 @@ model ServiceProvider {
   rejectionReason       String?
   verifiedAt            DateTime?
   verifiedById          String?
+  // Elder Care Services directory — a verified provider self-tags into one of these
+  // to appear on /services/elder-care. Null means "not offering elder-care services",
+  // not "unknown" — most providers (grocers, electricians) legitimately have none.
+  elderCareCategory     ElderCareCategory?
+  // Paid advertisement: a flat monthly fee (PlatformSettings.elderCareAdPricePerMonth)
+  // bumps this provider to the top of the elder-care directory with a "Featured"
+  // badge for 30 days. This is EC's own ad revenue — no platform-fee split applies,
+  // unlike Order/FeeCharge which are payments passing through to a vendor/association.
+  isFeatured            Boolean                    @default(false)
+  featuredUntil         DateTime?
+  featuredOrderId       String?                    @unique
+  featuredPaidAt        DateTime?
   createdAt             DateTime                   @default(now())
   updatedAt             DateTime                   @updatedAt
 
@@ -925,6 +940,15 @@ model ServiceProvider {
   orders             Order[]
 
   @@index([verificationStatus])
+  @@index([elderCareCategory])
+}
+
+enum ElderCareCategory {
+  home_treatment
+  home_nursing
+  companion_service
+  local_errands
+  other
 }
 
 /// Connects a registered ServiceProvider to one community's Vendors directory.

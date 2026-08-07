@@ -10,6 +10,10 @@ const patchSchema = z.object({
   serviceArea: z.string().max(200).optional(),
   phone: z.string().max(20).optional(),
   address: z.string().max(500).optional(),
+  elderCareCategory: z
+    .enum(['home_treatment', 'home_nursing', 'companion_service', 'local_errands', 'other'])
+    .nullable()
+    .optional(),
 });
 
 const fail = (code: string, message: string, status = 400) =>

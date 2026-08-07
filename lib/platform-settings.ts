@@ -23,6 +23,26 @@ export async function setPlatformFeePercent(percent: number, updatedById: string
   return Number(settings.platformFeePercent);
 }
 
+/** Same singleton pattern as the platform fee — the flat monthly price for a
+ *  provider to be featured in the Elder Care Services directory. */
+export async function getElderCareAdPrice(): Promise<number> {
+  const settings = await prisma.platformSettings.upsert({
+    where: { id: SINGLETON_ID },
+    update: {},
+    create: { id: SINGLETON_ID },
+  });
+  return Number(settings.elderCareAdPricePerMonth);
+}
+
+export async function setElderCareAdPrice(amount: number, updatedById: string): Promise<number> {
+  const settings = await prisma.platformSettings.upsert({
+    where: { id: SINGLETON_ID },
+    update: { elderCareAdPricePerMonth: amount, updatedById },
+    create: { id: SINGLETON_ID, elderCareAdPricePerMonth: amount, updatedById },
+  });
+  return Number(settings.elderCareAdPricePerMonth);
+}
+
 /** Rounds to paise (2 decimal places) the same way every other money amount in this
  *  app is stored — computed once at payment time and snapshotted onto the paid
  *  Order/FeeCharge, never re-derived later so a rate change never rewrites history. */

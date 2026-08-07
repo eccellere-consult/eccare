@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import {
   UtensilsCrossed,
   ShoppingBasket,
@@ -8,6 +9,8 @@ import {
   Car,
   ShoppingBag,
   ExternalLink,
+  HeartHandshake,
+  ChevronRight,
   type LucideIcon,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -98,6 +101,21 @@ export default function ServicesPage() {
         Jump straight to a trusted service. Opens in a new tab — you&rsquo;ll pick your address and
         finish the order there.
       </p>
+
+      <Link href="/services/elder-care" className="mt-6 block">
+        <Card className="border-accent-100 bg-accent-50 transition-shadow hover:shadow-md">
+          <CardContent className="flex items-center gap-4 pt-6">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-surface">
+              <HeartHandshake className="h-6 w-6 text-accent-600" />
+            </span>
+            <div className="flex-1">
+              <p className="font-bold text-text">Elder Care Services</p>
+              <p className="text-sm text-text-secondary">Home treatment, nursing, companion service, and local errands</p>
+            </div>
+            <ChevronRight className="h-5 w-5 shrink-0 text-text-secondary" />
+          </CardContent>
+        </Card>
+      </Link>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         {SERVICE_CATEGORIES.map(({ key, label, description, icon: Icon, providers }) => (
