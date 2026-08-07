@@ -16,6 +16,7 @@ import {
   ShieldAlert,
   UserCog,
   IndianRupee,
+  Briefcase,
   type LucideIcon,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -41,6 +42,7 @@ const BASE_TILES: { href: string; label: string; sub: string; icon: LucideIcon }
   { href: '/community/queries', label: 'Committee & Help', sub: 'Raise a query', icon: MessageSquareWarning },
   { href: '/community/chat', label: 'Community Buzz', sub: 'Chat with neighbours', icon: MessagesSquare },
   { href: '/community/groups', label: 'WhatsApp groups', sub: 'Join the conversation', icon: LifeBuoy },
+  { href: '/community/jobs', label: 'Jobs & resources', sub: 'Offer or find local work and help', icon: Briefcase },
   { href: '/community/settings', label: 'Notifications', sub: 'Choose what you hear about', icon: Settings },
 ];
 
