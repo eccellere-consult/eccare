@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import {
   UtensilsCrossed,
   ShoppingBasket,
@@ -7,6 +8,8 @@ import {
   Truck,
   Car,
   ShoppingBag,
+  ShieldCheck,
+  ChevronRight,
   ExternalLink,
   type LucideIcon,
 } from 'lucide-react';
@@ -98,6 +101,21 @@ export default function ServicesPage() {
         Jump straight to a trusted service. Opens in a new tab — you&rsquo;ll pick your address and
         finish the order there.
       </p>
+
+      <Link href="/services/safety" className="mt-6 block">
+        <Card className="border-border bg-surface transition-shadow hover:shadow-md">
+          <CardContent className="flex items-center gap-4 pt-6">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-50">
+              <ShieldCheck className="h-6 w-6 text-primary-600" />
+            </span>
+            <div className="flex-1">
+              <p className="font-bold text-text">Home Safety & Security</p>
+              <p className="text-sm text-text-secondary">Cameras, video chat, fall & gas sensors, smart access — coming soon</p>
+            </div>
+            <ChevronRight className="h-5 w-5 shrink-0 text-text-secondary" />
+          </CardContent>
+        </Card>
+      </Link>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         {SERVICE_CATEGORIES.map(({ key, label, description, icon: Icon, providers }) => (
