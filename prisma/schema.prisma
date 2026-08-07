@@ -99,6 +99,9 @@ model User {
   // Marketplace (buy/sell/rent/lend)
   marketplaceListings MarketplaceListing[] @relation("MarketplaceListingPoster")
 
+  // Jobs & resources classifieds
+  jobPostings CommunityJobPosting[] @relation("JobPostingPoster")
+
   @@index([phone])
   @@index([role])
 }
@@ -549,6 +552,7 @@ model Neighborhood {
   sosEvents      SOSEvent[]
   providerListings CommunityProviderListing[]
   marketplaceListings MarketplaceListing[]
+  jobPostings    CommunityJobPosting[]
 
   @@index([pincode])
 }
@@ -883,6 +887,42 @@ enum MarketplaceListingType {
 enum MarketplaceListingStatus {
   active
   reserved
+  closed
+}
+
+/// Community Buzz — classifieds distinct from MarketplaceListing (items): jobs and
+/// informal resources/skills residents offer or need. "resource" covers things like
+/// "maid available" or "looking for a driver" that aren't quite a job listing or a
+/// physical item for sale.
+model CommunityJobPosting {
+  id                   String              @id @default(cuid())
+  neighborhoodId       String
+  postedById           String
+  postingType          JobPostingType
+  title                String
+  description          String?             @db.Text
+  compensation         String? // free text — "₹500/day", "negotiable", etc.
+  contactPhone         String
+  preferredContactTime String?
+  status               JobPostingStatus    @default(active)
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  postedBy     User         @relation("JobPostingPoster", fields: [postedById], references: [id], onDelete: Cascade)
+
+  @@index([neighborhoodId, postingType, status])
+}
+
+enum JobPostingType {
+  job_offered
+  job_wanted
+  resource_offered
+  resource_wanted
+}
+
+enum JobPostingStatus {
+  active
   closed
 }
 
