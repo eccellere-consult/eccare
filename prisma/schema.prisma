@@ -96,6 +96,10 @@ model User {
   feeChargesOwed       FeeCharge[]    @relation("FeeChargeResident")
   feeChargesPaid       FeeCharge[]    @relation("FeeChargePayer")
 
+  // Hobby / interest groups
+  hobbyGroupsCreated    HobbyGroup[]       @relation("HobbyGroupCreator")
+  hobbyGroupMemberships HobbyGroupMember[]
+
   @@index([phone])
   @@index([role])
 }
@@ -545,6 +549,7 @@ model Neighborhood {
   fees           CommunityFee[]
   sosEvents      SOSEvent[]
   providerListings CommunityProviderListing[]
+  hobbyGroups    HobbyGroup[]
 
   @@index([pincode])
 }
@@ -840,6 +845,50 @@ model ChatMessage {
   sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([neighborhoodId, createdAt])
+}
+
+/// Community Buzz — hobby/interest groups. Deliberately no in-group chat/discussion
+/// thread for v1: ChatMessage-style messaging is a real moderation surface, and
+/// shouldn't be bundled opportunistically into an easier win. v1 is browse/create/
+/// join/leave plus a visible member list (so members can actually coordinate).
+model HobbyGroup {
+  id             String        @id @default(cuid())
+  neighborhoodId String
+  name           String
+  category       HobbyCategory
+  description    String?       @db.Text
+  createdById    String
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  neighborhood Neighborhood       @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  createdBy    User               @relation("HobbyGroupCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  members      HobbyGroupMember[]
+
+  @@index([neighborhoodId, category])
+}
+
+enum HobbyCategory {
+  art
+  music
+  dance
+  theatre
+  books
+  discussion
+  teaching
+  other
+}
+
+model HobbyGroupMember {
+  id           String   @id @default(cuid())
+  hobbyGroupId String
+  userId       String
+  joinedAt     DateTime @default(now())
+
+  hobbyGroup HobbyGroup @relation(fields: [hobbyGroupId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([hobbyGroupId, userId])
 }
 
 model NotificationPreference {
