@@ -16,6 +16,7 @@ import {
   ShieldAlert,
   UserCog,
   IndianRupee,
+  Wrench,
   type LucideIcon,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -38,6 +39,7 @@ const BASE_TILES: { href: string; label: string; sub: string; icon: LucideIcon }
   { href: '/community/directory', label: 'Neighbours', sub: 'Say hello or call', icon: Users },
   { href: '/community/helplines', label: 'Helplines', sub: 'Emergency numbers', icon: Phone },
   { href: '/community/vendors', label: 'Vendors', sub: 'Trusted local services', icon: Store },
+  { href: '/community/home-services', label: 'Home services', sub: 'Leakage, cleaning, maid, cook & more', icon: Wrench },
   { href: '/community/queries', label: 'Committee & Help', sub: 'Raise a query', icon: MessageSquareWarning },
   { href: '/community/chat', label: 'Community Buzz', sub: 'Chat with neighbours', icon: MessagesSquare },
   { href: '/community/groups', label: 'WhatsApp groups', sub: 'Join the conversation', icon: LifeBuoy },
