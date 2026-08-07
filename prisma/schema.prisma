@@ -102,6 +102,10 @@ model User {
   // Jobs & resources classifieds
   jobPostings CommunityJobPosting[] @relation("JobPostingPoster")
 
+  // Association ops
+  documentsUploaded CommunityDocument[]  @relation("DocumentUploader")
+  expensesAdded     AssociationExpense[] @relation("ExpenseAdder")
+
   @@index([phone])
   @@index([role])
 }
@@ -556,6 +560,8 @@ model Neighborhood {
   providerListings CommunityProviderListing[]
   marketplaceListings MarketplaceListing[]
   jobPostings    CommunityJobPosting[]
+  documents      CommunityDocument[]
+  expenses       AssociationExpense[]
 
   @@index([pincode])
 }
@@ -960,6 +966,55 @@ enum JobPostingType {
 enum JobPostingStatus {
   active
   closed
+}
+
+/// Committee-uploaded files (bylaws, AGM minutes, notices-as-files) — distinct from
+/// Notice, which is a text announcement. All members can view/download; only
+/// committee/admin can upload or delete.
+model CommunityDocument {
+  id             String           @id @default(cuid())
+  neighborhoodId String
+  title          String
+  category       DocumentCategory @default(other)
+  fileName       String
+  filePath       String
+  fileType       String
+  uploadedById   String
+  createdAt      DateTime         @default(now())
+
+  neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  uploadedBy   User         @relation("DocumentUploader", fields: [uploadedById], references: [id], onDelete: Cascade)
+
+  @@index([neighborhoodId, category])
+}
+
+enum DocumentCategory {
+  bylaws
+  minutes
+  notice
+  other
+}
+
+/// A manually-logged association expense — deliberately not a real accounting
+/// system, just a structured record the committee enters so /community/accounts can
+/// show collected-vs-spent transparency to residents, built from data (paid
+/// FeeCharge rows) that already exists rather than re-deriving income separately.
+model AssociationExpense {
+  id             String   @id @default(cuid())
+  neighborhoodId String
+  label          String
+  amount         Decimal  @db.Decimal(10, 2)
+  category       String?
+  spentOn        DateTime
+  notes          String?  @db.Text
+  receiptPath    String?
+  addedById      String
+  createdAt      DateTime @default(now())
+
+  neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  addedBy      User         @relation("ExpenseAdder", fields: [addedById], references: [id], onDelete: Cascade)
+
+  @@index([neighborhoodId, spentOn])
 }
 
 model NotificationPreference {
