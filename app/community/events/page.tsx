@@ -23,6 +23,9 @@ export default function EventsPage() {
   const [startsAt, setStartsAt] = useState('');
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState('');
+  const [activeCategory, setActiveCategory] = useState<CommunityEventData['category'] | null>(null);
+
+  const filtered = (data ?? []).filter((ev) => !activeCategory || ev.category === activeCategory);
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
@@ -55,15 +58,31 @@ export default function EventsPage() {
 
   return (
     <CommunityPageFrame
-      title="Community events"
-      subtitle="What's happening in your neighbourhood."
+      title="Entertainment & Social Events"
+      subtitle="Cultural activities, local tours, movies, and everything else happening nearby."
       action={<Button onClick={() => setShowForm((s) => !s)}>{showForm ? 'Cancel' : 'Add event'}</Button>}
       loading={loading}
       error={error}
-      isEmpty={!showForm && (data?.length ?? 0) === 0}
+      isEmpty={!showForm && filtered.length === 0}
       emptyMessage="No events planned yet."
     >
       <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant={activeCategory === null ? 'primary' : 'outline'} onClick={() => setActiveCategory(null)}>
+            All
+          </Button>
+          {CATEGORY_OPTIONS.map((c) => (
+            <Button
+              key={c.key}
+              size="sm"
+              variant={activeCategory === c.key ? 'primary' : 'outline'}
+              onClick={() => setActiveCategory(activeCategory === c.key ? null : c.key)}
+            >
+              {c.label}
+            </Button>
+          ))}
+        </div>
+
         {showForm && (
           <Card>
             <CardContent className="pt-6">
@@ -102,7 +121,7 @@ export default function EventsPage() {
           </Card>
         )}
 
-        {data?.map((ev) => (
+        {filtered.map((ev) => (
           <EventCard key={ev.id} event={ev} onRsvp={rsvp} showCategory />
         ))}
       </div>

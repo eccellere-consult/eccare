@@ -13,6 +13,8 @@ import {
   Loader2,
   Check,
   Upload,
+  Pencil,
+  Trash,
   type LucideIcon,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -81,19 +83,55 @@ export function HealthEssentials({ elderUserId }: Props) {
   const [savingProfile, setSavingProfile] = useState(false);
   const [savedProfile, setSavedProfile] = useState(false);
   const [profileError, setProfileError] = useState('');
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [deletingProfile, setDeletingProfile] = useState(false);
+
+  const hasProfileData = Boolean(
+    profile.data?.familyDoctorName ||
+      profile.data?.familyDoctorPhone ||
+      profile.data?.preferredHospitalName ||
+      profile.data?.preferredHospitalLocation,
+  );
 
   async function saveProfile(e: React.FormEvent) {
     e.preventDefault();
     setSavingProfile(true);
     setProfileError('');
     try {
-      await healthApi.patch('/profile', { elderUserId, ...form });
+      const saved = await healthApi.patch<DoctorHospitalProfile>('/profile', { elderUserId, ...form });
+      // Trust the server's response, not just the form the elder just typed — if a
+      // write silently failed to persist (stale generated client, a rejected value,
+      // anything), this is what surfaces it instead of the UI lying that it worked.
+      profile.setData(saved);
+      setEditingProfile(false);
       setSavedProfile(true);
       setTimeout(() => setSavedProfile(false), 2000);
     } catch (err) {
-      setProfileError(err instanceof Error ? err.message : 'Could not save.');
+      setProfileError(err instanceof Error ? err.message : 'Could not save. Please try again.');
     } finally {
       setSavingProfile(false);
+    }
+  }
+
+  async function deleteProfile() {
+    if (!confirm('Remove the family doctor and hospital details?')) return;
+    setDeletingProfile(true);
+    setProfileError('');
+    try {
+      const cleared = await healthApi.patch<DoctorHospitalProfile>('/profile', {
+        elderUserId,
+        familyDoctorName: null,
+        familyDoctorPhone: null,
+        preferredHospitalName: null,
+        preferredHospitalLocation: null,
+      });
+      profile.setData(cleared);
+      setForm(EMPTY_FORM);
+      setEditingProfile(false);
+    } catch (err) {
+      setProfileError(err instanceof Error ? err.message : 'Could not remove. Please try again.');
+    } finally {
+      setDeletingProfile(false);
     }
   }
 
@@ -174,6 +212,47 @@ export function HealthEssentials({ elderUserId }: Props) {
           <CardContent className="pt-6">
             {profile.loading ? (
               <p className="text-text-secondary">Loading…</p>
+            ) : hasProfileData && !editingProfile ? (
+              <div className="flex flex-col gap-3">
+                {profile.data?.familyDoctorName && (
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold uppercase text-text-secondary">Family doctor</p>
+                      <p className="truncate font-bold text-text">{profile.data.familyDoctorName}</p>
+                      {profile.data.familyDoctorPhone && (
+                        <p className="truncate text-sm text-text-secondary">{profile.data.familyDoctorPhone}</p>
+                      )}
+                    </div>
+                    {profile.data.familyDoctorPhone && (
+                      <a
+                        href={`tel:${profile.data.familyDoctorPhone}`}
+                        aria-label="Call family doctor"
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-600 text-white"
+                      >
+                        <Stethoscope className="h-5 w-5" />
+                      </a>
+                    )}
+                  </div>
+                )}
+                {profile.data?.preferredHospitalName && (
+                  <div>
+                    <p className="text-xs font-semibold uppercase text-text-secondary">Preferred hospital</p>
+                    <p className="font-bold text-text">{profile.data.preferredHospitalName}</p>
+                    {profile.data.preferredHospitalLocation && (
+                      <p className="text-sm text-text-secondary">{profile.data.preferredHospitalLocation}</p>
+                    )}
+                  </div>
+                )}
+                {profileError && <p className="text-sm text-danger-600">{profileError}</p>}
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => setEditingProfile(true)}>
+                    <Pencil className="h-4 w-4" /> Edit
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" disabled={deletingProfile} onClick={deleteProfile}>
+                    <Trash className="h-4 w-4" /> {deletingProfile ? 'Removing…' : 'Delete'}
+                  </Button>
+                </div>
+              </div>
             ) : (
               <form onSubmit={saveProfile} className="grid gap-4 sm:grid-cols-2">
                 <div className="flex flex-col gap-2">
@@ -224,7 +303,7 @@ export function HealthEssentials({ elderUserId }: Props) {
                   />
                 </div>
                 {profileError && <p className="sm:col-span-2 text-sm text-danger-600">{profileError}</p>}
-                <div className="sm:col-span-2">
+                <div className="flex gap-2 sm:col-span-2">
                   <Button type="submit" disabled={savingProfile}>
                     {savingProfile ? (
                       <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</>
@@ -234,6 +313,11 @@ export function HealthEssentials({ elderUserId }: Props) {
                       'Save'
                     )}
                   </Button>
+                  {hasProfileData && (
+                    <Button type="button" variant="outline" onClick={() => setEditingProfile(false)}>
+                      Cancel
+                    </Button>
+                  )}
                 </div>
               </form>
             )}

@@ -750,10 +750,10 @@ model CommunityEvent {
   title          String
   description    String?       @db.Text
   location       String?
-  // Powers the /community/entertainment curated view (cultural/local_tour/movie/
-  // social) without a parallel model — this is squarely "events", just needing a
+  // Powers the category filter chips on /community/events ("Entertainment & Social
+  // Events") without a parallel model — this is squarely "events", just needing a
   // category. `other` covers maintenance windows, AGM notices, etc. that aren't
-  // social in nature and shouldn't show up in that curated view.
+  // social in nature.
   category       EventCategory @default(other)
   startsAt       DateTime
   endsAt         DateTime?
@@ -995,6 +995,9 @@ model MarketplaceListing {
   priceUnit            String? // "per day", "one-time", etc. — free text, rent-specific
   imagePath            String?
   contactPhone         String
+  // Where to pick up / drop off — a resident can leave this blank if they'd rather
+  // arrange it over the phone; not required the way contactPhone is.
+  houseNumber          String?
   preferredContactTime String?
   status               MarketplaceListingStatus @default(active)
   createdAt            DateTime                  @default(now())
@@ -1032,6 +1035,7 @@ model CommunityJobPosting {
   description          String?             @db.Text
   compensation         String? // free text — "₹500/day", "negotiable", etc.
   contactPhone         String
+  houseNumber          String?
   preferredContactTime String?
   status               JobPostingStatus    @default(active)
   createdAt            DateTime            @default(now())
