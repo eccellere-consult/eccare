@@ -1,0 +1,390 @@
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
+import {
+  Stethoscope,
+  Hospital,
+  ShieldCheck,
+  Activity,
+  Watch,
+  Plus,
+  Eye,
+  Trash2,
+  Loader2,
+  Check,
+  Upload,
+  type LucideIcon,
+} from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { healthApi, useHealthData } from '@/lib/health-client';
+
+interface Props {
+  /** Omit on the elder's own page; pass through on the family/caregiver page for
+   *  that elder — same convention used by every other health-domain fetch. */
+  elderUserId?: string;
+}
+
+interface DoctorHospitalProfile {
+  familyDoctorName: string | null;
+  familyDoctorPhone: string | null;
+  preferredHospitalName: string | null;
+  preferredHospitalLocation: string | null;
+}
+
+type CoverageType = 'hospital_plan' | 'insurance_plan' | 'diagnostics' | 'wearable_gadget';
+
+interface CoverageItem {
+  id: string;
+  type: CoverageType;
+  label: string;
+  provider: string | null;
+  policyNumber: string | null;
+  filePath: string | null;
+  fileName: string | null;
+  notes: string | null;
+  addedBy: { name: string; role: string };
+}
+
+const COVERAGE_TYPES: { key: CoverageType; label: string; icon: LucideIcon }[] = [
+  { key: 'hospital_plan', label: 'Hospital health plan', icon: Hospital },
+  { key: 'insurance_plan', label: 'Medical insurance', icon: ShieldCheck },
+  { key: 'diagnostics', label: 'Health diagnostics', icon: Activity },
+  { key: 'wearable_gadget', label: 'Wearables & gadgets', icon: Watch },
+];
+
+const EMPTY_FORM = { familyDoctorName: '', familyDoctorPhone: '', preferredHospitalName: '', preferredHospitalLocation: '' };
+
+export function HealthEssentials({ elderUserId }: Props) {
+  const qs = elderUserId ? `?elderUserId=${elderUserId}` : '';
+  const profile = useHealthData<DoctorHospitalProfile>(`/profile${qs}`);
+  const coverage = useHealthData<CoverageItem[]>(`/coverage${qs}`);
+
+  // Family doctor & hospital card
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [formLoaded, setFormLoaded] = useState(false);
+  useEffect(() => {
+    if (profile.data && !formLoaded) {
+      setForm({
+        familyDoctorName: profile.data.familyDoctorName ?? '',
+        familyDoctorPhone: profile.data.familyDoctorPhone ?? '',
+        preferredHospitalName: profile.data.preferredHospitalName ?? '',
+        preferredHospitalLocation: profile.data.preferredHospitalLocation ?? '',
+      });
+      setFormLoaded(true);
+    }
+  }, [profile.data, formLoaded]);
+
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [savedProfile, setSavedProfile] = useState(false);
+  const [profileError, setProfileError] = useState('');
+
+  async function saveProfile(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingProfile(true);
+    setProfileError('');
+    try {
+      await healthApi.patch('/profile', { elderUserId, ...form });
+      setSavedProfile(true);
+      setTimeout(() => setSavedProfile(false), 2000);
+    } catch (err) {
+      setProfileError(err instanceof Error ? err.message : 'Could not save.');
+    } finally {
+      setSavingProfile(false);
+    }
+  }
+
+  // Coverage & devices card
+  const [activeType, setActiveType] = useState<CoverageType | null>(null);
+  const [coverageForm, setCoverageForm] = useState({ label: '', provider: '', policyNumber: '', notes: '' });
+  const [addingCoverage, setAddingCoverage] = useState(false);
+  const [coverageError, setCoverageError] = useState('');
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const fileInputs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  async function addCoverage(e: React.FormEvent) {
+    e.preventDefault();
+    if (!activeType) return;
+    setAddingCoverage(true);
+    setCoverageError('');
+    try {
+      await healthApi.post('/coverage', {
+        elderUserId,
+        type: activeType,
+        label: coverageForm.label,
+        provider: coverageForm.provider || undefined,
+        policyNumber: coverageForm.policyNumber || undefined,
+        notes: coverageForm.notes || undefined,
+      });
+      setCoverageForm({ label: '', provider: '', policyNumber: '', notes: '' });
+      setActiveType(null);
+      coverage.reload();
+    } catch (err) {
+      setCoverageError(err instanceof Error ? err.message : 'Could not add.');
+    } finally {
+      setAddingCoverage(false);
+    }
+  }
+
+  async function removeCoverage(id: string) {
+    setRemovingId(id);
+    try {
+      await healthApi.del(`/coverage/${id}`);
+      coverage.reload();
+    } finally {
+      setRemovingId(null);
+    }
+  }
+
+  async function uploadDocument(id: string, file: File) {
+    setUploadingId(id);
+    try {
+      const body = new FormData();
+      body.append('file', file);
+      const res = await fetch(`/api/v1/health/coverage/${id}/document`, {
+        method: 'POST',
+        credentials: 'include',
+        body,
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Upload failed.');
+      coverage.reload();
+    } catch (err) {
+      setCoverageError(err instanceof Error ? err.message : 'Upload failed.');
+    } finally {
+      setUploadingId(null);
+    }
+  }
+
+  const itemsByType = (type: CoverageType) => (coverage.data ?? []).filter((c) => c.type === type);
+
+  return (
+    <>
+      {/* Family doctor & hospital */}
+      <section className="mt-8">
+        <h2 className="flex items-center gap-2 text-lg font-bold text-text">
+          <Stethoscope className="h-5 w-5 text-primary-600" />
+          Family doctor & hospital
+        </h2>
+        <Card className="mt-3">
+          <CardContent className="pt-6">
+            {profile.loading ? (
+              <p className="text-text-secondary">Loading…</p>
+            ) : (
+              <form onSubmit={saveProfile} className="grid gap-4 sm:grid-cols-2">
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="he-doc-name">Family doctor name</Label>
+                  <Input
+                    id="he-doc-name"
+                    value={form.familyDoctorName}
+                    onChange={(e) => setForm((f) => ({ ...f, familyDoctorName: e.target.value }))}
+                    placeholder="Dr. Sharma"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="he-doc-phone">Family doctor phone</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="he-doc-phone"
+                      value={form.familyDoctorPhone}
+                      onChange={(e) => setForm((f) => ({ ...f, familyDoctorPhone: e.target.value }))}
+                      placeholder="9876543210"
+                    />
+                    {form.familyDoctorPhone && (
+                      <a
+                        href={`tel:${form.familyDoctorPhone}`}
+                        aria-label="Call family doctor"
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-600 text-white"
+                      >
+                        <Stethoscope className="h-5 w-5" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="he-hosp-name">Preferred / regular hospital</Label>
+                  <Input
+                    id="he-hosp-name"
+                    value={form.preferredHospitalName}
+                    onChange={(e) => setForm((f) => ({ ...f, preferredHospitalName: e.target.value }))}
+                    placeholder="City Care Hospital"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="he-hosp-loc">Hospital location</Label>
+                  <Input
+                    id="he-hosp-loc"
+                    value={form.preferredHospitalLocation}
+                    onChange={(e) => setForm((f) => ({ ...f, preferredHospitalLocation: e.target.value }))}
+                    placeholder="MG Road, Bengaluru"
+                  />
+                </div>
+                {profileError && <p className="sm:col-span-2 text-sm text-danger-600">{profileError}</p>}
+                <div className="sm:col-span-2">
+                  <Button type="submit" disabled={savingProfile}>
+                    {savingProfile ? (
+                      <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</>
+                    ) : savedProfile ? (
+                      <><Check className="h-4 w-4" /> Saved</>
+                    ) : (
+                      'Save'
+                    )}
+                  </Button>
+                </div>
+              </form>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* Coverage & devices */}
+      <section className="mt-8">
+        <h2 className="flex items-center gap-2 text-lg font-bold text-text">
+          <ShieldCheck className="h-5 w-5 text-primary-600" />
+          Coverage & devices
+        </h2>
+        <p className="mt-1 text-sm text-text-secondary">
+          Do they already have any of these? Add details and upload the card or policy if so.
+        </p>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          {COVERAGE_TYPES.map(({ key, label, icon: Icon }) => (
+            <Button
+              key={key}
+              type="button"
+              size="sm"
+              variant={activeType === key ? 'primary' : 'outline'}
+              onClick={() => setActiveType(activeType === key ? null : key)}
+            >
+              <Icon className="h-4 w-4" />
+              {label}
+            </Button>
+          ))}
+        </div>
+
+        {activeType && (
+          <Card className="mt-3">
+            <CardContent className="pt-6">
+              <form onSubmit={addCoverage} className="flex flex-col gap-4">
+                <p className="text-sm font-semibold text-text-secondary">
+                  Add {COVERAGE_TYPES.find((c) => c.key === activeType)?.label.toLowerCase()}
+                </p>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="cov-label">Name</Label>
+                  <Input
+                    id="cov-label"
+                    value={coverageForm.label}
+                    onChange={(e) => setCoverageForm((f) => ({ ...f, label: e.target.value }))}
+                    placeholder="Star Health — Family Floater"
+                  />
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="cov-provider">Provider (optional)</Label>
+                    <Input
+                      id="cov-provider"
+                      value={coverageForm.provider}
+                      onChange={(e) => setCoverageForm((f) => ({ ...f, provider: e.target.value }))}
+                      placeholder="Star Health Insurance"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="cov-policy">Policy / membership number (optional)</Label>
+                    <Input
+                      id="cov-policy"
+                      value={coverageForm.policyNumber}
+                      onChange={(e) => setCoverageForm((f) => ({ ...f, policyNumber: e.target.value }))}
+                      placeholder="POL123456"
+                    />
+                  </div>
+                </div>
+                {coverageError && <p className="text-sm text-danger-600">{coverageError}</p>}
+                <div className="flex gap-2">
+                  <Button type="submit" disabled={addingCoverage || !coverageForm.label}>
+                    {addingCoverage ? 'Adding…' : 'Add'}
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => setActiveType(null)}>
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="mt-4 flex flex-col gap-4">
+          {COVERAGE_TYPES.map(({ key, label, icon: Icon }) => {
+            const items = itemsByType(key);
+            if (items.length === 0) return null;
+            return (
+              <div key={key}>
+                <p className="flex items-center gap-1.5 text-sm font-bold text-text-secondary">
+                  <Icon className="h-4 w-4" /> {label}
+                </p>
+                <div className="mt-2 flex flex-col gap-2">
+                  {items.map((item) => (
+                    <div key={item.id} className="flex min-w-0 items-center gap-3 rounded-xl border border-border px-4 py-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-bold text-text">{item.label}</p>
+                        <p className="truncate text-sm text-text-secondary">
+                          {[item.provider, item.policyNumber].filter(Boolean).join(' · ')}
+                        </p>
+                      </div>
+                      {item.filePath ? (
+                        <a
+                          href={item.filePath}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={`View document for ${item.label}`}
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border text-primary-600 hover:bg-primary-50"
+                        >
+                          <Eye className="h-5 w-5" />
+                        </a>
+                      ) : (
+                        <>
+                          <input
+                            ref={(el) => { fileInputs.current[item.id] = el; }}
+                            type="file"
+                            accept="image/jpeg,image/png,application/pdf"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) uploadDocument(item.id, file);
+                              e.target.value = '';
+                            }}
+                          />
+                          <button
+                            type="button"
+                            disabled={uploadingId === item.id}
+                            onClick={() => fileInputs.current[item.id]?.click()}
+                            aria-label={`Upload card or policy for ${item.label}`}
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border text-primary-600 hover:bg-primary-50 disabled:opacity-50"
+                          >
+                            {uploadingId === item.id ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
+                          </button>
+                        </>
+                      )}
+                      <button
+                        type="button"
+                        disabled={removingId === item.id}
+                        onClick={() => removeCoverage(item.id)}
+                        aria-label={`Remove ${item.label}`}
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-text-secondary hover:bg-danger-50 hover:text-danger-600 disabled:opacity-50"
+                      >
+                        {removingId === item.id ? <Loader2 className="h-5 w-5 animate-spin" /> : <Trash2 className="h-5 w-5" />}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+    </>
+  );
+}

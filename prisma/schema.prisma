@@ -34,6 +34,12 @@ model User {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
+  // Health Essentials — quick-reference doctor/hospital info (elder's own record)
+  familyDoctorName          String?
+  familyDoctorPhone         String?
+  preferredHospitalName     String?
+  preferredHospitalLocation String?
+
   // Relations as elder
   medications        Medication[]
   reminders          MedicationReminder[]
@@ -109,6 +115,10 @@ model User {
   // Hobby / interest groups
   hobbyGroupsCreated    HobbyGroup[]       @relation("HobbyGroupCreator")
   hobbyGroupMemberships HobbyGroupMember[]
+
+  // Health Essentials — coverage/device records
+  healthCoverageItems  HealthCoverageItem[] @relation("HealthCoverageUser")
+  healthCoverageAdded  HealthCoverageItem[] @relation("HealthCoverageAdder")
 
   @@index([phone])
   @@index([role])
@@ -368,6 +378,38 @@ model HealthNote {
 
   user      User @relation("HealthNoteUser", fields: [userId], references: [id], onDelete: Cascade)
   createdBy User @relation("HealthNoteCreator", fields: [createdById], references: [id], onDelete: Cascade)
+}
+
+/// Optional coverage/device records an elder or caregiver can log — insurance
+/// cards, hospital plans, diagnostics memberships, registered wearables — each
+/// with an optional uploaded policy/card image or PDF. Informational, not tied to
+/// medication management, so it uses the same permission tier as HealthNote.
+model HealthCoverageItem {
+  id           String             @id @default(cuid())
+  userId       String
+  addedById    String
+  type         HealthCoverageType
+  label        String
+  provider     String?
+  policyNumber String?
+  filePath     String?
+  fileName     String?
+  fileType     String?
+  notes        String?            @db.Text
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  user    User @relation("HealthCoverageUser", fields: [userId], references: [id], onDelete: Cascade)
+  addedBy User @relation("HealthCoverageAdder", fields: [addedById], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+}
+
+enum HealthCoverageType {
+  hospital_plan
+  insurance_plan
+  diagnostics
+  wearable_gadget
 }
 
 model Prescription {
