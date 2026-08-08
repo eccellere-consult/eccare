@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -22,7 +22,6 @@ import {
   FileText,
   Wallet,
   Palette,
-  Film,
   type LucideIcon,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -41,8 +40,7 @@ interface MeResponse {
 
 const BASE_TILES: { href: string; label: string; sub: string; icon: LucideIcon }[] = [
   { href: '/community/announcements', label: 'Announcements', sub: 'Notices from the committee', icon: Megaphone },
-  { href: '/community/events', label: 'Events', sub: "What's happening nearby", icon: Calendar },
-  { href: '/community/entertainment', label: 'Entertainment & Social', sub: 'Cultural activities, tours, movies', icon: Film },
+  { href: '/community/events', label: 'Entertainment & Social Events', sub: 'Cultural activities, tours, movies & more', icon: Calendar },
   { href: '/community/directory', label: 'Neighbours', sub: 'Say hello or call', icon: Users },
   { href: '/community/helplines', label: 'Helplines', sub: 'Emergency numbers', icon: Phone },
   { href: '/community/vendors', label: 'Vendors', sub: 'Trusted local services', icon: Store },
@@ -77,6 +75,17 @@ export function CommunityHubClient() {
   const { data, loading } = useCommunityData<MeResponse>('/community/me');
   const [panicBusy, setPanicBusy] = useState(false);
   const [panicMsg, setPanicMsg] = useState('');
+
+  // Accounts is association bookkeeping — a caregiver-managed concern, not something
+  // an elder needs on their own home screen. Fetched separately from community
+  // membership since it's the platform role (elder vs caregiver), not a community one.
+  const [myRole, setMyRole] = useState<string | null>(null);
+  useEffect(() => {
+    fetch('/api/v1/auth/me', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((j) => { if (j.success) setMyRole(j.data.role); })
+      .catch(() => {});
+  }, []);
 
   if (loading) {
     return <p className="text-text-secondary">Loading your community…</p>;
@@ -160,7 +169,9 @@ export function CommunityHubClient() {
       </Card>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {(membership.role === 'member' ? BASE_TILES : [...BASE_TILES, MEMBERS_TILE, FEES_TILE]).map(({ href, label, sub, icon: Icon }) => (
+        {(membership.role === 'member' ? BASE_TILES : [...BASE_TILES, MEMBERS_TILE, FEES_TILE])
+          .filter((tile) => myRole !== 'elder' || tile.href !== '/community/accounts')
+          .map(({ href, label, sub, icon: Icon }) => (
           <Link key={href} href={href}>
             <Card className="flex h-full items-center gap-4 p-5 transition-shadow hover:shadow-md">
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-50">

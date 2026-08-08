@@ -56,6 +56,13 @@ export default function HomeServicesPage() {
   const [formError, setFormError] = useState('');
 
   const filtered = (data ?? []).filter((v) => v.homeMaintenanceCategory && (!activeCategory || v.homeMaintenanceCategory === activeCategory));
+  // Split into two easy-to-scan sections: committee/admin-curated listings the
+  // community can trust outright, and ones a resident suggested via their own
+  // Contacts (see contact-form.tsx) — unverified, but still worth surfacing
+  // rather than burying in the general Vendors directory where this category
+  // tag isn't visible at all.
+  const verifiedListings = filtered.filter((v) => v.verified);
+  const suggestedListings = filtered.filter((v) => !v.verified);
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
@@ -166,39 +173,66 @@ export default function HomeServicesPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {filtered.map((v) => (
-              <Card key={v.id}>
-                <CardContent className="flex items-center gap-4 py-4">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-50">
-                    <Wrench className="h-5 w-5 text-primary-600" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <Link href={`/community/vendors/${v.id}`} className="flex items-center gap-1.5 font-bold text-text hover:underline">
-                      <span className="truncate">{v.name}</span>
-                      {v.verified && <BadgeCheck className="h-4 w-4 shrink-0 text-success-600" />}
-                    </Link>
-                    <div className="mt-0.5">
-                      <Badge variant="muted">{CATEGORIES.find((c) => c.key === v.homeMaintenanceCategory)?.label}</Badge>
-                    </div>
-                    {v.address && <p className="mt-1 truncate text-sm text-text-secondary">{v.address}</p>}
-                    <Link href={`/community/vendors/${v.id}`} className="mt-1 inline-block text-xs font-semibold text-primary-600 hover:underline">
-                      Raise a request or order
-                    </Link>
-                  </div>
-                  <a
-                    href={`tel:${v.phone}`}
-                    aria-label={`Call ${v.name}`}
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-600 text-white"
-                  >
-                    <Phone className="h-5 w-5" />
-                  </a>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <>
+            {verifiedListings.length > 0 && (
+              <div>
+                <h2 className="flex items-center gap-1.5 text-sm font-bold text-text-secondary">
+                  <BadgeCheck className="h-4 w-4 text-success-600" /> Registered by your community
+                </h2>
+                <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                  {verifiedListings.map((v) => (
+                    <VendorCard key={v.id} vendor={v} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {suggestedListings.length > 0 && (
+              <div>
+                <h2 className="text-sm font-bold text-text-secondary">Suggested by residents</h2>
+                <p className="text-xs text-text-secondary">Not yet verified by the committee — ask around before booking.</p>
+                <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                  {suggestedListings.map((v) => (
+                    <VendorCard key={v.id} vendor={v} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </CommunityPageFrame>
+  );
+}
+
+function VendorCard({ vendor: v }: { vendor: Vendor }) {
+  return (
+    <Card>
+      <CardContent className="flex items-center gap-4 py-4">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-50">
+          <Wrench className="h-5 w-5 text-primary-600" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <Link href={`/community/vendors/${v.id}`} className="flex items-center gap-1.5 font-bold text-text hover:underline">
+            <span className="truncate">{v.name}</span>
+            {v.verified && <BadgeCheck className="h-4 w-4 shrink-0 text-success-600" />}
+          </Link>
+          <div className="mt-0.5">
+            <Badge variant="muted">{CATEGORIES.find((c) => c.key === v.homeMaintenanceCategory)?.label}</Badge>
+          </div>
+          {v.address && <p className="mt-1 truncate text-sm text-text-secondary">{v.address}</p>}
+          <Link href={`/community/vendors/${v.id}`} className="mt-1 inline-block text-xs font-semibold text-primary-600 hover:underline">
+            Raise a request or order
+          </Link>
+        </div>
+        <a
+          href={`tel:${v.phone}`}
+          aria-label={`Call ${v.name}`}
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-600 text-white"
+        >
+          <Phone className="h-5 w-5" />
+        </a>
+      </CardContent>
+    </Card>
   );
 }

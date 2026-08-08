@@ -6,6 +6,9 @@ import { canAccessElder } from '@/lib/family-access';
 import { getMembership, getPrimaryNeighborhoodId } from '@/lib/community-access';
 
 const CATEGORIES = ['neighbor', 'friend', 'serviceProvider', 'hospital', 'other'] as const;
+const HOME_MAINTENANCE_CATEGORIES = [
+  'leakage', 'cleaning', 'maid', 'cook', 'painting', 'gardening', 'electrical', 'carpentry', 'other',
+] as const;
 
 const createSchema = z.object({
   elderUserId: z.string(),
@@ -13,6 +16,10 @@ const createSchema = z.object({
   phone: z.string().min(3).max(20),
   category: z.enum(CATEGORIES),
   providerType: z.string().max(60).optional(),
+  // Only meaningful for category = serviceProvider + shareWithCommunity — tags the
+  // resulting LocalListing so it also surfaces in the Home Services "Suggested by
+  // residents" section, not just the general Vendors directory.
+  homeMaintenanceCategory: z.enum(HOME_MAINTENANCE_CATEGORIES).optional(),
   notes: z.string().max(2000).optional(),
   shareWithCommunity: z.boolean().optional(),
 });
@@ -72,7 +79,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { elderUserId, name, phone, category, providerType, notes, shareWithCommunity } = parsed.data;
+  const { elderUserId, name, phone, category, providerType, homeMaintenanceCategory, notes, shareWithCommunity } = parsed.data;
 
   if (!(await canAccessElder(auth.userId, elderUserId))) {
     return NextResponse.json(
@@ -93,6 +100,7 @@ export async function POST(req: NextRequest) {
           neighborhoodId,
           name,
           category: category === 'serviceProvider' ? (providerType || 'Service provider') : 'Hospital',
+          homeMaintenanceCategory: category === 'serviceProvider' ? homeMaintenanceCategory : undefined,
           phone,
           addedById: auth.userId,
           verified: membership?.role === 'committee' || membership?.role === 'admin',
