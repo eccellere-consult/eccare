@@ -14,6 +14,7 @@ import {
   Trash2,
   ArrowLeft,
   X,
+  Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
@@ -96,6 +97,20 @@ interface HealthNote {
   createdBy: { name: string; role: string };
 }
 
+interface MoodEntry {
+  id: string;
+  mood: 'great' | 'good' | 'okay' | 'low' | 'not_well';
+  createdAt: string;
+}
+
+const MOOD_META: Record<MoodEntry['mood'], { emoji: string; label: string }> = {
+  great: { emoji: '😊', label: 'Great' },
+  good: { emoji: '🙂', label: 'Good' },
+  okay: { emoji: '😐', label: 'Okay' },
+  low: { emoji: '😕', label: 'Low' },
+  not_well: { emoji: '😟', label: 'Not well' },
+};
+
 interface FoodRequest {
   id: string;
   requestType: string;
@@ -120,6 +135,7 @@ export default function FamilyHealthPage({
   const appts = useHealthData<Appointment[]>(`/appointments${qs}`);
   const notes = useHealthData<HealthNote[]>(`/notes${qs}`);
   const food = useHealthData<FoodRequest[]>(`/food-requests${qs}`);
+  const mood = useHealthData<MoodEntry[]>(`/mood${qs}`);
 
   const [activeForm, setActiveForm] = useState<Section | null>(null);
   const [busy, setBusy] = useState(false);
@@ -455,6 +471,27 @@ export default function FamilyHealthPage({
       <p className="mt-1 text-text-secondary">Manage medicines, appointments, and notes for your elder.</p>
 
       <HealthEssentials elderUserId={elderId} />
+
+      {/* Recent mood — from the AI Companion's daily check-in on the elder's home page */}
+      {(mood.data?.length ?? 0) > 0 && (
+        <section className="mt-8">
+          <h2 className="flex items-center gap-2 text-lg font-bold text-text">
+            <Sparkles className="h-5 w-5 text-primary-600" /> Recent mood
+          </h2>
+          <p className="mt-1 text-sm text-text-secondary">From their daily AI Companion check-in.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {mood.data?.map((m) => (
+              <div key={m.id} className="flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-sm">
+                <span className="text-base">{MOOD_META[m.mood].emoji}</span>
+                <span className="font-semibold text-text">{MOOD_META[m.mood].label}</span>
+                <span className="text-xs text-text-secondary">
+                  {new Date(m.createdAt).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Prescription upload */}
       <section className="mt-6">
