@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { AlertTriangle, Phone, Users, Ambulance, FileImage } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { CompanionCard } from '@/components/companion-card';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
@@ -105,6 +106,10 @@ export function ElderHomeClient({
     <div>
       <h1 className="text-3xl font-bold text-text">{t('elder.home.hello')} {userName}</h1>
       <p className="mt-1 text-lg text-text-secondary">{t('elder.home.subtitle')}</p>
+
+      <div className="mt-6">
+        <CompanionCard />
+      </div>
 
       {quote?.text && (
         <Card className="mt-6 border-accent-100 bg-accent-50">
