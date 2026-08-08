@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { HealthEssentials } from '@/components/health-essentials';
 import { healthApi, useHealthData } from '@/lib/health-client';
 
 interface Medication {
@@ -452,6 +453,8 @@ export default function FamilyHealthPage({
 
       <h1 className="text-2xl font-bold text-text">Health management</h1>
       <p className="mt-1 text-text-secondary">Manage medicines, appointments, and notes for your elder.</p>
+
+      <HealthEssentials elderUserId={elderId} />
 
       {/* Prescription upload */}
       <section className="mt-6">

@@ -22,6 +22,7 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { HealthEssentials } from '@/components/health-essentials';
 import { healthApi, useHealthData } from '@/lib/health-client';
 import { useCommunityData } from '@/lib/community-client';
 import { getSlotForDate, formatIstTime, SLOT_META, SLOT_ORDER, todayIST, type MedicineSlot } from '@/lib/medicine-slots';
@@ -225,6 +226,8 @@ export default function ElderHealthPage() {
     <div>
       <h1 className="text-2xl font-bold text-text">{t('elder.health.title')}</h1>
       <p className="mt-1 text-text-secondary">{t('elder.health.subtitle')}</p>
+
+      <HealthEssentials />
 
       {/* Today's medicine box — one compartment per time of day */}
       <section className="mt-6">
