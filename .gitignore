@@ -35,6 +35,8 @@ public/uploads/marketplace/*
 !public/uploads/marketplace/.gitkeep
 public/uploads/community-documents/*
 !public/uploads/community-documents/.gitkeep
+public/uploads/health-coverage/*
+!public/uploads/health-coverage/.gitkeep
 
 # OS
 .DS_Store
@@ -44,5 +46,5 @@ Thumbs.db
 npm-debug.log*
 
 # Testing
-coverage/
+/coverage/
 *.tar.gz
