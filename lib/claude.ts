@@ -78,6 +78,53 @@ export interface VoiceResult {
   actionData?: Record<string, unknown>;
 }
 
+const COMPANION_SYSTEM_PROMPT = `You are EC, a warm AI companion opening a conversation with an elderly person (65+) — not answering a question, greeting them first.
+
+Write ONE short, warm sentence (max 20 words) that greets them by name, fits the time of day given, and — only if a note is provided — gently weaves it in. Do not ask how they are feeling; that is asked separately by the app. Do not mention anything not given to you. Sound like a kind family member, not a customer service bot. Vary your phrasing — avoid sounding like a template.
+
+Return ONLY the sentence itself — no quotes, no JSON, no markdown, nothing else.`;
+
+/** Generates the one-line proactive greeting shown when the elder opens their home
+ *  page — the "speaks first" half of the AI Companion. Deliberately separate from
+ *  processVoiceInput: this always succeeds with a plain sentence (never JSON), and
+ *  degrades to a simple time-of-day greeting on any failure, same reasoning as
+ *  processVoiceInput's own fallback — a companion that goes silent on an API hiccup
+ *  is worse than one with a plainer greeting. */
+export async function generateCompanionGreeting(facts: {
+  name: string;
+  timeOfDay: 'morning' | 'afternoon' | 'evening' | 'night';
+  note?: string;
+}): Promise<string> {
+  const greetingWord =
+    facts.timeOfDay === 'morning' ? 'Good morning' : facts.timeOfDay === 'evening' || facts.timeOfDay === 'night' ? 'Good evening' : 'Hello';
+  const fallback = `${greetingWord}, ${facts.name}!`;
+
+  try {
+    const anthropic = new Anthropic();
+    const userMessage = [
+      `Elder's name: ${facts.name}`,
+      `Time of day: ${facts.timeOfDay}`,
+      facts.note ? `Note to maybe mention: ${facts.note}` : null,
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    const message = await anthropic.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 60,
+      system: COMPANION_SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: userMessage }],
+    });
+
+    const textBlock = message.content.find((block) => block.type === 'text');
+    const text = textBlock?.type === 'text' ? textBlock.text.trim() : '';
+    return text || fallback;
+  } catch (err) {
+    console.error('[voice] generateCompanionGreeting failed:', err);
+    return fallback;
+  }
+}
+
 export async function processVoiceInput(
   transcript: string,
   userContext?: string,

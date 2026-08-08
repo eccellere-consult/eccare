@@ -120,6 +120,9 @@ model User {
   healthCoverageItems  HealthCoverageItem[] @relation("HealthCoverageUser")
   healthCoverageAdded  HealthCoverageItem[] @relation("HealthCoverageAdder")
 
+  // AI Companion — daily mood check-ins
+  moodLogs MoodLog[]
+
   @@index([phone])
   @@index([role])
 }
@@ -410,6 +413,30 @@ enum HealthCoverageType {
   insurance_plan
   diagnostics
   wearable_gadget
+}
+
+/// A quick, self-reported daily mood check-in — the AI Companion's "How are you
+/// feeling today?" prompt on the elder home page. Elder-only writes (a caregiver
+/// answering on the elder's behalf would defeat the point of a self-report);
+/// caregivers get read access via the same requireHealthAccess tier as the rest of
+/// Health Essentials, surfaced as a simple trend on the family health page.
+model MoodLog {
+  id        String    @id @default(cuid())
+  userId    String
+  mood      MoodValue
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+enum MoodValue {
+  great
+  good
+  okay
+  low
+  not_well
 }
 
 model Prescription {
