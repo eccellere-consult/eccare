@@ -31,9 +31,10 @@ const RSVPS = [
   { value: 'not_going', label: "Can't" },
 ] as const;
 
-/** One event card with RSVP controls — shared by /community/events (shows every
- *  event) and /community/entertainment (pre-filtered to social categories), so the
- *  rendering never drifts between the two views. */
+/** One event card with RSVP controls, rendered by /community/events — the single
+ *  merged "Entertainment & Social Events" page (previously split across a separate
+ *  /community/events and /community/entertainment; the category filter chips on
+ *  that page now do what the second page used to). */
 export function EventCard({ event, onRsvp, showCategory }: { event: CommunityEventData; onRsvp: (eventId: string, status: string) => void; showCategory?: boolean }) {
   return (
     <Card>

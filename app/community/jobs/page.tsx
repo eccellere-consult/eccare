@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Phone, Clock, Briefcase } from 'lucide-react';
+import { Phone, Clock, Briefcase, Home } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,7 @@ interface Posting {
   description: string | null;
   compensation: string | null;
   contactPhone: string;
+  houseNumber: string | null;
   preferredContactTime: string | null;
   status: 'active' | 'closed';
   postedBy: { id: string; name: string };
@@ -36,6 +37,7 @@ const EMPTY_FORM = {
   description: '',
   compensation: '',
   contactPhone: '',
+  houseNumber: '',
   preferredContactTime: '',
 };
 
@@ -73,6 +75,7 @@ export default function JobsPage() {
         description: form.description || undefined,
         compensation: form.compensation || undefined,
         contactPhone: form.contactPhone,
+        houseNumber: form.houseNumber || undefined,
         preferredContactTime: form.preferredContactTime || undefined,
       });
       setForm({ ...EMPTY_FORM, postingType: activeTab });
@@ -163,9 +166,15 @@ export default function JobsPage() {
                     <Input id="jp-phone" value={form.contactPhone} onChange={(e) => setForm((f) => ({ ...f, contactPhone: e.target.value }))} placeholder="9876543210" />
                   </div>
                 </div>
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="jp-time">Preferred contact time (optional)</Label>
-                  <Input id="jp-time" value={form.preferredContactTime} onChange={(e) => setForm((f) => ({ ...f, preferredContactTime: e.target.value }))} placeholder="Evenings after 6pm" />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="jp-time">Preferred contact time (optional)</Label>
+                    <Input id="jp-time" value={form.preferredContactTime} onChange={(e) => setForm((f) => ({ ...f, preferredContactTime: e.target.value }))} placeholder="Evenings after 6pm" />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="jp-house">House / flat number (optional)</Label>
+                    <Input id="jp-house" value={form.houseNumber} onChange={(e) => setForm((f) => ({ ...f, houseNumber: e.target.value }))} placeholder="A-204" />
+                  </div>
                 </div>
                 {formError && <p className="text-sm text-danger-600">{formError}</p>}
                 <Button type="submit" disabled={busy || !form.title || !form.contactPhone} className="self-start">
@@ -200,6 +209,12 @@ export default function JobsPage() {
                       {p.compensation && <p className="text-sm font-semibold text-primary-900">{p.compensation}</p>}
                       {p.description && <p className="mt-1 text-sm text-text-secondary">{p.description}</p>}
                       <p className="mt-1 text-xs text-text-secondary">Posted by {p.postedBy.name}</p>
+                      {p.houseNumber && (
+                        <p className="mt-1 flex items-center gap-1.5 text-xs text-text-secondary">
+                          <Home className="h-3.5 w-3.5" />
+                          House {p.houseNumber}
+                        </p>
+                      )}
                       {p.preferredContactTime && (
                         <p className="mt-1 flex items-center gap-1.5 text-xs text-text-secondary">
                           <Clock className="h-3.5 w-3.5" />

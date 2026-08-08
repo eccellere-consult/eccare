@@ -9,6 +9,7 @@ const schema = z.object({
   description: z.string().max(2000).optional(),
   compensation: z.string().max(120).optional(),
   contactPhone: z.string().min(3).max(20),
+  houseNumber: z.string().max(40).optional(),
   preferredContactTime: z.string().max(120).optional(),
   neighborhoodId: z.string().optional(),
 });
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
   const guard = await requireMembership(req, { neighborhoodId: parsed.data.neighborhoodId });
   if (guard.error) return guard.error;
 
-  const { postingType, title, description, compensation, contactPhone, preferredContactTime } = parsed.data;
+  const { postingType, title, description, compensation, contactPhone, houseNumber, preferredContactTime } = parsed.data;
 
   const posting = await prisma.communityJobPosting.create({
     data: {
@@ -55,6 +56,7 @@ export async function POST(req: NextRequest) {
       description,
       compensation,
       contactPhone,
+      houseNumber,
       preferredContactTime,
     },
   });

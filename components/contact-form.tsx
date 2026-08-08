@@ -19,6 +19,21 @@ const CATEGORY_OPTIONS: { value: FormCategory; label: string }[] = [
   { value: 'other', label: 'Other' },
 ];
 
+type HomeMaintenanceCategory =
+  | 'leakage' | 'cleaning' | 'maid' | 'cook' | 'painting' | 'gardening' | 'electrical' | 'carpentry' | 'other';
+
+const HOME_MAINTENANCE_OPTIONS: { value: HomeMaintenanceCategory; label: string }[] = [
+  { value: 'leakage', label: 'Leakage & plumbing' },
+  { value: 'cleaning', label: 'Cleaning' },
+  { value: 'maid', label: 'Maid' },
+  { value: 'cook', label: 'Cook' },
+  { value: 'painting', label: 'Painting' },
+  { value: 'gardening', label: 'Gardening' },
+  { value: 'electrical', label: 'Electrical' },
+  { value: 'carpentry', label: 'Carpentry' },
+  { value: 'other', label: 'Other home service' },
+];
+
 export function ContactForm({
   elderUserId,
   inCommunity,
@@ -34,6 +49,7 @@ export function ContactForm({
   const [phone, setPhone] = useState('');
   const [category, setCategory] = useState<FormCategory>('neighbor');
   const [providerType, setProviderType] = useState('');
+  const [homeMaintenanceCategory, setHomeMaintenanceCategory] = useState<HomeMaintenanceCategory | ''>('');
   const [relationship, setRelationship] = useState('');
   const [shareWithCommunity, setShareWithCommunity] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -74,6 +90,10 @@ export function ContactForm({
               phone,
               category,
               providerType: category === 'serviceProvider' ? providerType || undefined : undefined,
+              homeMaintenanceCategory:
+                category === 'serviceProvider' && shareWithCommunity && homeMaintenanceCategory
+                  ? homeMaintenanceCategory
+                  : undefined,
               shareWithCommunity: shareWithCommunity || undefined,
             };
 
@@ -174,6 +194,26 @@ export function ContactForm({
               />
               {shareLabel}
             </label>
+          )}
+
+          {category === 'serviceProvider' && shareWithCommunity && (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="contact-home-category">Is this a home service? (optional)</Label>
+              <select
+                id="contact-home-category"
+                value={homeMaintenanceCategory}
+                onChange={(e) => setHomeMaintenanceCategory(e.target.value as HomeMaintenanceCategory | '')}
+                className="flex h-11 w-full rounded-xl border border-border bg-surface px-4 py-2 text-base text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 pointer-coarse:min-h-tap-coarse"
+              >
+                <option value="">Not a home service</option>
+                {HOME_MAINTENANCE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              <p className="text-xs text-text-secondary">
+                Picking one also shows this in Home services under &ldquo;Suggested by residents.&rdquo;
+              </p>
+            </div>
           )}
 
           {error && <p className="text-sm text-danger-600">{error}</p>}

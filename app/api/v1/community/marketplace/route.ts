@@ -10,6 +10,7 @@ const schema = z.object({
   price: z.number().positive().optional(),
   priceUnit: z.string().max(40).optional(),
   contactPhone: z.string().min(3).max(20),
+  houseNumber: z.string().max(40).optional(),
   preferredContactTime: z.string().max(120).optional(),
   neighborhoodId: z.string().optional(),
 });
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
   const guard = await requireMembership(req, { neighborhoodId: parsed.data.neighborhoodId });
   if (guard.error) return guard.error;
 
-  const { listingType, title, description, price, priceUnit, contactPhone, preferredContactTime } =
+  const { listingType, title, description, price, priceUnit, contactPhone, houseNumber, preferredContactTime } =
     parsed.data;
 
   const listing = await prisma.marketplaceListing.create({
@@ -58,6 +59,7 @@ export async function POST(req: NextRequest) {
       price,
       priceUnit,
       contactPhone,
+      houseNumber,
       preferredContactTime,
     },
   });

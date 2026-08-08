@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Phone, Clock, ImagePlus, Tag } from 'lucide-react';
+import { Phone, Clock, ImagePlus, Tag, Home } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,7 @@ interface Listing {
   priceUnit: string | null;
   imagePath: string | null;
   contactPhone: string;
+  houseNumber: string | null;
   preferredContactTime: string | null;
   status: 'active' | 'reserved' | 'closed';
   postedBy: { id: string; name: string };
@@ -45,6 +46,7 @@ const EMPTY_FORM = {
   price: '',
   priceUnit: '',
   contactPhone: '',
+  houseNumber: '',
   preferredContactTime: '',
 };
 
@@ -88,6 +90,7 @@ export default function MarketplacePage() {
         price,
         priceUnit: form.priceUnit || undefined,
         contactPhone: form.contactPhone,
+        houseNumber: form.houseNumber || undefined,
         preferredContactTime: form.preferredContactTime || undefined,
       });
       setForm({ ...EMPTY_FORM, listingType: activeTab });
@@ -215,6 +218,10 @@ export default function MarketplacePage() {
                     <Input id="mp-time" value={form.preferredContactTime} onChange={(e) => setForm((f) => ({ ...f, preferredContactTime: e.target.value }))} placeholder="Evenings after 6pm" />
                   </div>
                 </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="mp-house">House / flat number (optional)</Label>
+                  <Input id="mp-house" value={form.houseNumber} onChange={(e) => setForm((f) => ({ ...f, houseNumber: e.target.value }))} placeholder="A-204" />
+                </div>
                 {formError && <p className="text-sm text-danger-600">{formError}</p>}
                 <Button type="submit" disabled={busy || !form.title || !form.contactPhone} className="self-start">
                   {busy ? 'Posting…' : 'Post listing'}
@@ -294,6 +301,12 @@ function ListingCard({
           )}
           {listing.description && <p className="mt-1 text-sm text-text-secondary">{listing.description}</p>}
           <p className="mt-1 text-xs text-text-secondary">Posted by {listing.postedBy.name}</p>
+          {listing.houseNumber && (
+            <p className="mt-1 flex items-center gap-1.5 text-xs text-text-secondary">
+              <Home className="h-3.5 w-3.5" />
+              House {listing.houseNumber}
+            </p>
+          )}
           {listing.preferredContactTime && (
             <p className="mt-1 flex items-center gap-1.5 text-xs text-text-secondary">
               <Clock className="h-3.5 w-3.5" />

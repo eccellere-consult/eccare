@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   UtensilsCrossed,
@@ -106,6 +107,16 @@ const SERVICE_CATEGORIES: ServiceCategory[] = [
 ];
 
 export default function ServicesPage() {
+  // Home Safety & Security (cameras, sensors, smart access) is a caregiver-managed
+  // setup concern, not something an elder needs to configure on their own home screen.
+  const [myRole, setMyRole] = useState<string | null>(null);
+  useEffect(() => {
+    fetch('/api/v1/auth/me', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((j) => { if (j.success) setMyRole(j.data.role); })
+      .catch(() => {});
+  }, []);
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-text">Quick services</h1>
@@ -129,20 +140,22 @@ export default function ServicesPage() {
         </Card>
       </Link>
 
-      <Link href="/services/safety" className="mt-4 block">
-        <Card className="border-border bg-surface transition-shadow hover:shadow-md">
-          <CardContent className="flex items-center gap-4 pt-6">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-50">
-              <ShieldCheck className="h-6 w-6 text-primary-600" />
-            </span>
-            <div className="flex-1">
-              <p className="font-bold text-text">Home Safety & Security</p>
-              <p className="text-sm text-text-secondary">Cameras, video chat, fall & gas sensors, smart access — coming soon</p>
-            </div>
-            <ChevronRight className="h-5 w-5 shrink-0 text-text-secondary" />
-          </CardContent>
-        </Card>
-      </Link>
+      {myRole !== 'elder' && (
+        <Link href="/services/safety" className="mt-4 block">
+          <Card className="border-border bg-surface transition-shadow hover:shadow-md">
+            <CardContent className="flex items-center gap-4 pt-6">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-50">
+                <ShieldCheck className="h-6 w-6 text-primary-600" />
+              </span>
+              <div className="flex-1">
+                <p className="font-bold text-text">Home Safety & Security</p>
+                <p className="text-sm text-text-secondary">Cameras, video chat, fall & gas sensors, smart access — coming soon</p>
+              </div>
+              <ChevronRight className="h-5 w-5 shrink-0 text-text-secondary" />
+            </CardContent>
+          </Card>
+        </Link>
+      )}
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         {SERVICE_CATEGORIES.map(({ key, label, description, icon: Icon, providers }) => (
