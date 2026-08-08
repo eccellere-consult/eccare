@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { Phone, Wrench, BadgeCheck } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { Phone, Wrench, BadgeCheck, UserPlus, ChevronRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,8 +33,21 @@ interface Vendor {
   verified: boolean;
   homeMaintenanceCategory: HomeCategory | null;
 }
+interface Me { memberships: { role: 'member' | 'committee' | 'admin' }[] }
+
 export default function HomeServicesPage() {
   const { data, loading, error, reload } = useCommunityData<Vendor[]>('/community/vendors');
+  const { data: me } = useCommunityData<Me>('/community/me');
+  const canManage = me?.memberships?.[0]?.role === 'committee' || me?.memberships?.[0]?.role === 'admin';
+
+  const [myRole, setMyRole] = useState<string | null>(null);
+  useEffect(() => {
+    fetch('/api/v1/auth/me', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((j) => { if (j.success) setMyRole(j.data.role); })
+      .catch(() => {});
+  }, []);
+  const contactsHref = myRole === 'elder' ? '/elder/contacts' : '/family/contacts';
 
   const [activeCategory, setActiveCategory] = useState<HomeCategory | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -69,7 +83,7 @@ export default function HomeServicesPage() {
     <CommunityPageFrame
       title="Home services"
       subtitle="Find help for leakage, cleaning, cooking, painting, gardening and more."
-      action={<Button onClick={() => setShowForm((s) => !s)}>{showForm ? 'Cancel' : 'Add a provider'}</Button>}
+      action={canManage ? <Button onClick={() => setShowForm((s) => !s)}>{showForm ? 'Cancel' : 'Add a provider'}</Button> : undefined}
       loading={loading}
       error={error}
     >
@@ -90,7 +104,24 @@ export default function HomeServicesPage() {
           ))}
         </div>
 
-        {showForm && (
+        {!canManage && (
+          <Link href={contactsHref}>
+            <Card className="border-accent-100 bg-accent-50 transition-shadow hover:shadow-md">
+              <CardContent className="flex items-center gap-4 py-4">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface">
+                  <UserPlus className="h-5 w-5 text-accent-600" />
+                </span>
+                <div className="flex-1">
+                  <p className="font-bold text-text">Know a great local provider?</p>
+                  <p className="text-sm text-text-secondary">Add them to your Contacts and share with the community</p>
+                </div>
+                <ChevronRight className="h-5 w-5 shrink-0 text-text-secondary" />
+              </CardContent>
+            </Card>
+          </Link>
+        )}
+
+        {showForm && canManage && (
           <Card>
             <CardContent className="pt-6">
               <form onSubmit={create} className="flex flex-col gap-4">
@@ -143,14 +174,17 @@ export default function HomeServicesPage() {
                     <Wrench className="h-5 w-5 text-primary-600" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <p className="truncate font-bold text-text">{v.name}</p>
+                    <Link href={`/community/vendors/${v.id}`} className="flex items-center gap-1.5 font-bold text-text hover:underline">
+                      <span className="truncate">{v.name}</span>
                       {v.verified && <BadgeCheck className="h-4 w-4 shrink-0 text-success-600" />}
-                    </div>
+                    </Link>
                     <div className="mt-0.5">
                       <Badge variant="muted">{CATEGORIES.find((c) => c.key === v.homeMaintenanceCategory)?.label}</Badge>
                     </div>
                     {v.address && <p className="mt-1 truncate text-sm text-text-secondary">{v.address}</p>}
+                    <Link href={`/community/vendors/${v.id}`} className="mt-1 inline-block text-xs font-semibold text-primary-600 hover:underline">
+                      Raise a request or order
+                    </Link>
                   </div>
                   <a
                     href={`tel:${v.phone}`}

@@ -41,13 +41,21 @@ export async function GET(req: NextRequest) {
   return ok(listings);
 }
 
-/** Any member can add a vendor; `verified` stays false until the committee vouches
- *  for it, so the UI can distinguish vetted from crowd-sourced entries. */
+/** Any member can add a general vendor; `verified` stays false until the committee
+ *  vouches for it, so the UI can distinguish vetted from crowd-sourced entries.
+ *  Home Services listings are different: a resident's way to suggest a provider is
+ *  adding it to their own Contacts and sharing it with the community (see the
+ *  `Contact.shareWithNeighbours` flow) — the Home Services directory itself is
+ *  committee/admin-curated, so creating one with `homeMaintenanceCategory` set
+ *  requires manage permission, same as editing one already does. */
 export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(await req.json());
   if (!parsed.success) return invalidInput('Please enter a name, category, and phone number.');
 
-  const guard = await requireMembership(req, { neighborhoodId: parsed.data.neighborhoodId });
+  const guard = await requireMembership(req, {
+    neighborhoodId: parsed.data.neighborhoodId,
+    manage: !!parsed.data.homeMaintenanceCategory,
+  });
   if (guard.error) return guard.error;
 
   const { name, category, homeMaintenanceCategory, phone, address, description } = parsed.data;
