@@ -841,6 +841,13 @@ model LocalListing {
   // "Electrician", "Plumber"). Null means "not tagged as a home-maintenance vendor",
   // not "unknown" — most vendors (grocers, tutors, etc.) legitimately have none.
   homeMaintenanceCategory HomeMaintenanceCategory?
+  // Optional structured tag for the Local Vendors (shops) filtered/grouped view —
+  // same "tag alongside the free-text category" pattern as homeMaintenanceCategory
+  // above, just for retail shops instead of home-maintenance people. Null means
+  // "not tagged as a shop", not "unknown" — a listing should have at most one of
+  // homeMaintenanceCategory / shopCategory set, never both, since a vendor is either
+  // a home-maintenance person or a shop, not both at once.
+  shopCategory   ShopCategory?
   phone          String
   address        String?  @db.Text
   description    String?  @db.Text
@@ -856,6 +863,7 @@ model LocalListing {
 
   @@index([neighborhoodId, category])
   @@index([neighborhoodId, homeMaintenanceCategory])
+  @@index([neighborhoodId, shopCategory])
 }
 
 enum HomeMaintenanceCategory {
@@ -867,6 +875,16 @@ enum HomeMaintenanceCategory {
   gardening
   electrical
   carpentry
+  other
+}
+
+enum ShopCategory {
+  medical_store
+  supermarket
+  electrical_supplies
+  hardware_store
+  stationery
+  bakery
   other
 }
 
@@ -1176,6 +1194,13 @@ enum GeriatricCareCategory {
   massage
   yoga
   meditation
+  // Added as the classification's 4th elder-care segment — doctor home visits,
+  // Ayurveda, hospitals, and ambulance numbers, distinct from Home Services (home
+  // maintenance people) and Local Vendors (shops).
+  doctor_home_visit
+  ayurveda
+  hospital
+  ambulance
 }
 
 model GeriatricCareListing {
