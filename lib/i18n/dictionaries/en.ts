@@ -19,10 +19,12 @@ const en = {
   'elder.home.sosSending': 'Sending...',
   'elder.home.needHelpNow': 'Need Help Now',
   'elder.home.callAmbulance': 'Call Ambulance',
+  'elder.home.callPolice': 'Call Police',
   'elder.home.prescriptionsSub': 'Quick access to your latest prescriptions.',
   'elder.home.yourProfile': 'Your Profile',
   'elder.home.confirmSOS': 'Send an emergency alert to your family right now?',
   'elder.home.confirmAmbulance': 'Call ambulance now? This will dial {number}.',
+  'elder.home.confirmPolice': 'Call police now? This will dial {number}.',
   'elder.home.sosSuccess': 'Help is coming. Your family has been notified.',
   'elder.home.sosErrorGeneric': 'Could not send alert. Please try again.',
 

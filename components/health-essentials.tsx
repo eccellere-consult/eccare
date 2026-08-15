@@ -15,6 +15,8 @@ import {
   Upload,
   Pencil,
   Trash,
+  MessageCircle,
+  Video,
   type LucideIcon,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -33,8 +35,16 @@ interface Props {
 interface DoctorHospitalProfile {
   familyDoctorName: string | null;
   familyDoctorPhone: string | null;
+  familyDoctorVideoLink: string | null;
   preferredHospitalName: string | null;
   preferredHospitalLocation: string | null;
+}
+
+/** No paid WhatsApp Business API here — same wa.me share-intent pattern as
+ *  app/admin/invite/page.tsx and the Police button, just opening a chat rather
+ *  than pre-filling a message. */
+function waLink(phone: string): string {
+  return `https://wa.me/${phone.replace(/[^\d]/g, '')}`;
 }
 
 type CoverageType = 'hospital_plan' | 'insurance_plan' | 'diagnostics' | 'wearable_gadget';
@@ -58,7 +68,13 @@ const COVERAGE_TYPES: { key: CoverageType; label: string; icon: LucideIcon }[] =
   { key: 'wearable_gadget', label: 'Wearables & gadgets', icon: Watch },
 ];
 
-const EMPTY_FORM = { familyDoctorName: '', familyDoctorPhone: '', preferredHospitalName: '', preferredHospitalLocation: '' };
+const EMPTY_FORM = {
+  familyDoctorName: '',
+  familyDoctorPhone: '',
+  familyDoctorVideoLink: '',
+  preferredHospitalName: '',
+  preferredHospitalLocation: '',
+};
 
 export function HealthEssentials({ elderUserId }: Props) {
   const qs = elderUserId ? `?elderUserId=${elderUserId}` : '';
@@ -73,6 +89,7 @@ export function HealthEssentials({ elderUserId }: Props) {
       setForm({
         familyDoctorName: profile.data.familyDoctorName ?? '',
         familyDoctorPhone: profile.data.familyDoctorPhone ?? '',
+        familyDoctorVideoLink: profile.data.familyDoctorVideoLink ?? '',
         preferredHospitalName: profile.data.preferredHospitalName ?? '',
         preferredHospitalLocation: profile.data.preferredHospitalLocation ?? '',
       });
@@ -122,6 +139,7 @@ export function HealthEssentials({ elderUserId }: Props) {
         elderUserId,
         familyDoctorName: null,
         familyDoctorPhone: null,
+        familyDoctorVideoLink: null,
         preferredHospitalName: null,
         preferredHospitalLocation: null,
       });
@@ -223,15 +241,39 @@ export function HealthEssentials({ elderUserId }: Props) {
                         <p className="truncate text-sm text-text-secondary">{profile.data.familyDoctorPhone}</p>
                       )}
                     </div>
-                    {profile.data.familyDoctorPhone && (
-                      <a
-                        href={`tel:${profile.data.familyDoctorPhone}`}
-                        aria-label="Call family doctor"
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-600 text-white"
-                      >
-                        <Stethoscope className="h-5 w-5" />
-                      </a>
-                    )}
+                    <div className="flex shrink-0 gap-2">
+                      {profile.data.familyDoctorPhone && (
+                        <>
+                          <a
+                            href={`tel:${profile.data.familyDoctorPhone}`}
+                            aria-label="Call family doctor"
+                            className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-600 text-white"
+                          >
+                            <Stethoscope className="h-5 w-5" />
+                          </a>
+                          <a
+                            href={waLink(profile.data.familyDoctorPhone)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label="WhatsApp family doctor"
+                            className="flex h-11 w-11 items-center justify-center rounded-xl bg-success-600 text-white"
+                          >
+                            <MessageCircle className="h-5 w-5" />
+                          </a>
+                        </>
+                      )}
+                      {profile.data.familyDoctorVideoLink && (
+                        <a
+                          href={profile.data.familyDoctorVideoLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label="Video call family doctor"
+                          className="flex h-11 w-11 items-center justify-center rounded-xl border border-primary-600 text-primary-600"
+                        >
+                          <Video className="h-5 w-5" />
+                        </a>
+                      )}
+                    </div>
                   </div>
                 )}
                 {profile.data?.preferredHospitalName && (
@@ -274,15 +316,35 @@ export function HealthEssentials({ elderUserId }: Props) {
                       placeholder="9876543210"
                     />
                     {form.familyDoctorPhone && (
-                      <a
-                        href={`tel:${form.familyDoctorPhone}`}
-                        aria-label="Call family doctor"
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-600 text-white"
-                      >
-                        <Stethoscope className="h-5 w-5" />
-                      </a>
+                      <>
+                        <a
+                          href={`tel:${form.familyDoctorPhone}`}
+                          aria-label="Call family doctor"
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-600 text-white"
+                        >
+                          <Stethoscope className="h-5 w-5" />
+                        </a>
+                        <a
+                          href={waLink(form.familyDoctorPhone)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label="WhatsApp family doctor"
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-success-600 text-white"
+                        >
+                          <MessageCircle className="h-5 w-5" />
+                        </a>
+                      </>
                     )}
                   </div>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="he-doc-video">Video call link (Google Meet, etc. — optional)</Label>
+                  <Input
+                    id="he-doc-video"
+                    value={form.familyDoctorVideoLink}
+                    onChange={(e) => setForm((f) => ({ ...f, familyDoctorVideoLink: e.target.value }))}
+                    placeholder="https://meet.google.com/…"
+                  />
                 </div>
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="he-hosp-name">Preferred / regular hospital</Label>
