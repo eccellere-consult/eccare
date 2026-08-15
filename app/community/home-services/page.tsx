@@ -36,7 +36,9 @@ interface Vendor {
 interface Me { memberships: { role: 'member' | 'committee' | 'admin' }[] }
 
 export default function HomeServicesPage() {
-  const { data, loading, error, reload } = useCommunityData<Vendor[]>('/community/vendors');
+  // Explicit param (even empty) is what the server now uses to disambiguate this
+  // view from the plain Vendors list — see app/api/v1/community/vendors/route.ts.
+  const { data, loading, error, reload } = useCommunityData<Vendor[]>('/community/vendors?homeMaintenanceCategory=');
   const { data: me } = useCommunityData<Me>('/community/me');
   const canManage = me?.memberships?.[0]?.role === 'committee' || me?.memberships?.[0]?.role === 'admin';
 

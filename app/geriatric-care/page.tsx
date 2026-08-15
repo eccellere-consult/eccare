@@ -13,6 +13,10 @@ import {
   MapPin,
   BadgeCheck,
   Search,
+  Stethoscope,
+  Leaf,
+  Building2,
+  Siren,
   type LucideIcon,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -41,6 +45,10 @@ interface CategoryMeta {
 }
 
 const CATEGORIES: CategoryMeta[] = [
+  { key: 'doctor_home_visit', label: 'Doctors (home visit)', description: 'Doctors available to visit at home', icon: Stethoscope },
+  { key: 'ayurveda', label: 'Ayurveda', description: 'Traditional Ayurvedic practitioners', icon: Leaf },
+  { key: 'hospital', label: 'Hospitals', description: 'Elder-care-focused hospitals nearby', icon: Building2 },
+  { key: 'ambulance', label: 'Ambulance', description: 'Elder-care ambulance and transport services', icon: Siren },
   { key: 'self_help_group', label: 'Self-help groups', description: 'Peer support and shared wellness circles', icon: Users },
   { key: 'ngo', label: 'NGOs & local groups', description: 'Non-profits working for elder welfare', icon: HandHeart },
   { key: 'palliative_care', label: 'Palliative care', description: 'Comfort-focused care and support', icon: Heart },
