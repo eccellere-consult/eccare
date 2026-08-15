@@ -232,8 +232,8 @@ export default function PrivacyPolicyPage() {
           <P>
             If you have questions about this policy, or want to exercise any of the rights described
             above, contact us at{' '}
-            <a href="mailto:eccellere1@gmail.com" className="text-primary-600 underline">
-              eccellere1@gmail.com
+            <a href="mailto:contact@eccare.in" className="text-primary-600 underline">
+              contact@eccare.in
             </a>.
           </P>
         </Section>
