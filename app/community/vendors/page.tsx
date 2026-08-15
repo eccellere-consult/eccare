@@ -71,6 +71,13 @@ export default function VendorsPage() {
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState('');
   const [actionId, setActionId] = useState<string | null>(null);
+  // Unsaved category edits, keyed by vendor id — only present while the admin has
+  // touched a dropdown and not yet saved. Absent means "show whatever's on the
+  // server" (via bucketOf/subCategoryOf below), so a reload cleanly drops back to
+  // server truth once a save lands.
+  const [pendingCategory, setPendingCategory] = useState<Record<string, { bucket: Bucket; sub?: string }>>({});
+  const [categoryError, setCategoryError] = useState<Record<string, string>>({});
+  const [savingCategoryId, setSavingCategoryId] = useState<string | null>(null);
 
   const pendingRequests = (providerRequests ?? []).filter((r) => r.status === 'pending');
 
@@ -101,23 +108,58 @@ export default function VendorsPage() {
     return 'general';
   }
 
-  /** Committee/admin re-classifies a vendor into General / Home Service / Elder Care.
-   *  Switching into Home Service or Elder Care defaults to the first sub-category
-   *  (or keeps the existing one if already in that bucket) so the change is a single
-   *  click; the sub-category select next to it lets them refine from there. Always
-   *  sends both fields so the previous bucket's tag is explicitly cleared — enforces
-   *  "at most one of the three tags set" at the call site, matching the schema's
-   *  documented invariant. */
-  async function recategorize(v: Vendor, bucket: Bucket, subCategory?: string) {
-    setActionId(v.id);
+  // The dropdowns read/write through these three helpers instead of `v` directly, so
+  // an in-progress edit (picked but not yet saved) displays immediately without
+  // waiting on a round trip, and a reload after a real save cleanly replaces it.
+  function displayedBucket(v: Vendor): Bucket {
+    return pendingCategory[v.id]?.bucket ?? bucketOf(v);
+  }
+  function displayedSub(v: Vendor): string {
+    const pendingSub = pendingCategory[v.id]?.sub;
+    if (pendingSub) return pendingSub;
+    const bucket = displayedBucket(v);
+    if (bucket === 'home') return v.homeMaintenanceCategory ?? HOME_CATEGORIES[0].key;
+    if (bucket === 'elder') return v.elderCareCategory ?? ELDER_CATEGORIES[0].key;
+    return '';
+  }
+  function isCategoryDirty(v: Vendor): boolean {
+    return v.id in pendingCategory;
+  }
+
+  function pickBucket(v: Vendor, bucket: Bucket) {
+    setPendingCategory((p) => ({ ...p, [v.id]: { bucket } }));
+  }
+  function pickSub(v: Vendor, sub: string) {
+    setPendingCategory((p) => ({ ...p, [v.id]: { bucket: displayedBucket(v), sub } }));
+  }
+
+  /** Committee/admin re-classifies a vendor into General / Home Service / Elder Care —
+   *  requires an explicit Save so a bucket pick and a sub-category refinement land as
+   *  one PATCH instead of two, and so a failure (e.g. a schema change not yet live)
+   *  surfaces as a visible error instead of silently doing nothing. Always sends both
+   *  fields so the previous bucket's tag is explicitly cleared — enforces "at most one
+   *  of the three tags set" at the call site, matching the schema's documented
+   *  invariant. */
+  async function saveCategory(v: Vendor) {
+    const bucket = displayedBucket(v);
+    const sub = displayedSub(v);
+    setSavingCategoryId(v.id);
+    setCategoryError((e) => ({ ...e, [v.id]: '' }));
     try {
       await communityApi.patch(`/community/vendors/${v.id}`, {
-        homeMaintenanceCategory: bucket === 'home' ? (subCategory ?? v.homeMaintenanceCategory ?? HOME_CATEGORIES[0].key) : null,
-        elderCareCategory: bucket === 'elder' ? (subCategory ?? v.elderCareCategory ?? ELDER_CATEGORIES[0].key) : null,
+        homeMaintenanceCategory: bucket === 'home' ? sub : null,
+        elderCareCategory: bucket === 'elder' ? sub : null,
+      });
+      setPendingCategory((p) => {
+        const next = { ...p };
+        delete next[v.id];
+        return next;
       });
       reload();
+    } catch (err) {
+      setCategoryError((e) => ({ ...e, [v.id]: err instanceof Error ? err.message : 'Could not save. Please try again.' }));
     } finally {
-      setActionId(null);
+      setSavingCategoryId(null);
     }
   }
 
@@ -245,42 +287,48 @@ export default function VendorsPage() {
                       <select
                         aria-label={`Category for ${v.name}`}
                         className="rounded-lg border border-border bg-surface px-2 py-1 text-xs text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
-                        value={bucketOf(v)}
-                        disabled={actionId === v.id}
-                        onChange={(e) => recategorize(v, e.target.value as Bucket)}
+                        value={displayedBucket(v)}
+                        disabled={savingCategoryId === v.id}
+                        onChange={(e) => pickBucket(v, e.target.value as Bucket)}
                       >
                         <option value="general">General Vendor</option>
                         <option value="home">Home Service</option>
                         <option value="elder">Elder Care</option>
                       </select>
-                      {bucketOf(v) === 'home' && (
+                      {displayedBucket(v) === 'home' && (
                         <select
                           aria-label={`Home service category for ${v.name}`}
                           className="rounded-lg border border-border bg-surface px-2 py-1 text-xs text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
-                          value={v.homeMaintenanceCategory ?? HOME_CATEGORIES[0].key}
-                          disabled={actionId === v.id}
-                          onChange={(e) => recategorize(v, 'home', e.target.value)}
+                          value={displayedSub(v)}
+                          disabled={savingCategoryId === v.id}
+                          onChange={(e) => pickSub(v, e.target.value)}
                         >
                           {HOME_CATEGORIES.map((c) => (
                             <option key={c.key} value={c.key}>{c.label}</option>
                           ))}
                         </select>
                       )}
-                      {bucketOf(v) === 'elder' && (
+                      {displayedBucket(v) === 'elder' && (
                         <select
                           aria-label={`Elder care category for ${v.name}`}
                           className="rounded-lg border border-border bg-surface px-2 py-1 text-xs text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
-                          value={v.elderCareCategory ?? ELDER_CATEGORIES[0].key}
-                          disabled={actionId === v.id}
-                          onChange={(e) => recategorize(v, 'elder', e.target.value)}
+                          value={displayedSub(v)}
+                          disabled={savingCategoryId === v.id}
+                          onChange={(e) => pickSub(v, e.target.value)}
                         >
                           {ELDER_CATEGORIES.map((c) => (
                             <option key={c.key} value={c.key}>{c.label}</option>
                           ))}
                         </select>
                       )}
+                      {isCategoryDirty(v) && (
+                        <Button size="sm" disabled={savingCategoryId === v.id} onClick={() => saveCategory(v)}>
+                          {savingCategoryId === v.id ? 'Saving…' : 'Save'}
+                        </Button>
+                      )}
                     </div>
                   )}
+                  {categoryError[v.id] && <p className="mt-1 text-xs text-danger-600">{categoryError[v.id]}</p>}
                   {v.address && <p className="mt-1 truncate text-sm text-text-secondary">{v.address}</p>}
                   <Link href={`/community/vendors/${v.id}`} className="mt-1 inline-block text-xs font-semibold text-primary-600 hover:underline">
                     View catalog
