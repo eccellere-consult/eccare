@@ -11,6 +11,9 @@ const patchSchema = z.object({
   elderUserId: z.string().optional(),
   familyDoctorName: z.string().max(160).nullable().optional(),
   familyDoctorPhone: z.string().max(20).nullable().optional(),
+  // Google Meet or similar meeting link — alongside the tel: dial-out
+  // (familyDoctorPhone) and a WhatsApp chat built from that same phone number.
+  familyDoctorVideoLink: z.string().max(500).nullable().optional(),
   preferredHospitalName: z.string().max(160).nullable().optional(),
   preferredHospitalLocation: z.string().max(300).nullable().optional(),
 });
@@ -24,6 +27,7 @@ export async function GET(req: NextRequest) {
     select: {
       familyDoctorName: true,
       familyDoctorPhone: true,
+      familyDoctorVideoLink: true,
       preferredHospitalName: true,
       preferredHospitalLocation: true,
     },
@@ -49,6 +53,7 @@ export async function PATCH(req: NextRequest) {
     select: {
       familyDoctorName: true,
       familyDoctorPhone: true,
+      familyDoctorVideoLink: true,
       preferredHospitalName: true,
       preferredHospitalLocation: true,
     },

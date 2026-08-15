@@ -15,6 +15,7 @@ import {
   ArrowLeft,
   X,
   Sparkles,
+  Video,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
@@ -120,7 +121,15 @@ interface FoodRequest {
   handler: { name: string } | null;
 }
 
-type Section = 'medications' | 'appointments' | 'notes' | 'food';
+interface FamilyMediaLinkItem {
+  id: string;
+  title: string;
+  url: string;
+  mediaType: 'video' | 'music';
+  description: string | null;
+}
+
+type Section = 'medications' | 'appointments' | 'notes' | 'food' | 'media';
 
 export default function FamilyHealthPage({
   params,
@@ -136,6 +145,7 @@ export default function FamilyHealthPage({
   const notes = useHealthData<HealthNote[]>(`/notes${qs}`);
   const food = useHealthData<FoodRequest[]>(`/food-requests${qs}`);
   const mood = useHealthData<MoodEntry[]>(`/mood${qs}`);
+  const mediaLinks = useHealthData<FamilyMediaLinkItem[]>(`/media-links${qs}`);
 
   const [activeForm, setActiveForm] = useState<Section | null>(null);
   const [busy, setBusy] = useState(false);
@@ -162,6 +172,12 @@ export default function FamilyHealthPage({
 
   // Appt form
   const [apptForm, setApptForm] = useState({ doctorName: '', hospital: '', specialty: '', datetime: '', notes: '' });
+  const [mediaForm, setMediaForm] = useState<{ title: string; url: string; mediaType: 'video' | 'music'; description: string }>({
+    title: '',
+    url: '',
+    mediaType: 'video',
+    description: '',
+  });
 
   // Note form
   const [noteContent, setNoteContent] = useState('');
@@ -384,6 +400,33 @@ export default function FamilyHealthPage({
     } finally {
       setBusy(false);
     }
+  }
+
+  async function addMediaLink(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setFormError('');
+    try {
+      await healthApi.post('/media-links', {
+        elderUserId: elderId,
+        title: mediaForm.title,
+        url: mediaForm.url,
+        mediaType: mediaForm.mediaType,
+        description: mediaForm.description || undefined,
+      });
+      setMediaForm({ title: '', url: '', mediaType: 'video', description: '' });
+      setActiveForm(null);
+      mediaLinks.reload();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Failed to add link.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeMediaLink(id: string) {
+    await healthApi.del(`/media-links/${id}`);
+    mediaLinks.reload();
   }
 
   async function addNote(e: React.FormEvent) {
@@ -940,6 +983,81 @@ export default function FamilyHealthPage({
                       Cancel
                     </Button>
                   )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Videos & music — caregiver-curated links, distinct from the admin-curated
+          Wellness list the elder also sees. */}
+      <section className="mt-8">
+        <div className="flex items-center justify-between">
+          <h2 className="flex items-center gap-2 text-lg font-bold text-text">
+            <Video className="h-5 w-5 text-primary-600" /> Videos & music
+          </h2>
+          <Button size="sm" onClick={() => setActiveForm(activeForm === 'media' ? null : 'media')}>
+            <Plus className="h-4 w-4" /> Add
+          </Button>
+        </div>
+
+        {activeForm === 'media' && (
+          <Card className="mt-3">
+            <CardContent className="pt-6">
+              <form onSubmit={addMediaLink} className="flex flex-col gap-3">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="flex flex-col gap-1">
+                    <Label htmlFor="mediaTitle">Title</Label>
+                    <Input id="mediaTitle" value={mediaForm.title} onChange={(e) => setMediaForm((f) => ({ ...f, title: e.target.value }))} placeholder="Morning bhajans" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Label htmlFor="mediaType">Type</Label>
+                    <select
+                      id="mediaType"
+                      value={mediaForm.mediaType}
+                      onChange={(e) => setMediaForm((f) => ({ ...f, mediaType: e.target.value as 'video' | 'music' }))}
+                      className="flex h-11 w-full rounded-xl border border-border bg-surface px-4 py-2 text-base text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+                    >
+                      <option value="video">Video</option>
+                      <option value="music">Music</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="mediaUrl">Link</Label>
+                  <Input id="mediaUrl" value={mediaForm.url} onChange={(e) => setMediaForm((f) => ({ ...f, url: e.target.value }))} placeholder="https://youtube.com/…" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="mediaDescription">Description (optional)</Label>
+                  <Input id="mediaDescription" value={mediaForm.description} onChange={(e) => setMediaForm((f) => ({ ...f, description: e.target.value }))} placeholder="Their favourite Sunday morning playlist" />
+                </div>
+                {formError && activeForm === 'media' && <p className="text-sm text-danger-600">{formError}</p>}
+                <Button type="submit" disabled={busy || !mediaForm.title || !mediaForm.url}>
+                  {busy ? 'Adding…' : 'Add link'}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        )}
+
+        {mediaLinks.loading ? (
+          <p className="mt-3 text-text-secondary">Loading…</p>
+        ) : (mediaLinks.data?.length ?? 0) === 0 ? (
+          <Card className="mt-3"><CardContent className="py-8 text-center text-text-secondary">No links added yet.</CardContent></Card>
+        ) : (
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {mediaLinks.data?.map((link) => (
+              <Card key={link.id}>
+                <CardContent className="flex items-start justify-between gap-3 pt-6">
+                  <div className="min-w-0">
+                    <Badge variant="muted">{link.mediaType}</Badge>
+                    <p className="mt-1 truncate font-bold text-text">{link.title}</p>
+                    {link.description && <p className="truncate text-sm text-text-secondary">{link.description}</p>}
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => removeMediaLink(link.id)}>
+                    Remove
+                  </Button>
                 </CardContent>
               </Card>
             ))}

@@ -20,10 +20,12 @@ const ml: Record<TranslationKey, string> = {
   'elder.home.sosSending': 'അയക്കുന്നു...',
   'elder.home.needHelpNow': 'ഇപ്പോൾ സഹായം വേണം',
   'elder.home.callAmbulance': 'ആംബുലൻസ് വിളിക്കുക',
+  'elder.home.callPolice': 'പോലീസിനെ വിളിക്കുക',
   'elder.home.prescriptionsSub': 'നിങ്ങളുടെ ഏറ്റവും പുതിയ കുറിപ്പടികളിലേക്ക് വേഗത്തിലുള്ള പ്രവേശനം.',
   'elder.home.yourProfile': 'നിങ്ങളുടെ പ്രൊഫൈൽ',
   'elder.home.confirmSOS': 'ഇപ്പോൾ തന്നെ നിങ്ങളുടെ കുടുംബത്തിന് അടിയന്തര അലേർട്ട് അയക്കണോ?',
   'elder.home.confirmAmbulance': 'ഇപ്പോൾ ആംബുലൻസ് വിളിക്കണോ? ഇത് {number} എന്ന നമ്പറിലേക്ക് വിളിക്കും.',
+  'elder.home.confirmPolice': 'ഇപ്പോൾ പോലീസിനെ വിളിക്കണോ? ഇത് {number} എന്ന നമ്പറിലേക്ക് വിളിക്കും.',
   'elder.home.sosSuccess': 'സഹായം എത്തുന്നു. നിങ്ങളുടെ കുടുംബത്തെ അറിയിച്ചിട്ടുണ്ട്.',
   'elder.home.sosErrorGeneric': 'അലേർട്ട് അയക്കാൻ കഴിഞ്ഞില്ല. ദയവായി വീണ്ടും ശ്രമിക്കുക.',
 

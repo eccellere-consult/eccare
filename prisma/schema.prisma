@@ -37,6 +37,10 @@ model User {
   // Health Essentials — quick-reference doctor/hospital info (elder's own record)
   familyDoctorName          String?
   familyDoctorPhone         String?
+  // Google Meet or similar meeting link for the family doctor — alongside the
+  // tel: dial-out (familyDoctorPhone) and WhatsApp chat (wa.me built from the same
+  // phone, no separate field needed) options on the Health Essentials card.
+  familyDoctorVideoLink     String?
   preferredHospitalName     String?
   preferredHospitalLocation String?
 
@@ -119,6 +123,12 @@ model User {
   // Health Essentials — coverage/device records
   healthCoverageItems  HealthCoverageItem[] @relation("HealthCoverageUser")
   healthCoverageAdded  HealthCoverageItem[] @relation("HealthCoverageAdder")
+
+  // Family-curated video/music links to follow — distinct from WellnessVideo
+  // (platform-wide, admin-curated); same elder/adder relation shape as
+  // HealthCoverageItem above.
+  familyMediaLinks      FamilyMediaLink[] @relation("FamilyMediaLinkUser")
+  familyMediaLinksAdded FamilyMediaLink[] @relation("FamilyMediaLinkAdder")
 
   // AI Companion — daily mood check-ins
   moodLogs MoodLog[]
@@ -413,6 +423,33 @@ enum HealthCoverageType {
   insurance_plan
   diagnostics
   wearable_gadget
+}
+
+/// A caregiver-curated video/music link for a specific elder to follow — distinct
+/// from WellnessVideo (platform-wide, admin-curated). Any URL is accepted (YouTube,
+/// Spotify, etc.), not just YouTube, so there's no thumbnail extraction like
+/// WellnessVideo does — just a title, a link, and a type. Same permission tier as
+/// HealthCoverageItem/Appointment: caregiver writes, elder reads.
+model FamilyMediaLink {
+  id          String        @id @default(cuid())
+  userId      String
+  addedById   String
+  title       String
+  url         String
+  mediaType   MediaLinkType @default(video)
+  description String?       @db.Text
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  user    User @relation("FamilyMediaLinkUser", fields: [userId], references: [id], onDelete: Cascade)
+  addedBy User @relation("FamilyMediaLinkAdder", fields: [addedById], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+enum MediaLinkType {
+  video
+  music
 }
 
 /// A quick, self-reported daily mood check-in — the AI Companion's "How are you
