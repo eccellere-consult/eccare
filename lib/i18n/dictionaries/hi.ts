@@ -20,10 +20,12 @@ const hi: Record<TranslationKey, string> = {
   'elder.home.sosSending': 'भेजा जा रहा है...',
   'elder.home.needHelpNow': 'अभी मदद चाहिए',
   'elder.home.callAmbulance': 'एम्बुलेंस बुलाएं',
+  'elder.home.callPolice': 'पुलिस बुलाएं',
   'elder.home.prescriptionsSub': 'अपने नवीनतम नुस्खों तक त्वरित पहुंच।',
   'elder.home.yourProfile': 'आपकी प्रोफ़ाइल',
   'elder.home.confirmSOS': 'क्या अभी अपने परिवार को आपातकालीन अलर्ट भेजना है?',
   'elder.home.confirmAmbulance': 'अभी एम्बुलेंस बुलाएं? यह {number} पर कॉल करेगा।',
+  'elder.home.confirmPolice': 'क्या अभी पुलिस बुलानी है? यह {number} पर कॉल करेगा।',
   'elder.home.sosSuccess': 'मदद आ रही है। आपके परिवार को सूचित कर दिया गया है।',
   'elder.home.sosErrorGeneric': 'अलर्ट नहीं भेजा जा सका। कृपया फिर से प्रयास करें।',
 

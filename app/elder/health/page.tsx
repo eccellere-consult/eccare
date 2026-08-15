@@ -18,6 +18,7 @@ import {
   Flower2,
   Bell,
   X,
+  Video,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -85,6 +86,14 @@ interface WellnessVideo {
   title: string;
   category: 'yoga' | 'exercise' | 'meditation';
   youtubeUrl: string;
+  description: string | null;
+}
+
+interface FamilyMediaLink {
+  id: string;
+  title: string;
+  url: string;
+  mediaType: 'video' | 'music';
   description: string | null;
 }
 
@@ -175,6 +184,7 @@ export default function ElderHealthPage() {
   const food = useHealthData<FoodRequest[]>('/food-requests');
   const prescriptions = useHealthData<Prescription[]>('/prescriptions');
   const wellness = useCommunityData<WellnessVideo[]>('/wellness');
+  const mediaLinks = useHealthData<FamilyMediaLink[]>('/media-links');
 
   const [contacts, setContacts] = useState<EmergencyContact[]>([]);
   useEffect(() => {
@@ -508,6 +518,33 @@ export default function ElderHealthPage() {
         )}
       </section>
 
+      {/* Live Sessions — placeholder, always visible (no real backend yet), same
+          honest "coming soon" tone as app/services/safety/page.tsx: one explanatory
+          line, no fake activity or counts suggesting something's already wired up. */}
+      <section className="mt-8">
+        <h2 className="flex items-center gap-2 text-lg font-bold text-text">
+          <Video className="h-5 w-5 text-primary-600" />
+          Live Sessions
+        </h2>
+        <Card className="mt-3">
+          <CardContent className="flex items-start gap-4 pt-6">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-50">
+              <Video className="h-6 w-6 text-primary-600" />
+            </span>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <p className="font-bold text-text">Join live sessions</p>
+                <Badge variant="muted">Coming soon</Badge>
+              </div>
+              <p className="mt-1 text-sm text-text-secondary">
+                Live yoga, exercise, and meditation sessions with instructors and other members — we&rsquo;re
+                working on making it possible to join in real time, right from here.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
       {/* Yoga, exercise & meditation — admin-curated, links out to YouTube */}
       {(wellness.data?.length ?? 0) > 0 && (
         <section className="mt-8">
@@ -545,6 +582,37 @@ export default function ElderHealthPage() {
                 </a>
               );
             })}
+          </div>
+        </section>
+      )}
+
+      {/* From Your Family — caregiver-curated video/music links, distinct from the
+          admin-curated Yoga/exercise/meditation list above. */}
+      {(mediaLinks.data?.length ?? 0) > 0 && (
+        <section className="mt-8">
+          <h2 className="flex items-center gap-2 text-lg font-bold text-text">
+            <Video className="h-5 w-5 text-primary-600" />
+            From Your Family
+          </h2>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {mediaLinks.data?.map((link) => (
+              <a
+                key={link.id}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex min-w-0 items-center gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-primary-50"
+              >
+                <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-primary-50">
+                  <Video className="h-6 w-6 text-primary-600" />
+                </span>
+                <div className="min-w-0">
+                  <Badge variant="muted">{link.mediaType}</Badge>
+                  <p className="mt-1 truncate font-bold text-text">{link.title}</p>
+                  {link.description && <p className="truncate text-sm text-text-secondary">{link.description}</p>}
+                </div>
+              </a>
+            ))}
           </div>
         </section>
       )}

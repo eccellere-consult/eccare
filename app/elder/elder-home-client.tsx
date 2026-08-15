@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, Phone, Users, Ambulance, FileImage } from 'lucide-react';
+import { AlertTriangle, Phone, Users, Ambulance, Shield, FileImage } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CompanionCard } from '@/components/companion-card';
@@ -11,6 +11,14 @@ import { useLanguage } from '@/lib/i18n/language-context';
 import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
 const AMBULANCE_NUMBER = '108';
+const POLICE_NUMBER = '100';
+
+interface EmergencyContactRef {
+  id: string;
+  name: string;
+  phone: string;
+  callOrder: number;
+}
 
 interface Invite {
   id: string;
@@ -46,6 +54,15 @@ export function ElderHomeClient({
     fetch('/api/v1/health/prescriptions', { credentials: 'include' })
       .then((r) => r.json())
       .then((j) => { if (j.success && j.data?.length) setPrescriptions(j.data.slice(0, 3)); })
+      .catch(() => {});
+  }, []);
+  // Fetched on mount, not on-demand when Police is pressed, so there's no extra
+  // network round trip in the moment someone actually needs it.
+  const [primaryContact, setPrimaryContact] = useState<EmergencyContactRef | null>(null);
+  useEffect(() => {
+    fetch('/api/v1/emergency/contacts', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((j) => { if (j.success) setPrimaryContact(j.data?.find((c: EmergencyContactRef) => c.phone) ?? null); })
       .catch(() => {});
   }, []);
   const router = useRouter();
@@ -100,6 +117,24 @@ export function ElderHomeClient({
     if (confirm(t('elder.home.confirmAmbulance').replace('{number}', AMBULANCE_NUMBER))) {
       window.location.href = `tel:${AMBULANCE_NUMBER}`;
     }
+  }
+
+  /** Dials the police helpline and, when a primary emergency contact with a phone
+   *  number is on file, also opens a pre-filled WhatsApp message with the current
+   *  location to that contact — no paid WhatsApp Business API here, same wa.me
+   *  share-intent pattern as app/admin/invite/page.tsx, so it's a one-tap "Send"
+   *  the elder does themselves, not a fully automatic send. Skips the WhatsApp
+   *  step gracefully (dials police alone) when no contact has a phone on file. */
+  async function handlePolice() {
+    if (!confirm(t('elder.home.confirmPolice').replace('{number}', POLICE_NUMBER))) return;
+    if (primaryContact?.phone) {
+      const { lat, lng } = await getLocation();
+      const locationLine = lat != null && lng != null ? ` My location: https://www.google.com/maps?q=${lat},${lng}` : '';
+      const message = `This is an emergency, I need help.${locationLine}`;
+      const waLink = `https://wa.me/${primaryContact.phone.replace(/[^\d]/g, '')}?text=${encodeURIComponent(message)}`;
+      window.open(waLink, '_blank');
+    }
+    window.location.href = `tel:${POLICE_NUMBER}`;
   }
 
   return (
@@ -171,6 +206,10 @@ export function ElderHomeClient({
           <Button variant="outline" size="lg" className="flex-1 border-danger-600 text-danger-600" onClick={handleAmbulance}>
             <Ambulance className="h-6 w-6" />
             {t('elder.home.callAmbulance')}
+          </Button>
+          <Button variant="outline" size="lg" className="flex-1 border-danger-600 text-danger-600" onClick={handlePolice}>
+            <Shield className="h-6 w-6" />
+            {t('elder.home.callPolice')}
           </Button>
         </CardContent>
         {sosMessage && <CardContent className="pt-0 text-sm font-semibold text-text">{sosMessage}</CardContent>}

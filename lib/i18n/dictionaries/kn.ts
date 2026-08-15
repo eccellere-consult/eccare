@@ -20,10 +20,12 @@ const kn: Record<TranslationKey, string> = {
   'elder.home.sosSending': 'ಕಳುಹಿಸಲಾಗುತ್ತಿದೆ...',
   'elder.home.needHelpNow': 'ಈಗ ಸಹಾಯ ಬೇಕು',
   'elder.home.callAmbulance': 'ಆಂಬ್ಯುಲೆನ್ಸ್ ಕರೆ ಮಾಡಿ',
+  'elder.home.callPolice': 'ಪೊಲೀಸ್ ಕರೆ ಮಾಡಿ',
   'elder.home.prescriptionsSub': 'ನಿಮ್ಮ ಇತ್ತೀಚಿನ ಔಷಧಿ ಚೀಟಿಗಳಿಗೆ ತ್ವರಿತ ಪ್ರವೇಶ.',
   'elder.home.yourProfile': 'ನಿಮ್ಮ ಪ್ರೊಫೈಲ್',
   'elder.home.confirmSOS': 'ಈಗಲೇ ನಿಮ್ಮ ಕುಟುಂಬಕ್ಕೆ ತುರ್ತು ಎಚ್ಚರಿಕೆ ಕಳುಹಿಸಬೇಕೇ?',
   'elder.home.confirmAmbulance': 'ಈಗ ಆಂಬ್ಯುಲೆನ್ಸ್ ಕರೆ ಮಾಡಬೇಕೇ? ಇದು {number} ಗೆ ಕರೆ ಮಾಡುತ್ತದೆ.',
+  'elder.home.confirmPolice': 'ಈಗ ಪೊಲೀಸ್ ಕರೆ ಮಾಡಬೇಕೇ? ಇದು {number} ಗೆ ಕರೆ ಮಾಡುತ್ತದೆ.',
   'elder.home.sosSuccess': 'ಸಹಾಯ ಬರುತ್ತಿದೆ. ನಿಮ್ಮ ಕುಟುಂಬಕ್ಕೆ ತಿಳಿಸಲಾಗಿದೆ.',
   'elder.home.sosErrorGeneric': 'ಎಚ್ಚರಿಕೆ ಕಳುಹಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
 
