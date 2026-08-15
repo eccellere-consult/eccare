@@ -11,6 +11,12 @@ const CATEGORIES = [
   'massage',
   'yoga',
   'meditation',
+  // 4th classification segment: elder-care medical/wellness support distinct from
+  // Home Services (home-maintenance people) and Local Vendors (shops).
+  'doctor_home_visit',
+  'ayurveda',
+  'hospital',
+  'ambulance',
 ] as const;
 
 const createSchema = z.object({
