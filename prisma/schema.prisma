@@ -843,11 +843,20 @@ model LocalListing {
   homeMaintenanceCategory HomeMaintenanceCategory?
   // Optional structured tag for the Local Vendors (shops) filtered/grouped view —
   // same "tag alongside the free-text category" pattern as homeMaintenanceCategory
-  // above, just for retail shops instead of home-maintenance people. Null means
-  // "not tagged as a shop", not "unknown" — a listing should have at most one of
-  // homeMaintenanceCategory / shopCategory set, never both, since a vendor is either
-  // a home-maintenance person or a shop, not both at once.
+  // above, just for retail shops instead of home-maintenance people.
   shopCategory   ShopCategory?
+  // Optional structured tag for the community-scoped Elder Care view — same pattern
+  // again, reusing the ElderCareCategory enum already defined for ServiceProvider so
+  // both the platform-wide and community-scoped elder-care listings speak the same
+  // categories. Unlike the other two tags (set by the adder at creation time), this
+  // one is meant to be assigned/changed by the committee/admin at verification time,
+  // per PATCH /community/vendors/[id].
+  //
+  // Null means "not tagged", not "unknown" — a listing should have at most ONE of
+  // homeMaintenanceCategory / shopCategory / elderCareCategory set, never more than
+  // one, since a vendor is a home-maintenance person, a shop, or an elder-care
+  // provider — not several of those at once.
+  elderCareCategory ElderCareCategory?
   phone          String
   address        String?  @db.Text
   description    String?  @db.Text
@@ -864,6 +873,7 @@ model LocalListing {
   @@index([neighborhoodId, category])
   @@index([neighborhoodId, homeMaintenanceCategory])
   @@index([neighborhoodId, shopCategory])
+  @@index([neighborhoodId, elderCareCategory])
 }
 
 enum HomeMaintenanceCategory {

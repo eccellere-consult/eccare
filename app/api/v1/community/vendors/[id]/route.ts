@@ -12,6 +12,10 @@ const patchSchema = z.object({
     .enum(['leakage', 'cleaning', 'maid', 'cook', 'painting', 'gardening', 'electrical', 'carpentry', 'other'])
     .nullable()
     .optional(),
+  elderCareCategory: z
+    .enum(['home_treatment', 'home_nursing', 'companion_service', 'local_errands', 'other'])
+    .nullable()
+    .optional(),
   phone: z.string().min(3).max(20).optional(),
   address: z.string().max(500).optional(),
   description: z.string().max(2000).optional(),

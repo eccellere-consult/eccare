@@ -11,6 +11,30 @@ import { Badge } from '@/components/ui/badge';
 import { CommunityPageFrame } from '@/components/community/page-frame';
 import { communityApi, useCommunityData } from '@/lib/community-client';
 
+type HomeCategory = 'leakage' | 'cleaning' | 'maid' | 'cook' | 'painting' | 'gardening' | 'electrical' | 'carpentry' | 'other';
+type ElderCategory = 'home_treatment' | 'home_nursing' | 'companion_service' | 'local_errands' | 'other';
+type Bucket = 'general' | 'home' | 'elder' | 'shop';
+
+const HOME_CATEGORIES: { key: HomeCategory; label: string }[] = [
+  { key: 'leakage', label: 'Leakage & plumbing' },
+  { key: 'cleaning', label: 'Cleaning' },
+  { key: 'maid', label: 'Maid' },
+  { key: 'cook', label: 'Cook' },
+  { key: 'painting', label: 'Painting' },
+  { key: 'gardening', label: 'Gardening' },
+  { key: 'electrical', label: 'Electrical' },
+  { key: 'carpentry', label: 'Carpentry' },
+  { key: 'other', label: 'Other' },
+];
+
+const ELDER_CATEGORIES: { key: ElderCategory; label: string }[] = [
+  { key: 'home_treatment', label: 'Home treatment' },
+  { key: 'home_nursing', label: 'Home nursing' },
+  { key: 'companion_service', label: 'Companion service' },
+  { key: 'local_errands', label: 'Local errands' },
+  { key: 'other', label: 'Other' },
+];
+
 interface Vendor {
   id: string;
   name: string;
@@ -18,6 +42,9 @@ interface Vendor {
   phone: string;
   address: string | null;
   verified: boolean;
+  homeMaintenanceCategory: HomeCategory | null;
+  elderCareCategory: ElderCategory | null;
+  shopCategory: string | null;
 }
 interface Me { memberships: { role: string }[] }
 interface ProviderRequest {
@@ -61,6 +88,33 @@ export default function VendorsPage() {
     setActionId(id);
     try {
       await communityApi.patch(`/community/vendors/${id}`, { verified: true });
+      reload();
+    } finally {
+      setActionId(null);
+    }
+  }
+
+  function bucketOf(v: Vendor): Bucket {
+    if (v.homeMaintenanceCategory) return 'home';
+    if (v.elderCareCategory) return 'elder';
+    if (v.shopCategory) return 'shop';
+    return 'general';
+  }
+
+  /** Committee/admin re-classifies a vendor into General / Home Service / Elder Care.
+   *  Switching into Home Service or Elder Care defaults to the first sub-category
+   *  (or keeps the existing one if already in that bucket) so the change is a single
+   *  click; the sub-category select next to it lets them refine from there. Always
+   *  sends both fields so the previous bucket's tag is explicitly cleared — enforces
+   *  "at most one of the three tags set" at the call site, matching the schema's
+   *  documented invariant. */
+  async function recategorize(v: Vendor, bucket: Bucket, subCategory?: string) {
+    setActionId(v.id);
+    try {
+      await communityApi.patch(`/community/vendors/${v.id}`, {
+        homeMaintenanceCategory: bucket === 'home' ? (subCategory ?? v.homeMaintenanceCategory ?? HOME_CATEGORIES[0].key) : null,
+        elderCareCategory: bucket === 'elder' ? (subCategory ?? v.elderCareCategory ?? ELDER_CATEGORIES[0].key) : null,
+      });
       reload();
     } finally {
       setActionId(null);
@@ -184,7 +238,49 @@ export default function VendorsPage() {
                   {/* div, not p — Badge renders a div (invalid inside a paragraph). */}
                   <div className="mt-0.5">
                     <Badge variant="muted">{v.category}</Badge>
+                    {bucketOf(v) === 'shop' && <Badge variant="muted" className="ml-1.5">Shop</Badge>}
                   </div>
+                  {canManage && bucketOf(v) !== 'shop' && (
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      <select
+                        aria-label={`Category for ${v.name}`}
+                        className="rounded-lg border border-border bg-surface px-2 py-1 text-xs text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+                        value={bucketOf(v)}
+                        disabled={actionId === v.id}
+                        onChange={(e) => recategorize(v, e.target.value as Bucket)}
+                      >
+                        <option value="general">General Vendor</option>
+                        <option value="home">Home Service</option>
+                        <option value="elder">Elder Care</option>
+                      </select>
+                      {bucketOf(v) === 'home' && (
+                        <select
+                          aria-label={`Home service category for ${v.name}`}
+                          className="rounded-lg border border-border bg-surface px-2 py-1 text-xs text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+                          value={v.homeMaintenanceCategory ?? HOME_CATEGORIES[0].key}
+                          disabled={actionId === v.id}
+                          onChange={(e) => recategorize(v, 'home', e.target.value)}
+                        >
+                          {HOME_CATEGORIES.map((c) => (
+                            <option key={c.key} value={c.key}>{c.label}</option>
+                          ))}
+                        </select>
+                      )}
+                      {bucketOf(v) === 'elder' && (
+                        <select
+                          aria-label={`Elder care category for ${v.name}`}
+                          className="rounded-lg border border-border bg-surface px-2 py-1 text-xs text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+                          value={v.elderCareCategory ?? ELDER_CATEGORIES[0].key}
+                          disabled={actionId === v.id}
+                          onChange={(e) => recategorize(v, 'elder', e.target.value)}
+                        >
+                          {ELDER_CATEGORIES.map((c) => (
+                            <option key={c.key} value={c.key}>{c.label}</option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  )}
                   {v.address && <p className="mt-1 truncate text-sm text-text-secondary">{v.address}</p>}
                   <Link href={`/community/vendors/${v.id}`} className="mt-1 inline-block text-xs font-semibold text-primary-600 hover:underline">
                     View catalog
