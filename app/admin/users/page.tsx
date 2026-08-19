@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { ResetPasswordButton } from '@/components/admin/reset-password-button';
 
 const ROLE_VARIANT = {
   elder: 'default',
@@ -32,6 +33,7 @@ export default async function AdminUsersPage() {
                   <th className="px-4 py-3 font-semibold">Contact</th>
                   <th className="px-4 py-3 font-semibold">Role</th>
                   <th className="px-4 py-3 font-semibold">Joined</th>
+                  <th className="px-4 py-3 font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -43,6 +45,9 @@ export default async function AdminUsersPage() {
                       <Badge variant={ROLE_VARIANT[user.role]}>{user.role}</Badge>
                     </td>
                     <td className="px-4 py-3 text-text-secondary">{user.createdAt.toLocaleDateString()}</td>
+                    <td className="px-4 py-3">
+                      <ResetPasswordButton userId={user.id} claimed={!!user.passwordHash} />
+                    </td>
                   </tr>
                 ))}
               </tbody>

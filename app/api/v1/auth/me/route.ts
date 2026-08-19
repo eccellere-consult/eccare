@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthUser, toSafeUser } from '@/lib/auth';
 import { isSupportedLanguage } from '@/lib/i18n/languages';
-import { isValidEmail, isValidPhone, EMAIL_FORMAT_MESSAGE, PHONE_FORMAT_MESSAGE } from '@/lib/validation';
+import { isValidEmail, isValidPhone, normalizePhone, EMAIL_FORMAT_MESSAGE, PHONE_FORMAT_MESSAGE } from '@/lib/validation';
 
 export async function GET(req: NextRequest) {
   const auth = await getAuthUser(req);
@@ -77,7 +77,7 @@ export async function PUT(req: NextRequest) {
       data: {
         name: body.name,
         email,
-        phone,
+        phone: phone != null ? normalizePhone(phone) : phone,
         language: body.language,
         secondaryLanguage: body.secondaryLanguage,
         fontSizePref: body.fontSizePref,

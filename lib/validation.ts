@@ -24,5 +24,15 @@ export function isValidPhone(phone: string): boolean {
   return PHONE_RE.test(phone.replace(/[\s-]/g, ''));
 }
 
+// Canonical stored/matched form: bare 10-digit number, no country-code prefix, no
+// spaces/hyphens. Phone is now the primary login identifier (see registration and
+// login), so "+91 98765 43210", "919876543210", "09876543210", and "9876543210"
+// all need to resolve to the same account — without this, two people who typed the
+// same number in different formats would silently get treated as different phones.
+// Only call this after isValidPhone() has confirmed the input is well-formed.
+export function normalizePhone(phone: string): string {
+  return phone.replace(/[\s-]/g, '').replace(/^(?:\+91|91|0)/, '');
+}
+
 export const EMAIL_FORMAT_MESSAGE = 'Please enter a valid email address.';
 export const PHONE_FORMAT_MESSAGE = 'Please enter a valid 10-digit Indian mobile number.';
