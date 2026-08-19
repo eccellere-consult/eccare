@@ -2,11 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { createToken, hashPassword, setSessionCookie, toSafeUser } from '@/lib/auth';
 import { z } from 'zod';
-import { isValidEmail, isValidPhone, EMAIL_FORMAT_MESSAGE, PHONE_FORMAT_MESSAGE } from '@/lib/validation';
+import { isValidEmail, isValidPhone, normalizePhone, EMAIL_FORMAT_MESSAGE, PHONE_FORMAT_MESSAGE } from '@/lib/validation';
 
+// Phone is the primary identifier — required, and the default way people sign in.
+// Email is optional: useful for password-recovery links and directory contact, but
+// not everyone has one they check, so it can't be a hard requirement to register.
 const schema = z
   .object({
-    email: z.string().min(1).refine(isValidEmail, EMAIL_FORMAT_MESSAGE),
+    email: z
+      .string()
+      .trim()
+      .optional()
+      .transform((v) => (v ? v : undefined))
+      .refine((v) => v === undefined || isValidEmail(v), EMAIL_FORMAT_MESSAGE),
     password: z.string().min(8),
     name: z.string().min(1),
     phone: z.string().min(1).refine(isValidPhone, PHONE_FORMAT_MESSAGE),
@@ -35,37 +43,65 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { email, password, name, phone, role, businessName, category } = parsed.data;
+  const { email, password, name, role, businessName, category } = parsed.data;
+  const phone = normalizePhone(parsed.data.phone);
   const passwordHash = await hashPassword(password);
 
-  const existing = await prisma.user.findUnique({ where: { email } });
+  // A pre-existing row can be a real, already-claimed account, or an unclaimed
+  // placeholder (created by a family invite by phone or email, no password ever
+  // set). Phone is the primary identifier, so it's checked first; email is a
+  // secondary lookup for people who were invited by email only.
+  const existingByPhone = await prisma.user.findUnique({ where: { phone } });
+  const existingByEmail = email ? await prisma.user.findUnique({ where: { email } }) : null;
+
+  if (existingByPhone && existingByEmail && existingByPhone.id !== existingByEmail.id) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: 'IDENTIFIER_CONFLICT',
+          message: 'That phone number and email are already registered to two different accounts. Please use just one.',
+        },
+      },
+      { status: 409 },
+    );
+  }
+
+  const existing = existingByPhone ?? existingByEmail;
+
   let user;
   try {
     if (existing) {
       // Providers have no invite-based placeholder flow (unlike elder/caregiver, whose
       // account may already exist unclaimed from a family invite), so any existing row
-      // for this email is always a real, already-claimed account.
+      // for this identifier is always a real, already-claimed account.
       if (existing.passwordHash || role === 'provider') {
         return NextResponse.json(
-          { success: false, error: { code: 'EMAIL_TAKEN', message: 'An account with this email already exists.' } },
+          {
+            success: false,
+            error: {
+              code: existingByPhone ? 'PHONE_TAKEN' : 'EMAIL_TAKEN',
+              message: `An account with this ${existingByPhone ? 'phone number' : 'email'} already exists.`,
+            },
+          },
           { status: 409 },
         );
       }
       if (existing.role !== role) {
         return NextResponse.json(
-          { success: false, error: { code: 'ROLE_MISMATCH', message: 'This email was already invited with a different role.' } },
+          { success: false, error: { code: 'ROLE_MISMATCH', message: 'This account was already invited with a different role.' } },
           { status: 409 },
         );
       }
       user = await prisma.user.update({
         where: { id: existing.id },
-        data: { passwordHash, name, phone: phone ?? existing.phone },
+        data: { passwordHash, name, phone, email: email ?? existing.email },
       });
     } else if (role === 'provider') {
       // A pending ServiceProvider profile is created in the same transaction so a
       // provider account is never left ungated.
       user = await prisma.$transaction(async (tx) => {
-        const created = await tx.user.create({ data: { email, passwordHash, name, phone, role } });
+        const created = await tx.user.create({ data: { email, phone, passwordHash, name, role } });
         await tx.serviceProvider.create({
           data: {
             userId: created.id,
@@ -77,13 +113,21 @@ export async function POST(req: NextRequest) {
         return created;
       });
     } else {
-      user = await prisma.user.create({ data: { email, passwordHash, name, phone, role } });
+      user = await prisma.user.create({ data: { email, phone, passwordHash, name, role } });
     }
   } catch (err) {
-    // Prisma P2002 — unique constraint (phone already used by another account).
+    // Prisma P2002 — unique constraint (phone or email already used by another account).
     if (err && typeof err === 'object' && 'code' in err && err.code === 'P2002') {
+      const target = 'meta' in err && err.meta && typeof err.meta === 'object' && 'target' in err.meta ? String(err.meta.target) : '';
+      const isEmail = target.includes('email');
       return NextResponse.json(
-        { success: false, error: { code: 'PHONE_TAKEN', message: 'That phone number is already registered to another account.' } },
+        {
+          success: false,
+          error: {
+            code: isEmail ? 'EMAIL_TAKEN' : 'PHONE_TAKEN',
+            message: `That ${isEmail ? 'email' : 'phone number'} is already registered to another account.`,
+          },
+        },
         { status: 409 },
       );
     }

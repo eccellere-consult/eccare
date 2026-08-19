@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { sendPasswordResetEmail } from '@/lib/email';
+import { createPasswordResetToken } from '@/lib/password-reset';
 
 const schema = z.object({ email: z.string().email() });
-
-const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 function baseUrl(req: NextRequest): string {
   // Prefer an explicit configured URL (production, behind a reverse proxy) — falls
@@ -37,22 +35,7 @@ export async function POST(req: NextRequest) {
   // password ever set) — nothing to reset. Same generic response either way.
   if (!user || !user.passwordHash) return genericResponse;
 
-  // Invalidate any earlier outstanding tokens for this user before issuing a new
-  // one — avoids a stale link from an earlier request still being usable.
-  await prisma.passwordResetToken.deleteMany({ where: { userId: user.id, usedAt: null } });
-
-  const rawToken = crypto.randomBytes(32).toString('hex');
-  const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
-
-  await prisma.passwordResetToken.create({
-    data: {
-      userId: user.id,
-      tokenHash,
-      expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS),
-    },
-  });
-
-  const resetUrl = `${baseUrl(req)}/reset-password?token=${rawToken}`;
+  const resetUrl = await createPasswordResetToken(user.id, baseUrl(req));
   await sendPasswordResetEmail(user.email!, resetUrl);
 
   return genericResponse;
