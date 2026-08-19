@@ -2,12 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthUser, toSafeUser } from '@/lib/auth';
 import { z } from 'zod';
+import { isValidEmail, isValidPhone, normalizePhone, EMAIL_FORMAT_MESSAGE, PHONE_FORMAT_MESSAGE } from '@/lib/validation';
 
-const schema = z.object({
-  elderEmail: z.string().email(),
-  elderName: z.string().min(1),
-  relationship: z.string().min(1),
-});
+const schema = z
+  .object({
+    elderPhone: z.string().refine(isValidPhone, PHONE_FORMAT_MESSAGE).optional(),
+    elderEmail: z.string().refine(isValidEmail, EMAIL_FORMAT_MESSAGE).optional(),
+    elderName: z.string().min(1),
+    relationship: z.string().min(1),
+  })
+  .refine((data) => !!(data.elderPhone || data.elderEmail), {
+    message: "Please enter the elder's phone number or email address.",
+  });
 
 export async function POST(req: NextRequest) {
   const auth = await getAuthUser(req);
@@ -28,25 +34,31 @@ export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
-      { success: false, error: { code: 'INVALID_INPUT', message: 'Please fill in all fields.' } },
+      { success: false, error: { code: 'INVALID_INPUT', message: parsed.error.issues[0]?.message || 'Please fill in all fields.' } },
       { status: 400 },
     );
   }
 
-  const { elderEmail, elderName, relationship } = parsed.data;
+  const { elderName, relationship } = parsed.data;
+  const elderEmail = parsed.data.elderEmail;
+  const elderPhone = parsed.data.elderPhone ? normalizePhone(parsed.data.elderPhone) : undefined;
 
-  // Find the elder's account, or pre-create a placeholder that gets claimed
-  // automatically the first time they register with this email address.
-  let elder = await prisma.user.findUnique({ where: { email: elderEmail } });
+  // Find the elder's account by whichever identifier was given — phone first,
+  // since it's the primary identifier — or pre-create a placeholder that gets
+  // claimed automatically the first time they register with this phone/email.
+  const existingByPhone = elderPhone ? await prisma.user.findUnique({ where: { phone: elderPhone } }) : null;
+  const existingByEmail = elderEmail && !existingByPhone ? await prisma.user.findUnique({ where: { email: elderEmail } }) : null;
+  let elder = existingByPhone ?? existingByEmail;
+
   if (!elder) {
     elder = await prisma.user.create({
-      data: { email: elderEmail, name: elderName, role: 'elder' },
+      data: { phone: elderPhone, email: elderEmail, name: elderName, role: 'elder' },
     });
   }
 
   if (elder.role !== 'elder') {
     return NextResponse.json(
-      { success: false, error: { code: 'NOT_AN_ELDER', message: 'This email is not registered as an elder.' } },
+      { success: false, error: { code: 'NOT_AN_ELDER', message: 'This phone number or email is not registered as an elder.' } },
       { status: 409 },
     );
   }

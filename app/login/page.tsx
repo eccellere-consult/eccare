@@ -32,7 +32,7 @@ async function api(path: string, body: unknown) {
 }
 
 function SignInForm({ onSuccess }: { onSuccess: (role: string) => void }) {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -43,7 +43,7 @@ function SignInForm({ onSuccess }: { onSuccess: (role: string) => void }) {
     setError('');
     setLoading(true);
     try {
-      const data = await api('/auth/login', { email, password, rememberMe });
+      const data = await api('/auth/login', { identifier, password, rememberMe });
       onSuccess(data.user.role);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed.');
@@ -57,14 +57,14 @@ function SignInForm({ onSuccess }: { onSuccess: (role: string) => void }) {
     // native password managers detect this as a login and offer to save it.
     <form onSubmit={login} className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="identifier">Phone number or email</Label>
         <Input
-          id="email"
-          type="email"
+          id="identifier"
+          type="text"
           autoComplete="username"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
+          value={identifier}
+          onChange={(e) => setIdentifier(e.target.value)}
+          placeholder="9876543210"
         />
       </div>
       <div className="flex flex-col gap-2">
@@ -119,20 +119,20 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
   async function register(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-    if (!isValidEmail(email)) {
-      setError(EMAIL_FORMAT_MESSAGE);
-      return;
-    }
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters.');
-      return;
-    }
     if (!phone.trim()) {
       setError('Please enter your phone number.');
       return;
     }
     if (!isValidPhone(phone)) {
       setError(PHONE_FORMAT_MESSAGE);
+      return;
+    }
+    if (email.trim() && !isValidEmail(email)) {
+      setError(EMAIL_FORMAT_MESSAGE);
+      return;
+    }
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.');
       return;
     }
     if (role === 'provider' && (!businessName.trim() || !category.trim())) {
@@ -143,8 +143,8 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
     try {
       const data = await api('/auth/register', {
         name,
-        email,
         phone: phone.trim(),
+        ...(email.trim() ? { email: email.trim() } : {}),
         password,
         role,
         ...(role === 'provider' ? { businessName, category } : {}),
@@ -188,17 +188,6 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
         />
       </div>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="reg-email">Email</Label>
-        <Input
-          id="reg-email"
-          type="email"
-          autoComplete="username"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
-        />
-      </div>
-      <div className="flex flex-col gap-2">
         <Label htmlFor="reg-phone">Phone number</Label>
         <Input
           id="reg-phone"
@@ -209,8 +198,23 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
           placeholder="9876543210"
         />
         <p className="text-xs text-text-secondary">
-          Lets neighbours and family reach you directly. Whether it's actually shown in
-          your community's neighbours directory is a separate, optional choice you make later.
+          This is how you'll sign in, and lets neighbours and family reach you directly.
+          Whether it's shown in your community's neighbours directory is a separate,
+          optional choice you make later.
+        </p>
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="reg-email">Email (optional)</Label>
+        <Input
+          id="reg-email"
+          type="email"
+          autoComplete="username"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
+        />
+        <p className="text-xs text-text-secondary">
+          Not required, but handy for password-recovery links and if you'd rather sign in with email.
         </p>
       </div>
       <div className="flex flex-col gap-2">
