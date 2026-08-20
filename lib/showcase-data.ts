@@ -479,7 +479,7 @@ export const SHOWCASE_FEATURES: ShowcaseFeature[] = [
         { icon: 'Phone', label: 'Call Family' },
         { icon: 'Grid3x3', label: 'Dial Pad' },
         { icon: 'Pill', label: 'Medicine' },
-        { icon: 'Mic', label: 'Speak to EC' },
+        { icon: 'Mic', label: 'Speak to Arya' },
       ],
     },
   },
