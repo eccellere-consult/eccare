@@ -213,7 +213,7 @@ export function VoiceAssistant() {
       }
       setErrorMessage(
         event.error === 'not-allowed'
-          ? 'Please allow microphone access to use Speak to EC.'
+          ? 'Please allow microphone access to use Speak to Arya.'
           : 'Could not hear you. Please try again.',
       );
       setStatus('error');
@@ -253,7 +253,7 @@ export function VoiceAssistant() {
           )}
           {reply && (
             <div className="rounded-2xl bg-surface px-4 py-2.5 text-sm text-text shadow-lg">
-              <p className="text-[10px] font-bold uppercase text-primary-600">EC</p>
+              <p className="text-[10px] font-bold uppercase text-primary-600">Arya</p>
               <p className="mt-0.5">{reply}</p>
             </div>
           )}
@@ -291,7 +291,7 @@ export function VoiceAssistant() {
 
       <button
         onClick={handleTap}
-        aria-label={status === 'listening' ? 'Stop listening' : 'Speak to EC'}
+        aria-label={status === 'listening' ? 'Stop listening' : 'Speak to Arya'}
         disabled={status === 'thinking' || status === 'executing'}
         className={cn(
           'flex h-16 w-16 items-center justify-center rounded-full text-white shadow-lg shadow-accent-100 transition-transform',

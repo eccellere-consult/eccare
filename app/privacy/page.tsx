@@ -72,7 +72,7 @@ export default function PrivacyPolicyPage() {
 
           <SubHeading>Microphone &amp; voice</SubHeading>
           <P>
-            The "Speak to EC" voice assistant and voice-based Health Notes use your device's
+            The "Speak to Arya" voice assistant and voice-based Health Notes use your device's
             microphone to record short voice clips, which are transcribed to text (see "AI-assisted
             features" below) so EC can act on what you said — for example, calling a contact,
             checking your medicine schedule, or booking an appointment. Voice recordings are used to
