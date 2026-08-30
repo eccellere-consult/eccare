@@ -61,10 +61,15 @@ interface CoverageItem {
   addedBy: { name: string; role: string };
 }
 
+// 'diagnostics' gets its own dedicated "Diagnostic Reports" section below (upload-
+// first, correctly-worded for a single lab/scan result) rather than living in this
+// generic list — it was previously filed under Coverage & devices, worded and
+// laid out for insurance/membership records (a "Policy number" field makes no
+// sense on a blood test), which made an already-supported upload capability hard
+// to find and confusing to fill in.
 const COVERAGE_TYPES: { key: CoverageType; label: string; icon: LucideIcon }[] = [
   { key: 'hospital_plan', label: 'Hospital health plan', icon: Hospital },
   { key: 'insurance_plan', label: 'Medical insurance', icon: ShieldCheck },
-  { key: 'diagnostics', label: 'Health diagnostics', icon: Activity },
   { key: 'wearable_gadget', label: 'Wearables & gadgets', icon: Watch },
 ];
 
@@ -387,6 +392,59 @@ export function HealthEssentials({ elderUserId }: Props) {
         </Card>
       </section>
 
+      {/* Diagnostic Reports — upload-first, its own section (see the note on
+          COVERAGE_TYPES above for why this isn't lumped in with Coverage & devices). */}
+      <section className="mt-8">
+        <h2 className="flex items-center gap-2 text-lg font-bold text-text">
+          <Activity className="h-5 w-5 text-primary-600" />
+          Diagnostic reports
+        </h2>
+        <p className="mt-1 text-sm text-text-secondary">
+          Upload lab results, scans, and other diagnostic reports to keep them all in one place.
+        </p>
+
+        <div className="mt-3">
+          <Button
+            type="button"
+            size="sm"
+            variant={activeType === 'diagnostics' ? 'primary' : 'outline'}
+            onClick={() => setActiveType(activeType === 'diagnostics' ? null : 'diagnostics')}
+          >
+            <Plus className="h-4 w-4" />
+            Add a diagnostic report
+          </Button>
+        </div>
+
+        {activeType === 'diagnostics' && (
+          <CoverageForm
+            activeType={activeType}
+            coverageForm={coverageForm}
+            setCoverageForm={setCoverageForm}
+            addCoverage={addCoverage}
+            addingCoverage={addingCoverage}
+            coverageError={coverageError}
+            onCancel={() => setActiveType(null)}
+          />
+        )}
+
+        <div className="mt-4 flex flex-col gap-2">
+          {itemsByType('diagnostics').length === 0 && activeType !== 'diagnostics' && (
+            <p className="text-sm text-text-secondary">No diagnostic reports uploaded yet.</p>
+          )}
+          {itemsByType('diagnostics').map((item) => (
+            <CoverageItemRow
+              key={item.id}
+              item={item}
+              uploadingId={uploadingId}
+              removingId={removingId}
+              fileInputs={fileInputs}
+              uploadDocument={uploadDocument}
+              removeCoverage={removeCoverage}
+            />
+          ))}
+        </div>
+      </section>
+
       {/* Coverage & devices */}
       <section className="mt-8">
         <h2 className="flex items-center gap-2 text-lg font-bold text-text">
@@ -412,54 +470,17 @@ export function HealthEssentials({ elderUserId }: Props) {
           ))}
         </div>
 
-        {activeType && (
-          <Card className="mt-3">
-            <CardContent className="pt-6">
-              <form onSubmit={addCoverage} className="flex flex-col gap-4">
-                <p className="text-sm font-semibold text-text-secondary">
-                  Add {COVERAGE_TYPES.find((c) => c.key === activeType)?.label.toLowerCase()}
-                </p>
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="cov-label">Name</Label>
-                  <Input
-                    id="cov-label"
-                    value={coverageForm.label}
-                    onChange={(e) => setCoverageForm((f) => ({ ...f, label: e.target.value }))}
-                    placeholder="Star Health — Family Floater"
-                  />
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="cov-provider">Provider (optional)</Label>
-                    <Input
-                      id="cov-provider"
-                      value={coverageForm.provider}
-                      onChange={(e) => setCoverageForm((f) => ({ ...f, provider: e.target.value }))}
-                      placeholder="Star Health Insurance"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="cov-policy">Policy / membership number (optional)</Label>
-                    <Input
-                      id="cov-policy"
-                      value={coverageForm.policyNumber}
-                      onChange={(e) => setCoverageForm((f) => ({ ...f, policyNumber: e.target.value }))}
-                      placeholder="POL123456"
-                    />
-                  </div>
-                </div>
-                {coverageError && <p className="text-sm text-danger-600">{coverageError}</p>}
-                <div className="flex gap-2">
-                  <Button type="submit" disabled={addingCoverage || !coverageForm.label}>
-                    {addingCoverage ? 'Adding…' : 'Add'}
-                  </Button>
-                  <Button type="button" variant="outline" onClick={() => setActiveType(null)}>
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
+        {activeType && activeType !== 'diagnostics' && (
+          <CoverageForm
+            activeType={activeType}
+            coverageForm={coverageForm}
+            setCoverageForm={setCoverageForm}
+            addCoverage={addCoverage}
+            addingCoverage={addingCoverage}
+            coverageError={coverageError}
+            onCancel={() => setActiveType(null)}
+            typeLabel={COVERAGE_TYPES.find((c) => c.key === activeType)?.label.toLowerCase()}
+          />
         )}
 
         <div className="mt-4 flex flex-col gap-4">
@@ -473,57 +494,15 @@ export function HealthEssentials({ elderUserId }: Props) {
                 </p>
                 <div className="mt-2 flex flex-col gap-2">
                   {items.map((item) => (
-                    <div key={item.id} className="flex min-w-0 items-center gap-3 rounded-xl border border-border px-4 py-3">
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-bold text-text">{item.label}</p>
-                        <p className="truncate text-sm text-text-secondary">
-                          {[item.provider, item.policyNumber].filter(Boolean).join(' · ')}
-                        </p>
-                      </div>
-                      {item.filePath ? (
-                        <a
-                          href={item.filePath}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          aria-label={`View document for ${item.label}`}
-                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border text-primary-600 hover:bg-primary-50"
-                        >
-                          <Eye className="h-5 w-5" />
-                        </a>
-                      ) : (
-                        <>
-                          <input
-                            ref={(el) => { fileInputs.current[item.id] = el; }}
-                            type="file"
-                            accept="image/jpeg,image/png,application/pdf"
-                            className="hidden"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) uploadDocument(item.id, file);
-                              e.target.value = '';
-                            }}
-                          />
-                          <button
-                            type="button"
-                            disabled={uploadingId === item.id}
-                            onClick={() => fileInputs.current[item.id]?.click()}
-                            aria-label={`Upload card or policy for ${item.label}`}
-                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border text-primary-600 hover:bg-primary-50 disabled:opacity-50"
-                          >
-                            {uploadingId === item.id ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
-                          </button>
-                        </>
-                      )}
-                      <button
-                        type="button"
-                        disabled={removingId === item.id}
-                        onClick={() => removeCoverage(item.id)}
-                        aria-label={`Remove ${item.label}`}
-                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-text-secondary hover:bg-danger-50 hover:text-danger-600 disabled:opacity-50"
-                      >
-                        {removingId === item.id ? <Loader2 className="h-5 w-5 animate-spin" /> : <Trash2 className="h-5 w-5" />}
-                      </button>
-                    </div>
+                    <CoverageItemRow
+                      key={item.id}
+                      item={item}
+                      uploadingId={uploadingId}
+                      removingId={removingId}
+                      fileInputs={fileInputs}
+                      uploadDocument={uploadDocument}
+                      removeCoverage={removeCoverage}
+                    />
                   ))}
                 </div>
               </div>
@@ -532,5 +511,155 @@ export function HealthEssentials({ elderUserId }: Props) {
         </div>
       </section>
     </>
+  );
+}
+
+/** Shared by both the Diagnostic Reports and Coverage & devices sections — same
+ *  underlying HealthCoverageItem record shape and upload/view/remove behavior,
+ *  just grouped and worded differently above. */
+function CoverageItemRow({
+  item,
+  uploadingId,
+  removingId,
+  fileInputs,
+  uploadDocument,
+  removeCoverage,
+}: {
+  item: CoverageItem;
+  uploadingId: string | null;
+  removingId: string | null;
+  fileInputs: React.MutableRefObject<Record<string, HTMLInputElement | null>>;
+  uploadDocument: (id: string, file: File) => void;
+  removeCoverage: (id: string) => void;
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-3 rounded-xl border border-border px-4 py-3">
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-bold text-text">{item.label}</p>
+        <p className="truncate text-sm text-text-secondary">
+          {[item.provider, item.policyNumber].filter(Boolean).join(' · ')}
+        </p>
+      </div>
+      {item.filePath ? (
+        <a
+          href={item.filePath}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`View document for ${item.label}`}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border text-primary-600 hover:bg-primary-50"
+        >
+          <Eye className="h-5 w-5" />
+        </a>
+      ) : (
+        <>
+          <input
+            ref={(el) => { fileInputs.current[item.id] = el; }}
+            type="file"
+            accept="image/jpeg,image/png,application/pdf"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) uploadDocument(item.id, file);
+              e.target.value = '';
+            }}
+          />
+          <button
+            type="button"
+            disabled={uploadingId === item.id}
+            onClick={() => fileInputs.current[item.id]?.click()}
+            aria-label={`Upload document for ${item.label}`}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border text-primary-600 hover:bg-primary-50 disabled:opacity-50"
+          >
+            {uploadingId === item.id ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
+          </button>
+        </>
+      )}
+      <button
+        type="button"
+        disabled={removingId === item.id}
+        onClick={() => removeCoverage(item.id)}
+        aria-label={`Remove ${item.label}`}
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-text-secondary hover:bg-danger-50 hover:text-danger-600 disabled:opacity-50"
+      >
+        {removingId === item.id ? <Loader2 className="h-5 w-5 animate-spin" /> : <Trash2 className="h-5 w-5" />}
+      </button>
+    </div>
+  );
+}
+
+/** Shared add-form for both sections. Fields are worded for a diagnostic report
+ *  when activeType === 'diagnostics' (a single report has no "policy number");
+ *  otherwise worded generically for the Coverage & devices types. */
+function CoverageForm({
+  activeType,
+  coverageForm,
+  setCoverageForm,
+  addCoverage,
+  addingCoverage,
+  coverageError,
+  onCancel,
+  typeLabel,
+}: {
+  activeType: CoverageType;
+  coverageForm: { label: string; provider: string; policyNumber: string; notes: string };
+  setCoverageForm: React.Dispatch<React.SetStateAction<{ label: string; provider: string; policyNumber: string; notes: string }>>;
+  addCoverage: (e: React.FormEvent) => void;
+  addingCoverage: boolean;
+  coverageError: string;
+  onCancel: () => void;
+  typeLabel?: string;
+}) {
+  const isDiagnostic = activeType === 'diagnostics';
+  return (
+    <Card className="mt-3">
+      <CardContent className="pt-6">
+        <form onSubmit={addCoverage} className="flex flex-col gap-4">
+          <p className="text-sm font-semibold text-text-secondary">
+            {isDiagnostic ? 'Add a diagnostic report' : `Add ${typeLabel}`}
+          </p>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="cov-label">{isDiagnostic ? 'Report name' : 'Name'}</Label>
+            <Input
+              id="cov-label"
+              value={coverageForm.label}
+              onChange={(e) => setCoverageForm((f) => ({ ...f, label: e.target.value }))}
+              placeholder={isDiagnostic ? 'Blood Test — Aug 2026' : 'Star Health — Family Floater'}
+            />
+          </div>
+          <div className={isDiagnostic ? '' : 'grid gap-4 sm:grid-cols-2'}>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="cov-provider">{isDiagnostic ? 'Lab / hospital (optional)' : 'Provider (optional)'}</Label>
+              <Input
+                id="cov-provider"
+                value={coverageForm.provider}
+                onChange={(e) => setCoverageForm((f) => ({ ...f, provider: e.target.value }))}
+                placeholder={isDiagnostic ? 'Apollo Diagnostics' : 'Star Health Insurance'}
+              />
+            </div>
+            {/* A "policy number" doesn't apply to a single report. */}
+            {!isDiagnostic && (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="cov-policy">Policy / membership number (optional)</Label>
+                <Input
+                  id="cov-policy"
+                  value={coverageForm.policyNumber}
+                  onChange={(e) => setCoverageForm((f) => ({ ...f, policyNumber: e.target.value }))}
+                  placeholder="POL123456"
+                />
+              </div>
+            )}
+          </div>
+          {coverageError && <p className="text-sm text-danger-600">{coverageError}</p>}
+          <div className="flex gap-2">
+            <Button type="submit" disabled={addingCoverage || !coverageForm.label}>
+              {addingCoverage ? 'Adding…' : 'Add'}
+            </Button>
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancel
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   );
 }
