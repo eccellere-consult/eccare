@@ -1,10 +1,8 @@
 import { NextRequest } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
 import { prisma } from '@/lib/db';
 import { requireHealthAccess, ok, fail } from '@/lib/health-access';
+import { uploadToStorage, isStorageConfigured } from '@/lib/storage';
 
-const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads', 'health-coverage');
 const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'application/pdf'] as const;
 type AllowedType = (typeof ALLOWED_TYPES)[number];
@@ -32,16 +30,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return fail('VALIDATION', 'Only JPEG, PNG, and PDF files are accepted.');
   }
   if (file.size > MAX_SIZE) return fail('VALIDATION', 'File must be under 10 MB.');
+  if (!isStorageConfigured()) return fail('NOT_CONFIGURED', 'File uploads are not available right now.', 503);
 
   try {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     const ext = file.type === 'image/png' ? 'png' : file.type === 'application/pdf' ? 'pdf' : 'jpg';
     const filename = `${item.userId}_${id}_${Date.now()}.${ext}`;
-    const filePath = `/uploads/health-coverage/${filename}`;
-
-    await mkdir(UPLOAD_DIR, { recursive: true });
-    await writeFile(path.join(UPLOAD_DIR, filename), buffer);
+    const filePath = await uploadToStorage(`health-coverage/${filename}`, buffer, file.type);
 
     const updated = await prisma.healthCoverageItem.update({
       where: { id },

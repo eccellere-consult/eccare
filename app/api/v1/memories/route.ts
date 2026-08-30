@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
 import { prisma } from '@/lib/db';
 import { getAuthUser } from '@/lib/auth';
 import { canAccessElder } from '@/lib/family-access';
+import { uploadToStorage, isStorageConfigured } from '@/lib/storage';
 
-const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads', 'memories');
 const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 type AllowedType = (typeof ALLOWED_TYPES)[number];
@@ -59,15 +57,14 @@ export async function POST(req: NextRequest) {
     return fail('FORBIDDEN', "You don't have access to this elder's memories.", 403);
   }
 
+  if (!isStorageConfigured()) return fail('NOT_CONFIGURED', 'Photo uploads are not available right now.', 503);
+
   try {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
     const filename = `${elderUserId}_${Date.now()}.${ext}`;
-    const filePath = `/uploads/memories/${filename}`;
-
-    await mkdir(UPLOAD_DIR, { recursive: true });
-    await writeFile(path.join(UPLOAD_DIR, filename), buffer);
+    const filePath = await uploadToStorage(`memories/${filename}`, buffer, file.type);
 
     const memory = await prisma.memory.create({
       data: { elderUserId, addedById: auth.userId, imagePath: filePath, caption },

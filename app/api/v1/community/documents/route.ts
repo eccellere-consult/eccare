@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
 import { prisma } from '@/lib/db';
 import { requireMembership, ok } from '@/lib/community-route';
+import { uploadToStorage, isStorageConfigured } from '@/lib/storage';
 
-const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads', 'community-documents');
 const MAX_SIZE = 15 * 1024 * 1024; // 15 MB
 const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png'] as const;
 type AllowedType = (typeof ALLOWED_TYPES)[number];
@@ -35,7 +33,7 @@ export async function GET(req: NextRequest) {
 }
 
 /** Committee/admin only — creates the document row and saves the file in one step,
- *  mirroring the certification upload pattern (local disk under public/uploads/). */
+ *  mirroring the certification upload pattern (R2 object storage via lib/storage.ts). */
 export async function POST(req: NextRequest) {
   let formData: FormData;
   try {
@@ -61,16 +59,14 @@ export async function POST(req: NextRequest) {
   if (!(DOCUMENT_CATEGORIES as readonly string[]).includes(category)) {
     return fail('VALIDATION', 'Invalid category.', 400);
   }
+  if (!isStorageConfigured()) return fail('NOT_CONFIGURED', 'File uploads are not available right now.', 503);
 
   try {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     const ext = file.type === 'application/pdf' ? 'pdf' : file.type === 'image/png' ? 'png' : 'jpg';
     const filename = `${guard.neighborhoodId}_${Date.now()}.${ext}`;
-    const filePath = `/uploads/community-documents/${filename}`;
-
-    await mkdir(UPLOAD_DIR, { recursive: true });
-    await writeFile(path.join(UPLOAD_DIR, filename), buffer);
+    const filePath = await uploadToStorage(`community-documents/${filename}`, buffer, file.type);
 
     const document = await prisma.communityDocument.create({
       data: {
