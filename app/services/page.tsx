@@ -14,6 +14,7 @@ import {
   ExternalLink,
   HeartHandshake,
   ChevronRight,
+  FlaskConical,
   type LucideIcon,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -93,6 +94,13 @@ const SERVICE_CATEGORIES: ServiceCategory[] = [
       { name: 'Amazon', url: 'https://www.amazon.in' },
       { name: 'Flipkart', url: 'https://www.flipkart.com' },
     ],
+  },
+  {
+    key: 'diagnostics',
+    label: 'Diagnose reports',
+    description: 'Book lab tests and get diagnostic reports read',
+    icon: FlaskConical,
+    providers: [{ name: 'HealthSutra', url: 'https://healthsutra.ai' }],
   },
   {
     key: 'bills',
