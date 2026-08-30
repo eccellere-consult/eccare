@@ -139,7 +139,10 @@ export default function FamilyHealthPage({
   const { elderId } = use(params);
   const qs = `?elderUserId=${elderId}`;
 
-  const meds = useHealthData<Medication[]>(`/medications${qs}`);
+  // &all=1 — without it, GET /medications defaults to isActive-only, so a paused
+  // medication would vanish from this list entirely with no way back (the
+  // opacity-dimmed "Resume" state below could never actually be reached).
+  const meds = useHealthData<Medication[]>(`/medications${qs}&all=1`);
   const prescriptions = useHealthData<Prescription[]>(`/prescriptions${qs}`);
   const appts = useHealthData<Appointment[]>(`/appointments${qs}`);
   const notes = useHealthData<HealthNote[]>(`/notes${qs}`);
@@ -455,6 +458,14 @@ export default function FamilyHealthPage({
   async function toggleMed(id: string, isActive: boolean) {
     try {
       await healthApi.patch(`/medications/${id}`, { isActive: !isActive });
+      meds.reload();
+    } catch { /* ignore */ }
+  }
+
+  async function deleteMed(id: string, name: string) {
+    if (!confirm(`Delete ${name}? This removes it and its reminder history — this can't be undone. If you just want to stop reminders for now, use Pause instead.`)) return;
+    try {
+      await healthApi.del(`/medications/${id}`);
       meds.reload();
     } catch { /* ignore */ }
   }
@@ -901,6 +912,15 @@ export default function FamilyHealthPage({
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => toggleMed(m.id, m.isActive)}>
                         {m.isActive ? 'Pause' : 'Resume'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-danger-600 hover:bg-danger-50"
+                        onClick={() => deleteMed(m.id, m.name)}
+                        aria-label={`Delete ${m.name}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </CardContent>

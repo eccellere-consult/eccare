@@ -45,6 +45,20 @@ export async function PATCH(
       ...(endDate !== undefined ? { endDate: endDate ? localTimeToUtcDate(endDate, '00:00') : null } : {}),
     },
   });
+
+  // Pausing a medication only stops *future* reminder generation
+  // (ensureRemindersForMedication skips inactive medications) — it doesn't touch
+  // reminders already created for today (or any date) before the pause. Without
+  // this, GET /reminders (which reads MedicationReminder rows directly, with no
+  // regard for the parent medication's isActive flag) keeps showing an already-
+  // generated "pending" reminder on the elder's page even though the caregiver's
+  // own list correctly hides the now-inactive medication — exactly the reported
+  // "paused on caregiver side, still showing on elder side" bug. Only pending
+  // (not-yet-acted-on) reminders are removed; taken/missed/snoozed history stays.
+  if (parsed.data.isActive === false) {
+    await prisma.medicationReminder.deleteMany({ where: { medicationId: id, status: 'pending' } });
+  }
+
   return ok(updated);
 }
 
