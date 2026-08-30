@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
 import { prisma } from '@/lib/db';
 import { getAuthUser } from '@/lib/auth';
+import { uploadToStorage, isStorageConfigured } from '@/lib/storage';
 
-const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads', 'certifications');
 const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png'] as const;
 type AllowedType = (typeof ALLOWED_TYPES)[number];
@@ -13,7 +11,7 @@ const fail = (code: string, message: string, status = 400) =>
   NextResponse.json({ success: false, error: { code, message } }, { status });
 
 /** A provider uploads proof of certification/license — mirrors the prescription
- *  upload pattern (local disk under public/uploads/, same size/type validation
+ *  upload pattern (R2 object storage via lib/storage.ts, same size/type validation
  *  shape) for the admin verification queue to review before approving the account. */
 export async function POST(req: NextRequest) {
   const auth = await getAuthUser(req);
@@ -33,6 +31,7 @@ export async function POST(req: NextRequest) {
     return fail('VALIDATION', 'Only PDF, JPEG, and PNG files are accepted.');
   }
   if (file.size > MAX_SIZE) return fail('VALIDATION', 'File must be under 10 MB.');
+  if (!isStorageConfigured()) return fail('NOT_CONFIGURED', 'File uploads are not available right now.', 503);
 
   try {
     const bytes = await file.arrayBuffer();
@@ -40,10 +39,7 @@ export async function POST(req: NextRequest) {
     const ext =
       file.type === 'application/pdf' ? 'pdf' : file.type === 'image/png' ? 'png' : 'jpg';
     const filename = `${auth.userId}_${Date.now()}.${ext}`;
-    const filePath = `/uploads/certifications/${filename}`;
-
-    await mkdir(UPLOAD_DIR, { recursive: true });
-    await writeFile(path.join(UPLOAD_DIR, filename), buffer);
+    const filePath = await uploadToStorage(`certifications/${filename}`, buffer, file.type);
 
     const provider = await prisma.serviceProvider.update({
       where: { userId: auth.userId },

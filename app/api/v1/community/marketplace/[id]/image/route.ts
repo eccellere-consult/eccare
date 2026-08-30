@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
 import { prisma } from '@/lib/db';
 import { requireMembership } from '@/lib/community-route';
+import { uploadToStorage, isStorageConfigured } from '@/lib/storage';
 
-const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads', 'marketplace');
 const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png'] as const;
 type AllowedType = (typeof ALLOWED_TYPES)[number];
@@ -13,7 +11,7 @@ const fail = (code: string, message: string, status = 400) =>
   NextResponse.json({ success: false, error: { code, message } }, { status });
 
 /** Upload a photo for a marketplace listing — mirrors the catalog-item image upload
- *  pattern (local disk under public/uploads/), owner-only. */
+ *  pattern (R2 object storage via lib/storage.ts), owner-only. */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
@@ -39,16 +37,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return fail('VALIDATION', 'Only JPEG and PNG images are accepted.');
   }
   if (file.size > MAX_SIZE) return fail('VALIDATION', 'File must be under 10 MB.');
+  if (!isStorageConfigured()) return fail('NOT_CONFIGURED', 'Photo uploads are not available right now.', 503);
 
   try {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     const ext = file.type === 'image/png' ? 'png' : 'jpg';
     const filename = `${id}_${Date.now()}.${ext}`;
-    const filePath = `/uploads/marketplace/${filename}`;
-
-    await mkdir(UPLOAD_DIR, { recursive: true });
-    await writeFile(path.join(UPLOAD_DIR, filename), buffer);
+    const filePath = await uploadToStorage(`marketplace/${filename}`, buffer, file.type);
 
     const updated = await prisma.marketplaceListing.update({ where: { id }, data: { imagePath: filePath } });
 

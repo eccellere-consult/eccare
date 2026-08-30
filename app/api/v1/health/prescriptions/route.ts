@@ -1,6 +1,4 @@
 import { NextRequest } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
 import { prisma } from '@/lib/db';
 import { requireHealthAccess, ok, fail } from '@/lib/health-access';
 import {
@@ -8,8 +6,8 @@ import {
   isConfigured,
   type PrescriptionExtraction,
 } from '@/lib/prescription-ai';
+import { uploadToStorage, isStorageConfigured } from '@/lib/storage';
 
-const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads', 'prescriptions');
 const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 type AllowedType = (typeof ALLOWED_TYPES)[number];
@@ -53,16 +51,14 @@ export async function POST(req: NextRequest) {
   if (guard.role === 'caregiver' && !guard.canManageMeds) {
     return fail('FORBIDDEN', 'You need medication management permission.', 403);
   }
+  if (!isStorageConfigured()) return fail('NOT_CONFIGURED', 'Photo uploads are not available right now.', 503);
 
   try {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
     const filename = `${guard.elderUserId}_${Date.now()}.${ext}`;
-    const filePath = `/uploads/prescriptions/${filename}`;
-
-    await mkdir(UPLOAD_DIR, { recursive: true });
-    await writeFile(path.join(UPLOAD_DIR, filename), buffer);
+    const filePath = await uploadToStorage(`prescriptions/${filename}`, buffer, file.type);
 
     let extraction: PrescriptionExtraction = {
       doctorName: null,

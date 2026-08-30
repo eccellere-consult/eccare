@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { unlink } from 'fs/promises';
-import path from 'path';
 import { prisma } from '@/lib/db';
 import { getAuthUser } from '@/lib/auth';
 import { canAccessElder } from '@/lib/family-access';
+import { deleteFromStorage } from '@/lib/storage';
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await getAuthUser(req);
@@ -24,11 +23,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     );
   }
 
-  try {
-    await unlink(path.join(process.cwd(), 'public', memory.imagePath));
-  } catch {
-    // file may already be gone
-  }
+  await deleteFromStorage(memory.imagePath);
 
   await prisma.memory.delete({ where: { id } });
   return NextResponse.json({ success: true, data: null });
