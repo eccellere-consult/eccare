@@ -1,8 +1,7 @@
 import { NextRequest } from 'next/server';
-import { unlink } from 'fs/promises';
-import path from 'path';
 import { prisma } from '@/lib/db';
 import { requireHealthAccess, ok, fail } from '@/lib/health-access';
+import { deleteFromStorage } from '@/lib/storage';
 
 export async function GET(
   req: NextRequest,
@@ -44,11 +43,7 @@ export async function DELETE(
     return fail('FORBIDDEN', 'You need medication management permission.', 403);
   }
 
-  try {
-    await unlink(path.join(process.cwd(), 'public', prescription.filePath));
-  } catch {
-    // file may already be gone
-  }
+  await deleteFromStorage(prescription.filePath);
 
   await prisma.prescription.delete({ where: { id } });
 
