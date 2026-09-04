@@ -92,6 +92,9 @@ model User {
   consultationsAsElder   ConsultationRequest[] @relation("ConsultationElder")
   consultationsRequested ConsultationRequest[] @relation("ConsultationRequester")
   vaultDocumentsUploaded VaultDocument[]
+  propertySubscriptionsAsElder      PropertySubscription[] @relation("PropertySubscriptionElder")
+  propertySubscriptionsSubscribed   PropertySubscription[] @relation("PropertySubscriptionSubscriber")
+  propertyInspectionsSubmitted      PropertyInspection[]
 
   // Service provider
   serviceProvider          ServiceProvider?  @relation("ServiceProviderUser")
@@ -562,6 +565,109 @@ model VaultDocument {
   uploadedBy           User                @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
 
   @@index([consultationRequestId])
+}
+
+enum ReviewFrequency {
+  monthly
+  quarterly
+  biannually
+}
+
+enum SubscriptionStatus {
+  active
+  paused
+  cancelled
+}
+
+/// A caregiver subscribes an elder's home to periodic property review visits.
+/// One rate per frequency, admin-set (see /admin/property/rates) — not a
+/// per-property quote, since there's no real-estate valuation integration to
+/// price one automatically.
+model PropertySubscription {
+  id             String              @id @default(cuid())
+  elderUserId    String
+  subscribedById String
+  frequency      ReviewFrequency
+  status         SubscriptionStatus  @default(active)
+  fee            Decimal             @db.Decimal(10, 2)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  elderUser    User                 @relation("PropertySubscriptionElder", fields: [elderUserId], references: [id], onDelete: Cascade)
+  subscribedBy User                 @relation("PropertySubscriptionSubscriber", fields: [subscribedById], references: [id], onDelete: Cascade)
+  inspections  PropertyInspection[]
+
+  @@index([elderUserId])
+}
+
+enum ChecklistItemStatus {
+  pass
+  fail
+  needs_attention
+}
+
+/// Field agents have no login of their own — same reasoning as doctors/auto
+/// drivers/advisory experts throughout this batch of features: admin submits
+/// the inspection report on the agent's behalf (submittedById), rather than
+/// this app growing a fifth user role and portal just for this.
+model PropertyInspection {
+  id               String              @id @default(cuid())
+  subscriptionId   String
+  submittedById    String
+  inspectedAt      DateTime            @default(now())
+  plumbingStatus   ChecklistItemStatus
+  electricalStatus ChecklistItemStatus
+  structuralStatus ChecklistItemStatus
+  notes            String?             @db.Text
+  mediaPaths       Json // string[] of R2 URLs — photos and/or short videos
+  createdAt        DateTime            @default(now())
+
+  subscription    PropertySubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  submittedBy     User                 @relation(fields: [submittedById], references: [id], onDelete: Cascade)
+  repairEstimates RepairEstimate[]
+
+  @@index([subscriptionId])
+}
+
+/// One line item per needed repair. Caregiver approval (isApproved) is what
+/// triggers automatic invoice generation — see POST .../approve, which creates
+/// the PropertyInvoice in the same request rather than needing a separate
+/// manual "generate invoice" admin step.
+model RepairEstimate {
+  id              String   @id @default(cuid())
+  inspectionId    String
+  itemDescription String
+  estimatedCost   Decimal  @db.Decimal(10, 2)
+  isApproved      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  inspection PropertyInspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  invoice    PropertyInvoice?
+
+  @@index([inspectionId])
+}
+
+enum PropertyInvoiceStatus {
+  pending
+  paid
+}
+
+/// The invoice record itself is the ledger entry for this repair — same
+/// convention as Order/FeeCharge/BillPayment elsewhere in this app, which
+/// don't have a separate aggregate ledger table either; the payment record's
+/// own paid/pending status and paidAt timestamp *is* the "care account
+/// ledger" update this was scoped as.
+model PropertyInvoice {
+  id                String                 @id @default(cuid())
+  repairEstimateId  String                 @unique
+  amount            Decimal                @db.Decimal(10, 2)
+  status            PropertyInvoiceStatus  @default(pending)
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  paidAt            DateTime?
+  createdAt         DateTime               @default(now())
+
+  repairEstimate RepairEstimate @relation(fields: [repairEstimateId], references: [id], onDelete: Cascade)
 }
 
 // ─── Health & Medicine ──────────────────────────────────────────
