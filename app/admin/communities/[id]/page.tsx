@@ -2,7 +2,7 @@
 
 import { useState, use } from 'react';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Upload as UploadIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -88,7 +88,18 @@ export default function AdminCommunityDetailPage({ params }: { params: Promise<{
 
           <div className="mt-6">
             {tab === 'Overview' && <OverviewTab neighborhood={data} onSaved={reload} />}
-            {tab === 'Members' && <CommunityMembers neighborhoodId={id} viewerRole="admin" />}
+            {tab === 'Members' && (
+              <>
+                <Link
+                  href={`/admin/communities/${id}/import-residents`}
+                  className="mb-4 flex w-fit items-center gap-1.5 rounded-xl border border-primary-600 px-4 py-2 text-sm font-semibold text-primary-600 hover:bg-primary-50"
+                >
+                  <UploadIcon className="h-4 w-4" />
+                  Bulk-register residents from a spreadsheet
+                </Link>
+                <CommunityMembers neighborhoodId={id} viewerRole="admin" />
+              </>
+            )}
             {tab === 'Notices' && <NoticesTab neighborhoodId={id} />}
             {tab === 'Helplines' && <HelplinesTab neighborhoodId={id} />}
             {tab === 'Vendors' && <VendorsTab neighborhoodId={id} />}
