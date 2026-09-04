@@ -89,6 +89,9 @@ model User {
   newslettersAuthored    Newsletter[]
   linkedBillersAsElder   LinkedBiller[] @relation("LinkedBillerElder")
   linkedBillersAdded     LinkedBiller[] @relation("LinkedBillerAdder")
+  consultationsAsElder   ConsultationRequest[] @relation("ConsultationElder")
+  consultationsRequested ConsultationRequest[] @relation("ConsultationRequester")
+  vaultDocumentsUploaded VaultDocument[]
 
   // Service provider
   serviceProvider          ServiceProvider?  @relation("ServiceProviderUser")
@@ -478,6 +481,87 @@ model BillPayment {
   linkedBiller LinkedBiller @relation(fields: [linkedBillerId], references: [id], onDelete: Cascade)
 
   @@index([linkedBillerId, status])
+}
+
+enum AdvisoryCategory {
+  legal_will
+  reverse_mortgage
+  senior_insurance
+}
+
+/// Admin-curated directory of financial/legal/insurance advisors — empty until
+/// an admin adds real, verified partners (same "empty admin-curated directory,
+/// populate later" pattern as Local Doctors and Auto Drivers). No advisor
+/// login exists — same reasoning as doctors/auto drivers: coordination with a
+/// real advisor happens by phone/email once a consultation request connects
+/// you, not through an in-app advisor portal.
+model AdvisoryExpert {
+  id        String           @id @default(cuid())
+  category  AdvisoryCategory
+  name      String
+  firmName  String?
+  phone     String
+  email     String?
+  bio       String?          @db.Text
+  isActive  Boolean          @default(true)
+  createdAt DateTime         @default(now())
+
+  requests ConsultationRequest[]
+
+  @@index([category, isActive])
+}
+
+enum ConsultationStatus {
+  submitted
+  in_progress
+  completed
+}
+
+/// One consultation intake per submission. requirementDetails is a JSON blob
+/// because the three verticals genuinely ask different questions (a Will's
+/// document type vs. a reverse mortgage's property value vs. an insurance
+/// rider selection) — the multi-step intake *form* is what makes each vertical
+/// feel distinct on the frontend; the backend doesn't need three separate
+/// tables for that.
+model ConsultationRequest {
+  id                 String              @id @default(cuid())
+  elderUserId        String
+  requestedById      String
+  category           AdvisoryCategory
+  requirementDetails Json
+  notes              String?             @db.Text
+  assignedExpertId   String?
+  status             ConsultationStatus  @default(submitted)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  elderUser      User            @relation("ConsultationElder", fields: [elderUserId], references: [id], onDelete: Cascade)
+  requestedBy    User            @relation("ConsultationRequester", fields: [requestedById], references: [id], onDelete: Cascade)
+  assignedExpert AdvisoryExpert? @relation(fields: [assignedExpertId], references: [id], onDelete: SetNull)
+  documents      VaultDocument[]
+
+  @@index([elderUserId])
+}
+
+/// "Secure document vault" — stored via the same R2 object storage every other
+/// upload in this app uses (encrypted at rest by the storage provider,
+/// transferred over HTTPS, access-gated to the elder/caregiver who owns the
+/// consultation and platform admins who coordinate with the real advisor).
+/// This is genuinely secure storage, but being precise about what that means:
+/// it is not client-side end-to-end encryption, which isn't implemented.
+model VaultDocument {
+  id                     String   @id @default(cuid())
+  consultationRequestId  String
+  uploadedById           String
+  fileName               String
+  filePath               String
+  fileType               String
+  createdAt              DateTime @default(now())
+
+  consultationRequest ConsultationRequest @relation(fields: [consultationRequestId], references: [id], onDelete: Cascade)
+  uploadedBy           User                @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+
+  @@index([consultationRequestId])
 }
 
 // ─── Health & Medicine ──────────────────────────────────────────

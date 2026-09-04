@@ -29,6 +29,7 @@ import {
   IndianRupee,
   Settings,
   Mail,
+  Scale,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -90,6 +91,7 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
       { label: 'Providers', href: '/admin/providers', icon: Briefcase },
       { label: 'Volunteers', href: '/admin/volunteers', icon: HeartHandshake },
       { label: 'Newsletters', href: '/admin/newsletters', icon: Mail },
+      { label: 'Advisory', href: '/admin/advisory', icon: Scale },
       { label: 'WhatsApp Invite', href: '/admin/invite', icon: MessageCircle },
       { label: 'Settings', href: '/admin/settings', icon: Settings },
       { label: 'Profile', href: '/admin/profile', icon: User },
