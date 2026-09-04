@@ -78,6 +78,10 @@ model User {
   notificationPrefs   NotificationPreference[]
   geriatricListings   GeriatricCareListing[]   @relation("GeriatricListingCreator")
   wellnessVideosAdded WellnessVideo[]
+  helpGuideVideosAdded HelpGuideVideo[]
+  doctorsAdded LocalDoctor[]
+  doctorBookingsAsElder DoctorBooking[] @relation("DoctorBookingElder")
+  doctorBookingsAsBooker DoctorBooking[] @relation("DoctorBookingBooker")
 
   // Service provider
   serviceProvider          ServiceProvider?  @relation("ServiceProviderUser")
@@ -537,6 +541,27 @@ model WellnessVideo {
   @@index([isActive, category])
 }
 
+/// Admin-curated "how to" videos shown publicly on the register page, below the
+/// credentials fields — self-serve onboarding help (register, join a community,
+/// add an elder) so a new family doesn't need to call anyone to get started.
+/// Same admin-CRUD-then-public-read shape as WellnessVideo, but the public read
+/// here is genuinely unauthenticated (no account exists yet at that point).
+model HelpGuideVideo {
+  id          String   @id @default(cuid())
+  title       String
+  youtubeUrl  String
+  description String?  @db.Text
+  isActive    Boolean  @default(true)
+  position    Int      @default(0) // display order, lowest first
+  addedById   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  addedBy User @relation(fields: [addedById], references: [id], onDelete: Cascade)
+
+  @@index([isActive, position])
+}
+
 enum WellnessCategory {
   yoga
   exercise
@@ -673,6 +698,9 @@ model Neighborhood {
   documents      CommunityDocument[]
   expenses       AssociationExpense[]
   hobbyGroups    HobbyGroup[]
+  autoDrivers    AutoDriver[]
+  autoRateCard   AutoRateCard?
+  doctors        LocalDoctor[]
 
   @@index([pincode])
 }
@@ -864,6 +892,117 @@ model CommunityHelpline {
   neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
 
   @@index([neighborhoodId, sortOrder])
+}
+
+/// Auto-rickshaw drivers a committee/admin has vetted for the community —
+/// booking itself is a WhatsApp handoff (wa.me deep link with pickup/drop/trip
+/// details pre-filled, same pattern as the Police button), not a live in-app
+/// accept/reject workflow — the driver has no login, so there's nothing to
+/// track server-side beyond the directory and the rate card below.
+model AutoDriver {
+  id             String   @id @default(cuid())
+  neighborhoodId String
+  name           String
+  phone          String
+  vehicleNumber  String?
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+
+  @@index([neighborhoodId, sortOrder])
+}
+
+/// One rate card per community — shown alongside the driver list so a fare can
+/// be roughly estimated/agreed before booking. Committee/admin-set.
+model AutoRateCard {
+  id             String   @id @default(cuid())
+  neighborhoodId String   @unique
+  perKmRate      Decimal  @db.Decimal(10, 2)
+  perMinWaitRate Decimal  @db.Decimal(10, 2)
+  updatedAt      DateTime @updatedAt
+
+  neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+}
+
+/// Local doctors directory, admin/committee-curated (no doctor login — see
+/// DoctorBooking for how confirmation works without one). Location is either a
+/// lat/lng pair (device geolocation at add-time) or a plain Google Maps link —
+/// whichever the admin has to hand.
+model LocalDoctor {
+  id              String   @id @default(cuid())
+  neighborhoodId  String
+  name            String
+  specialty       String
+  qualifications  String?  @db.Text
+  background      String?  @db.Text
+  locality        String?
+  lat             Float?
+  lng             Float?
+  mapsLink        String?
+  phone           String
+  consultationFee Decimal  @db.Decimal(10, 2)
+  isActive        Boolean  @default(true)
+  addedById       String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  neighborhood Neighborhood    @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  addedBy      User            @relation(fields: [addedById], references: [id], onDelete: Cascade)
+  slots        DoctorSlot[]
+  bookings     DoctorBooking[]
+
+  @@index([neighborhoodId, isActive])
+}
+
+/// One bookable time slot for one doctor — admin-entered (calls the clinic to ask
+/// what's open), not a live calendar sync. isBooked flips true the moment a
+/// DoctorBooking claims it, so it stops being offered to anyone else.
+model DoctorSlot {
+  id        String   @id @default(cuid())
+  doctorId  String
+  startsAt  DateTime
+  isBooked  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  doctor  LocalDoctor    @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  booking DoctorBooking?
+
+  @@index([doctorId, startsAt])
+}
+
+/// pending_confirmation -> confirmed -> paid is a manual chain, not a live
+/// workflow — the doctor's clinic has no login, so confirmation happens by
+/// phone/WhatsApp reply to whoever booked, and *they* mark it confirmed in-app
+/// (unlocking payment) once that call happens. cancelled can follow either of
+/// the first two states.
+enum DoctorBookingStatus {
+  pending_confirmation
+  confirmed
+  paid
+  cancelled
+}
+
+model DoctorBooking {
+  id                String              @id @default(cuid())
+  doctorId          String
+  slotId            String              @unique
+  elderUserId       String
+  bookedById        String
+  status            DoctorBookingStatus @default(pending_confirmation)
+  amount            Decimal             @db.Decimal(10, 2)
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  doctor    LocalDoctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  slot      DoctorSlot  @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  elderUser User        @relation("DoctorBookingElder", fields: [elderUserId], references: [id], onDelete: Cascade)
+  bookedBy  User        @relation("DoctorBookingBooker", fields: [bookedById], references: [id], onDelete: Cascade)
+
+  @@index([elderUserId])
+  @@index([doctorId])
 }
 
 /// Vendors / local services directory. neighborhoodId is nullable so a listing can be
