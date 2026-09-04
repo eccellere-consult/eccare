@@ -245,7 +245,13 @@ export function AppShell({ role, userName, children }: AppShellProps) {
 
       {/* Main content */}
       <main className="flex-1 pb-20 md:pb-0">
-        <div className="mx-auto w-full max-w-5xl p-4 sm:p-6 lg:p-8">{children}</div>
+        <div className="mx-auto w-full max-w-5xl p-4 sm:p-6 lg:p-8">
+          {children}
+          <footer className="mt-12 flex justify-center gap-4 border-t border-border pt-6 text-xs text-text-secondary">
+            <Link href="/terms" className="hover:text-primary-600 hover:underline">Terms &amp; Conditions</Link>
+            <Link href="/privacy" className="hover:text-primary-600 hover:underline">Privacy Policy</Link>
+          </footer>
+        </div>
       </main>
 
       {/* Mobile bottom nav */}
