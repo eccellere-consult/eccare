@@ -87,6 +87,8 @@ model User {
   rentalListingsPosted   RentalListing[] @relation("RentalListingPoster")
   rentalInquiriesMade    RentalInquiry[] @relation("RentalInquiryInquirer")
   newslettersAuthored    Newsletter[]
+  linkedBillersAsElder   LinkedBiller[] @relation("LinkedBillerElder")
+  linkedBillersAdded     LinkedBiller[] @relation("LinkedBillerAdder")
 
   // Service provider
   serviceProvider          ServiceProvider?  @relation("ServiceProviderUser")
@@ -407,6 +409,75 @@ model Newsletter {
   createdBy User @relation(fields: [createdById], references: [id], onDelete: Cascade)
 
   @@index([status, publishedAt])
+}
+
+enum BillerType {
+  electricity
+  water
+  property_tax
+  cable_tv
+  mobile
+  insurance
+  other
+}
+
+/// A utility/service consumer number linked to an elder's profile — Electricity,
+/// Water, Property Tax, cable TV, Mobile, Insurance, or Other. Deliberately no
+/// stored balance or wallet: bill payment is a direct pass-through via the
+/// existing Razorpay integration each time a bill is paid (see BillPayment) —
+/// building a real prepaid-wallet with fund custody would need an RBI Prepaid
+/// Payment Instrument license, which this platform doesn't have.
+model LinkedBiller {
+  id             String     @id @default(cuid())
+  elderUserId    String
+  addedById      String
+  billerType     BillerType
+  billerName     String
+  consumerNumber String
+  nickname       String?
+  // Consent flag, not a silent auto-debit mandate — see the honest note on
+  // BillPayment.status and the /health/billers UI for what this actually does.
+  autopayEnabled Boolean    @default(false)
+  createdAt      DateTime   @default(now())
+
+  elderUser User          @relation("LinkedBillerElder", fields: [elderUserId], references: [id], onDelete: Cascade)
+  addedBy   User          @relation("LinkedBillerAdder", fields: [addedById], references: [id], onDelete: Cascade)
+  bills     BillPayment[]
+
+  @@index([elderUserId])
+}
+
+enum BillPaymentStatus {
+  due
+  paid
+}
+
+/// One bill instance for a LinkedBiller — caregiver/admin enters the amount
+/// when a bill arrives (no real utility-biller API integration exists to fetch
+/// this automatically), then it's paid the same one-tap way as every other
+/// payment in this app (Razorpay order -> checkout -> server-verified
+/// signature). "Autopay" (LinkedBiller.autopayEnabled) means: the moment a bill
+/// is added for a biller with autopay on, the primary caregiver gets an
+/// immediate push notification with a direct pay link — a fast one-tap flow,
+/// not a truly silent auto-debit. Real unattended auto-debit needs Razorpay's
+/// separate e-NACH/card-mandate Subscriptions product (bank-level KYC,
+/// registered mandate, different checkout flow entirely) — not implemented
+/// here; this is the honest, working version buildable on the existing
+/// one-time-order integration.
+model BillPayment {
+  id                String            @id @default(cuid())
+  linkedBillerId    String
+  amount            Decimal           @db.Decimal(10, 2)
+  dueDate           DateTime?
+  status            BillPaymentStatus @default(due)
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  paidAt            DateTime?
+  createdAt         DateTime          @default(now())
+
+  linkedBiller LinkedBiller @relation(fields: [linkedBillerId], references: [id], onDelete: Cascade)
+
+  @@index([linkedBillerId, status])
 }
 
 // ─── Health & Medicine ──────────────────────────────────────────

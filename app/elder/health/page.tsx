@@ -24,6 +24,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { HealthEssentials } from '@/components/health-essentials';
+import { BillPaySection } from '@/components/bill-pay-section';
 import { healthApi, useHealthData } from '@/lib/health-client';
 import { useCommunityData } from '@/lib/community-client';
 import { getSlotForDate, formatIstTime, SLOT_META, SLOT_ORDER, todayIST, type MedicineSlot } from '@/lib/medicine-slots';
@@ -483,6 +484,7 @@ export default function ElderHealthPage() {
       </section>
 
       <HealthEssentials />
+      <BillPaySection />
 
       {/* Meal assistance */}
       <section className="mt-8">
