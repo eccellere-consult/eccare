@@ -28,6 +28,7 @@ import {
   MessageCircle,
   IndianRupee,
   Settings,
+  Mail,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -88,6 +89,7 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
       { label: 'Self-Help Guides', href: '/admin/help-guides', icon: GraduationCap },
       { label: 'Providers', href: '/admin/providers', icon: Briefcase },
       { label: 'Volunteers', href: '/admin/volunteers', icon: HeartHandshake },
+      { label: 'Newsletters', href: '/admin/newsletters', icon: Mail },
       { label: 'WhatsApp Invite', href: '/admin/invite', icon: MessageCircle },
       { label: 'Settings', href: '/admin/settings', icon: Settings },
       { label: 'Profile', href: '/admin/profile', icon: User },
@@ -250,6 +252,7 @@ export function AppShell({ role, userName, children }: AppShellProps) {
         <div className="mx-auto w-full max-w-5xl p-4 sm:p-6 lg:p-8">
           {children}
           <footer className="mt-12 flex justify-center gap-4 border-t border-border pt-6 text-xs text-text-secondary">
+            <Link href="/newsletter" className="hover:text-primary-600 hover:underline">Newsletter</Link>
             <Link href="/terms" className="hover:text-primary-600 hover:underline">Terms &amp; Conditions</Link>
             <Link href="/privacy" className="hover:text-primary-600 hover:underline">Privacy Policy</Link>
           </footer>

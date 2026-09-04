@@ -86,6 +86,7 @@ model User {
   doctorBookingsAsBooker DoctorBooking[] @relation("DoctorBookingBooker")
   rentalListingsPosted   RentalListing[] @relation("RentalListingPoster")
   rentalInquiriesMade    RentalInquiry[] @relation("RentalInquiryInquirer")
+  newslettersAuthored    Newsletter[]
 
   // Service provider
   serviceProvider          ServiceProvider?  @relation("ServiceProviderUser")
@@ -368,6 +369,44 @@ model DeviceToken {
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum NewsletterStatus {
+  draft
+  scheduled
+  published
+}
+
+enum NewsletterAudience {
+  all_caregivers
+  all_volunteers
+  all_elders
+  everyone
+}
+
+/// Admin-authored newsletter — updates, elder care tips, community
+/// announcements, policy changes. Publishing dispatches email (Resend) + push
+/// (FCM) to every user in the target audience, same providers already used
+/// elsewhere in this app; "Schedule" saves a target time but there's no cron
+/// runner on this host to auto-fire it (see the admin UI's own note on this) —
+/// an admin still triggers the actual send, scheduledFor is a target to work
+/// toward, not a guarantee.
+model Newsletter {
+  id           String             @id @default(cuid())
+  title        String
+  bodyHtml     String             @db.Text
+  excerpt      String?            @db.Text
+  audience     NewsletterAudience @default(everyone)
+  status       NewsletterStatus   @default(draft)
+  scheduledFor DateTime?
+  publishedAt  DateTime?
+  createdById  String
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  createdBy User @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([status, publishedAt])
 }
 
 // ─── Health & Medicine ──────────────────────────────────────────
