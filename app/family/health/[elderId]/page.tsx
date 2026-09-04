@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { HealthEssentials } from '@/components/health-essentials';
+import { BillPaySection } from '@/components/bill-pay-section';
 import { healthApi, useHealthData } from '@/lib/health-client';
 
 interface Medication {
@@ -525,6 +526,7 @@ export default function FamilyHealthPage({
       <p className="mt-1 text-text-secondary">Manage medicines, appointments, and notes for your elder.</p>
 
       <HealthEssentials elderUserId={elderId} />
+      <BillPaySection elderUserId={elderId} />
 
       {/* Recent mood — from the AI Companion's daily check-in on the elder's home page */}
       {(mood.data?.length ?? 0) > 0 && (
