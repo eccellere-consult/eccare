@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { isValidEmail, isValidPhone, EMAIL_FORMAT_MESSAGE, PHONE_FORMAT_MESSAGE } from '@/lib/validation';
+import { HelpGuidesSection } from '@/components/help-guides-section';
 
 const ROLE_HOME: Record<string, string> = {
   elder: '/elder',
@@ -297,6 +298,8 @@ function LoginPageContent() {
             </button>
           </CardContent>
         </Card>
+
+        {view === 'register' && <HelpGuidesSection />}
       </div>
     </main>
   );

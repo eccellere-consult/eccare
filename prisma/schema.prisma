@@ -78,6 +78,7 @@ model User {
   notificationPrefs   NotificationPreference[]
   geriatricListings   GeriatricCareListing[]   @relation("GeriatricListingCreator")
   wellnessVideosAdded WellnessVideo[]
+  helpGuideVideosAdded HelpGuideVideo[]
 
   // Service provider
   serviceProvider          ServiceProvider?  @relation("ServiceProviderUser")
@@ -535,6 +536,27 @@ model WellnessVideo {
   addedBy User @relation(fields: [addedById], references: [id], onDelete: Cascade)
 
   @@index([isActive, category])
+}
+
+/// Admin-curated "how to" videos shown publicly on the register page, below the
+/// credentials fields — self-serve onboarding help (register, join a community,
+/// add an elder) so a new family doesn't need to call anyone to get started.
+/// Same admin-CRUD-then-public-read shape as WellnessVideo, but the public read
+/// here is genuinely unauthenticated (no account exists yet at that point).
+model HelpGuideVideo {
+  id          String   @id @default(cuid())
+  title       String
+  youtubeUrl  String
+  description String?  @db.Text
+  isActive    Boolean  @default(true)
+  position    Int      @default(0) // display order, lowest first
+  addedById   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  addedBy User @relation(fields: [addedById], references: [id], onDelete: Cascade)
+
+  @@index([isActive, position])
 }
 
 enum WellnessCategory {
