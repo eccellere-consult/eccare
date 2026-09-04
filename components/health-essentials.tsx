@@ -540,7 +540,12 @@ function CoverageItemRow({
           {[item.provider, item.policyNumber].filter(Boolean).join(' · ')}
         </p>
       </div>
-      {item.filePath ? (
+      {/* View and Upload/Replace are shown together, not either/or — a record whose
+          filePath still points at a since-lost local upload (from before the R2
+          migration) would otherwise leave a dead "View" link with no way back to
+          re-upload. Matches the "Replace file" pattern already used for provider
+          certifications, catalog images, and marketplace images. */}
+      {item.filePath && (
         <a
           href={item.filePath}
           target="_blank"
@@ -550,30 +555,27 @@ function CoverageItemRow({
         >
           <Eye className="h-5 w-5" />
         </a>
-      ) : (
-        <>
-          <input
-            ref={(el) => { fileInputs.current[item.id] = el; }}
-            type="file"
-            accept="image/jpeg,image/png,application/pdf"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) uploadDocument(item.id, file);
-              e.target.value = '';
-            }}
-          />
-          <button
-            type="button"
-            disabled={uploadingId === item.id}
-            onClick={() => fileInputs.current[item.id]?.click()}
-            aria-label={`Upload document for ${item.label}`}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border text-primary-600 hover:bg-primary-50 disabled:opacity-50"
-          >
-            {uploadingId === item.id ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
-          </button>
-        </>
       )}
+      <input
+        ref={(el) => { fileInputs.current[item.id] = el; }}
+        type="file"
+        accept="image/jpeg,image/png,application/pdf"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) uploadDocument(item.id, file);
+          e.target.value = '';
+        }}
+      />
+      <button
+        type="button"
+        disabled={uploadingId === item.id}
+        onClick={() => fileInputs.current[item.id]?.click()}
+        aria-label={item.filePath ? `Replace document for ${item.label}` : `Upload document for ${item.label}`}
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border text-primary-600 hover:bg-primary-50 disabled:opacity-50"
+      >
+        {uploadingId === item.id ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
+      </button>
       <button
         type="button"
         disabled={removingId === item.id}
