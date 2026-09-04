@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { healthApi, useHealthData } from '@/lib/health-client';
+import { buildWaLink as waLink } from '@/lib/whatsapp';
 
 interface Props {
   /** Omit on the elder's own page; pass through on the family/caregiver page for
@@ -38,13 +39,6 @@ interface DoctorHospitalProfile {
   familyDoctorVideoLink: string | null;
   preferredHospitalName: string | null;
   preferredHospitalLocation: string | null;
-}
-
-/** No paid WhatsApp Business API here — same wa.me share-intent pattern as
- *  app/admin/invite/page.tsx and the Police button, just opening a chat rather
- *  than pre-filling a message. */
-function waLink(phone: string): string {
-  return `https://wa.me/${phone.replace(/[^\d]/g, '')}`;
 }
 
 type CoverageType = 'hospital_plan' | 'insurance_plan' | 'diagnostics' | 'wearable_gadget';

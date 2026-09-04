@@ -5,6 +5,7 @@ import { HeartHandshake, Phone, MessageCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { CommunityPageFrame } from '@/components/community/page-frame';
+import { buildWaLink as waLink } from '@/lib/whatsapp';
 
 interface Volunteer {
   id: string;
@@ -28,12 +29,6 @@ const ASSISTANCE_OPTIONS = [
 ] as const;
 const ASSISTANCE_LABEL: Record<string, string> = Object.fromEntries(ASSISTANCE_OPTIONS.map((o) => [o.value, o.label]));
 const AVAILABILITY_LABEL: Record<string, string> = Object.fromEntries(AVAILABILITY_OPTIONS.map((o) => [o.value, o.label]));
-
-/** wa.me share-intent — same pattern used throughout (Police button, admin
- *  invite, Auto Booking, Local Doctors). */
-function waLink(phone: string): string {
-  return `https://wa.me/${phone.replace(/[^\d]/g, '')}`;
-}
 
 export default function VolunteersDirectoryPage() {
   const [volunteers, setVolunteers] = useState<Volunteer[] | null>(null);

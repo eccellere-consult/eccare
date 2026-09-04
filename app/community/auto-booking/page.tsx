@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { CommunityPageFrame } from '@/components/community/page-frame';
 import { communityApi, useCommunityData } from '@/lib/community-client';
+import { buildWaLink as waLink } from '@/lib/whatsapp';
 
 type VerificationStatus = 'pending' | 'verified' | 'rejected';
 interface Driver {
@@ -38,14 +39,6 @@ const VERIFICATION_VARIANT: Record<VerificationStatus, 'accent' | 'success' | 'd
   verified: 'success',
   rejected: 'danger',
 };
-
-/** No paid WhatsApp Business API here — same wa.me share-intent pattern as the
- *  Police button and admin invite flow. There's no in-app accept/reject: the
- *  driver has no login, so booking is a pre-filled message the elder/family
- *  sends themselves, and the driver confirms by replying directly. */
-function waLink(phone: string, message: string): string {
-  return `https://wa.me/${phone.replace(/[^\d]/g, '')}?text=${encodeURIComponent(message)}`;
-}
 
 function AutoBookingContent() {
   const searchParams = useSearchParams();
