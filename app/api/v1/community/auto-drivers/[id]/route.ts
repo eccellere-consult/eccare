@@ -9,7 +9,12 @@ const fail = (code: string, message: string, status = 400) =>
 const schema = z.object({
   name: z.string().min(1).max(120).optional(),
   phone: z.string().min(3).max(20).optional(),
+  whatsapp: z.string().max(20).nullable().optional(),
   vehicleNumber: z.string().max(20).nullable().optional(),
+  serviceArea: z.string().max(160).nullable().optional(),
+  perKmRate: z.number().positive().nullable().optional(),
+  perMinWaitRate: z.number().nonnegative().nullable().optional(),
+  isAvailable: z.boolean().optional(),
   sortOrder: z.number().int().optional(),
 });
 
