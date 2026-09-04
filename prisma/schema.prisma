@@ -84,6 +84,8 @@ model User {
   doctorsAdded LocalDoctor[]
   doctorBookingsAsElder DoctorBooking[] @relation("DoctorBookingElder")
   doctorBookingsAsBooker DoctorBooking[] @relation("DoctorBookingBooker")
+  rentalListingsPosted   RentalListing[] @relation("RentalListingPoster")
+  rentalInquiriesMade    RentalInquiry[] @relation("RentalInquiryInquirer")
 
   // Service provider
   serviceProvider          ServiceProvider?  @relation("ServiceProviderUser")
@@ -759,6 +761,7 @@ model Neighborhood {
   autoDrivers    AutoDriver[]
   autoRateCard   AutoRateCard?
   doctors        LocalDoctor[]
+  rentalListings RentalListing[]
 
   @@index([pincode])
 }
@@ -1282,6 +1285,81 @@ enum MarketplaceListingStatus {
   active
   reserved
   closed
+}
+
+enum RentalListingType {
+  entire_house
+  room
+}
+
+enum RentalListingStatus {
+  active
+  in_negotiation
+  rented
+}
+
+/// House/room rental marketplace — platform-wide (not scoped to one community,
+/// unlike Marketplace/Vendors/Doctors/Auto Drivers), since someone looking for
+/// safe, accessible senior housing may well be looking outside their own
+/// immediate neighbourhood. neighborhoodId is optional context, not a boundary
+/// that filters who can see a listing.
+model RentalListing {
+  id              String               @id @default(cuid())
+  postedById      String
+  neighborhoodId  String?
+  title           String
+  listingType     RentalListingType
+  monthlyRent     Decimal              @db.Decimal(10, 2)
+  securityDeposit Decimal?             @db.Decimal(10, 2)
+  address         String?
+  city            String?
+  description     String?              @db.Text
+  houseRules      String?              @db.Text
+  // Senior-friendly accessibility tags — the whole point of this being a
+  // dedicated model rather than reusing MarketplaceListingType 'rent'.
+  wheelchairRamp  Boolean              @default(false)
+  grabBars        Boolean              @default(false)
+  noStepEntry     Boolean              @default(false)
+  groundFloor     Boolean              @default(false)
+  imagePath       String?
+  contactPhone    String
+  status          RentalListingStatus  @default(active)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  postedBy     User          @relation("RentalListingPoster", fields: [postedById], references: [id], onDelete: Cascade)
+  neighborhood Neighborhood? @relation(fields: [neighborhoodId], references: [id], onDelete: SetNull)
+  inquiries    RentalInquiry[]
+
+  @@index([listingType, status])
+  @@index([city])
+}
+
+enum RentalInquiryStatus {
+  open
+  scheduled
+  closed
+}
+
+/// One inquiry per prospective tenant/caregiver per listing — a message plus an
+/// optional requested visit date/time. Contact from there on (confirming a
+/// visit, negotiating) happens by phone/WhatsApp, the same handoff pattern as
+/// every other listing type in this app, rather than a separate in-app chat
+/// thread system built just for rentals.
+model RentalInquiry {
+  id          String              @id @default(cuid())
+  listingId   String
+  inquirerId  String
+  message     String?             @db.Text
+  visitDate   DateTime?
+  status      RentalInquiryStatus @default(open)
+  createdAt   DateTime            @default(now())
+
+  listing  RentalListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  inquirer User          @relation("RentalInquiryInquirer", fields: [inquirerId], references: [id], onDelete: Cascade)
+
+  @@unique([listingId, inquirerId])
+  @@index([listingId])
 }
 
 /// Community Buzz — classifieds distinct from MarketplaceListing (items): jobs and
