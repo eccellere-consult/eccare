@@ -51,6 +51,8 @@ model User {
   healthNotes        HealthNote[]         @relation("HealthNoteUser")
   sosEvents          SOSEvent[]
   emergencyContacts  EmergencyContact[]
+  linkedAsEmergencyContact EmergencyContact[] @relation("EmergencyContactLinkedUser")
+  volunteerProfile   VolunteerProfile?
   foodRequests       FoodRequest[]
   mealReminders      MealReminder[]
   voiceLogs          VoiceLog[]
@@ -82,6 +84,17 @@ model User {
   doctorsAdded LocalDoctor[]
   doctorBookingsAsElder DoctorBooking[] @relation("DoctorBookingElder")
   doctorBookingsAsBooker DoctorBooking[] @relation("DoctorBookingBooker")
+  rentalListingsPosted   RentalListing[] @relation("RentalListingPoster")
+  rentalInquiriesMade    RentalInquiry[] @relation("RentalInquiryInquirer")
+  newslettersAuthored    Newsletter[]
+  linkedBillersAsElder   LinkedBiller[] @relation("LinkedBillerElder")
+  linkedBillersAdded     LinkedBiller[] @relation("LinkedBillerAdder")
+  consultationsAsElder   ConsultationRequest[] @relation("ConsultationElder")
+  consultationsRequested ConsultationRequest[] @relation("ConsultationRequester")
+  vaultDocumentsUploaded VaultDocument[]
+  propertySubscriptionsAsElder      PropertySubscription[] @relation("PropertySubscriptionElder")
+  propertySubscriptionsSubscribed   PropertySubscription[] @relation("PropertySubscriptionSubscriber")
+  propertyInspectionsSubmitted      PropertyInspection[]
 
   // Service provider
   serviceProvider          ServiceProvider?  @relation("ServiceProviderUser")
@@ -240,6 +253,62 @@ model EmergencyContact {
   relationship String
   callOrder    Int     @default(1)
   notifyOnSos  Boolean @default(true)
+  // Set when this contact is a registered EC user (a community volunteer or a
+  // linked family member) rather than a free-text name/phone — the "Emergency
+  // Contact Matrix": up to 3 per elder, each with a priorityLevel (enforced in
+  // the API, not the schema — Prisma has no "max N rows matching a condition"
+  // constraint). onDelete: SetNull, not Cascade — if the linked user's account
+  // is ever deleted, the contact card itself (name/phone as last known) stays.
+  linkedUserId  String?
+  priorityLevel EmergencyPriorityLevel?
+
+  user       User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  linkedUser User? @relation("EmergencyContactLinkedUser", fields: [linkedUserId], references: [id], onDelete: SetNull)
+
+  @@index([linkedUserId])
+}
+
+enum EmergencyPriorityLevel {
+  primary
+  secondary
+  backup
+}
+
+enum VolunteerAvailability {
+  weekdays
+  weekends
+  always // "24/7"
+}
+
+enum AssistanceType {
+  medical_runs
+  companionship
+  errands
+  tech_support
+}
+
+enum VolunteerVerificationStatus {
+  pending
+  verified
+  rejected
+}
+
+/// One per user who opted into "Register as a Community Volunteer" at signup (or
+/// later from their profile). "Geo-filtered" directory means scoped to the
+/// volunteer's own community/neighborhood via NeighborhoodMember, the same
+/// pattern every other "local" directory in this app uses (Doctors, Auto
+/// Drivers, Vendors) — there's no raw lat/lng radius search anywhere in this
+/// codebase, and community membership already is the geographic boundary that
+/// matters here (who's actually nearby enough to help).
+model VolunteerProfile {
+  id                 String                       @id @default(cuid())
+  userId             String                       @unique
+  availability       VolunteerAvailability
+  assistanceTypes    Json // AssistanceType[]
+  verificationStatus VolunteerVerificationStatus  @default(pending)
+  isActive           Boolean                      @default(true) // volunteer can pause visibility without deleting the profile
+  createdAt          DateTime                     @default(now())
+  updatedAt          DateTime                     @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -308,6 +377,297 @@ model DeviceToken {
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum NewsletterStatus {
+  draft
+  scheduled
+  published
+}
+
+enum NewsletterAudience {
+  all_caregivers
+  all_volunteers
+  all_elders
+  everyone
+}
+
+/// Admin-authored newsletter — updates, elder care tips, community
+/// announcements, policy changes. Publishing dispatches email (Resend) + push
+/// (FCM) to every user in the target audience, same providers already used
+/// elsewhere in this app; "Schedule" saves a target time but there's no cron
+/// runner on this host to auto-fire it (see the admin UI's own note on this) —
+/// an admin still triggers the actual send, scheduledFor is a target to work
+/// toward, not a guarantee.
+model Newsletter {
+  id           String             @id @default(cuid())
+  title        String
+  bodyHtml     String             @db.Text
+  excerpt      String?            @db.Text
+  audience     NewsletterAudience @default(everyone)
+  status       NewsletterStatus   @default(draft)
+  scheduledFor DateTime?
+  publishedAt  DateTime?
+  createdById  String
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  createdBy User @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([status, publishedAt])
+}
+
+enum BillerType {
+  electricity
+  water
+  property_tax
+  cable_tv
+  mobile
+  insurance
+  other
+}
+
+/// A utility/service consumer number linked to an elder's profile — Electricity,
+/// Water, Property Tax, cable TV, Mobile, Insurance, or Other. Deliberately no
+/// stored balance or wallet: bill payment is a direct pass-through via the
+/// existing Razorpay integration each time a bill is paid (see BillPayment) —
+/// building a real prepaid-wallet with fund custody would need an RBI Prepaid
+/// Payment Instrument license, which this platform doesn't have.
+model LinkedBiller {
+  id             String     @id @default(cuid())
+  elderUserId    String
+  addedById      String
+  billerType     BillerType
+  billerName     String
+  consumerNumber String
+  nickname       String?
+  // Consent flag, not a silent auto-debit mandate — see the honest note on
+  // BillPayment.status and the /health/billers UI for what this actually does.
+  autopayEnabled Boolean    @default(false)
+  createdAt      DateTime   @default(now())
+
+  elderUser User          @relation("LinkedBillerElder", fields: [elderUserId], references: [id], onDelete: Cascade)
+  addedBy   User          @relation("LinkedBillerAdder", fields: [addedById], references: [id], onDelete: Cascade)
+  bills     BillPayment[]
+
+  @@index([elderUserId])
+}
+
+enum BillPaymentStatus {
+  due
+  paid
+}
+
+/// One bill instance for a LinkedBiller — caregiver/admin enters the amount
+/// when a bill arrives (no real utility-biller API integration exists to fetch
+/// this automatically), then it's paid the same one-tap way as every other
+/// payment in this app (Razorpay order -> checkout -> server-verified
+/// signature). "Autopay" (LinkedBiller.autopayEnabled) means: the moment a bill
+/// is added for a biller with autopay on, the primary caregiver gets an
+/// immediate push notification with a direct pay link — a fast one-tap flow,
+/// not a truly silent auto-debit. Real unattended auto-debit needs Razorpay's
+/// separate e-NACH/card-mandate Subscriptions product (bank-level KYC,
+/// registered mandate, different checkout flow entirely) — not implemented
+/// here; this is the honest, working version buildable on the existing
+/// one-time-order integration.
+model BillPayment {
+  id                String            @id @default(cuid())
+  linkedBillerId    String
+  amount            Decimal           @db.Decimal(10, 2)
+  dueDate           DateTime?
+  status            BillPaymentStatus @default(due)
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  paidAt            DateTime?
+  createdAt         DateTime          @default(now())
+
+  linkedBiller LinkedBiller @relation(fields: [linkedBillerId], references: [id], onDelete: Cascade)
+
+  @@index([linkedBillerId, status])
+}
+
+enum AdvisoryCategory {
+  legal_will
+  reverse_mortgage
+  senior_insurance
+}
+
+/// Admin-curated directory of financial/legal/insurance advisors — empty until
+/// an admin adds real, verified partners (same "empty admin-curated directory,
+/// populate later" pattern as Local Doctors and Auto Drivers). No advisor
+/// login exists — same reasoning as doctors/auto drivers: coordination with a
+/// real advisor happens by phone/email once a consultation request connects
+/// you, not through an in-app advisor portal.
+model AdvisoryExpert {
+  id        String           @id @default(cuid())
+  category  AdvisoryCategory
+  name      String
+  firmName  String?
+  phone     String
+  email     String?
+  bio       String?          @db.Text
+  isActive  Boolean          @default(true)
+  createdAt DateTime         @default(now())
+
+  requests ConsultationRequest[]
+
+  @@index([category, isActive])
+}
+
+enum ConsultationStatus {
+  submitted
+  in_progress
+  completed
+}
+
+/// One consultation intake per submission. requirementDetails is a JSON blob
+/// because the three verticals genuinely ask different questions (a Will's
+/// document type vs. a reverse mortgage's property value vs. an insurance
+/// rider selection) — the multi-step intake *form* is what makes each vertical
+/// feel distinct on the frontend; the backend doesn't need three separate
+/// tables for that.
+model ConsultationRequest {
+  id                 String              @id @default(cuid())
+  elderUserId        String
+  requestedById      String
+  category           AdvisoryCategory
+  requirementDetails Json
+  notes              String?             @db.Text
+  assignedExpertId   String?
+  status             ConsultationStatus  @default(submitted)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  elderUser      User            @relation("ConsultationElder", fields: [elderUserId], references: [id], onDelete: Cascade)
+  requestedBy    User            @relation("ConsultationRequester", fields: [requestedById], references: [id], onDelete: Cascade)
+  assignedExpert AdvisoryExpert? @relation(fields: [assignedExpertId], references: [id], onDelete: SetNull)
+  documents      VaultDocument[]
+
+  @@index([elderUserId])
+}
+
+/// "Secure document vault" — stored via the same R2 object storage every other
+/// upload in this app uses (encrypted at rest by the storage provider,
+/// transferred over HTTPS, access-gated to the elder/caregiver who owns the
+/// consultation and platform admins who coordinate with the real advisor).
+/// This is genuinely secure storage, but being precise about what that means:
+/// it is not client-side end-to-end encryption, which isn't implemented.
+model VaultDocument {
+  id                     String   @id @default(cuid())
+  consultationRequestId  String
+  uploadedById           String
+  fileName               String
+  filePath               String
+  fileType               String
+  createdAt              DateTime @default(now())
+
+  consultationRequest ConsultationRequest @relation(fields: [consultationRequestId], references: [id], onDelete: Cascade)
+  uploadedBy           User                @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+
+  @@index([consultationRequestId])
+}
+
+enum ReviewFrequency {
+  monthly
+  quarterly
+  biannually
+}
+
+enum SubscriptionStatus {
+  active
+  paused
+  cancelled
+}
+
+/// A caregiver subscribes an elder's home to periodic property review visits.
+/// One rate per frequency, admin-set (see /admin/property/rates) — not a
+/// per-property quote, since there's no real-estate valuation integration to
+/// price one automatically.
+model PropertySubscription {
+  id             String              @id @default(cuid())
+  elderUserId    String
+  subscribedById String
+  frequency      ReviewFrequency
+  status         SubscriptionStatus  @default(active)
+  fee            Decimal             @db.Decimal(10, 2)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  elderUser    User                 @relation("PropertySubscriptionElder", fields: [elderUserId], references: [id], onDelete: Cascade)
+  subscribedBy User                 @relation("PropertySubscriptionSubscriber", fields: [subscribedById], references: [id], onDelete: Cascade)
+  inspections  PropertyInspection[]
+
+  @@index([elderUserId])
+}
+
+enum ChecklistItemStatus {
+  pass
+  fail
+  needs_attention
+}
+
+/// Field agents have no login of their own — same reasoning as doctors/auto
+/// drivers/advisory experts throughout this batch of features: admin submits
+/// the inspection report on the agent's behalf (submittedById), rather than
+/// this app growing a fifth user role and portal just for this.
+model PropertyInspection {
+  id               String              @id @default(cuid())
+  subscriptionId   String
+  submittedById    String
+  inspectedAt      DateTime            @default(now())
+  plumbingStatus   ChecklistItemStatus
+  electricalStatus ChecklistItemStatus
+  structuralStatus ChecklistItemStatus
+  notes            String?             @db.Text
+  mediaPaths       Json // string[] of R2 URLs — photos and/or short videos
+  createdAt        DateTime            @default(now())
+
+  subscription    PropertySubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  submittedBy     User                 @relation(fields: [submittedById], references: [id], onDelete: Cascade)
+  repairEstimates RepairEstimate[]
+
+  @@index([subscriptionId])
+}
+
+/// One line item per needed repair. Caregiver approval (isApproved) is what
+/// triggers automatic invoice generation — see POST .../approve, which creates
+/// the PropertyInvoice in the same request rather than needing a separate
+/// manual "generate invoice" admin step.
+model RepairEstimate {
+  id              String   @id @default(cuid())
+  inspectionId    String
+  itemDescription String
+  estimatedCost   Decimal  @db.Decimal(10, 2)
+  isApproved      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  inspection PropertyInspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  invoice    PropertyInvoice?
+
+  @@index([inspectionId])
+}
+
+enum PropertyInvoiceStatus {
+  pending
+  paid
+}
+
+/// The invoice record itself is the ledger entry for this repair — same
+/// convention as Order/FeeCharge/BillPayment elsewhere in this app, which
+/// don't have a separate aggregate ledger table either; the payment record's
+/// own paid/pending status and paidAt timestamp *is* the "care account
+/// ledger" update this was scoped as.
+model PropertyInvoice {
+  id                String                 @id @default(cuid())
+  repairEstimateId  String                 @unique
+  amount            Decimal                @db.Decimal(10, 2)
+  status            PropertyInvoiceStatus  @default(pending)
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  paidAt            DateTime?
+  createdAt         DateTime               @default(now())
+
+  repairEstimate RepairEstimate @relation(fields: [repairEstimateId], references: [id], onDelete: Cascade)
 }
 
 // ─── Health & Medicine ──────────────────────────────────────────
@@ -701,6 +1061,7 @@ model Neighborhood {
   autoDrivers    AutoDriver[]
   autoRateCard   AutoRateCard?
   doctors        LocalDoctor[]
+  rentalListings RentalListing[]
 
   @@index([pincode])
 }
@@ -1224,6 +1585,81 @@ enum MarketplaceListingStatus {
   active
   reserved
   closed
+}
+
+enum RentalListingType {
+  entire_house
+  room
+}
+
+enum RentalListingStatus {
+  active
+  in_negotiation
+  rented
+}
+
+/// House/room rental marketplace — platform-wide (not scoped to one community,
+/// unlike Marketplace/Vendors/Doctors/Auto Drivers), since someone looking for
+/// safe, accessible senior housing may well be looking outside their own
+/// immediate neighbourhood. neighborhoodId is optional context, not a boundary
+/// that filters who can see a listing.
+model RentalListing {
+  id              String               @id @default(cuid())
+  postedById      String
+  neighborhoodId  String?
+  title           String
+  listingType     RentalListingType
+  monthlyRent     Decimal              @db.Decimal(10, 2)
+  securityDeposit Decimal?             @db.Decimal(10, 2)
+  address         String?
+  city            String?
+  description     String?              @db.Text
+  houseRules      String?              @db.Text
+  // Senior-friendly accessibility tags — the whole point of this being a
+  // dedicated model rather than reusing MarketplaceListingType 'rent'.
+  wheelchairRamp  Boolean              @default(false)
+  grabBars        Boolean              @default(false)
+  noStepEntry     Boolean              @default(false)
+  groundFloor     Boolean              @default(false)
+  imagePath       String?
+  contactPhone    String
+  status          RentalListingStatus  @default(active)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  postedBy     User          @relation("RentalListingPoster", fields: [postedById], references: [id], onDelete: Cascade)
+  neighborhood Neighborhood? @relation(fields: [neighborhoodId], references: [id], onDelete: SetNull)
+  inquiries    RentalInquiry[]
+
+  @@index([listingType, status])
+  @@index([city])
+}
+
+enum RentalInquiryStatus {
+  open
+  scheduled
+  closed
+}
+
+/// One inquiry per prospective tenant/caregiver per listing — a message plus an
+/// optional requested visit date/time. Contact from there on (confirming a
+/// visit, negotiating) happens by phone/WhatsApp, the same handoff pattern as
+/// every other listing type in this app, rather than a separate in-app chat
+/// thread system built just for rentals.
+model RentalInquiry {
+  id          String              @id @default(cuid())
+  listingId   String
+  inquirerId  String
+  message     String?             @db.Text
+  visitDate   DateTime?
+  status      RentalInquiryStatus @default(open)
+  createdAt   DateTime            @default(now())
+
+  listing  RentalListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  inquirer User          @relation("RentalInquiryInquirer", fields: [inquirerId], references: [id], onDelete: Cascade)
+
+  @@unique([listingId, inquirerId])
+  @@index([listingId])
 }
 
 /// Community Buzz — classifieds distinct from MarketplaceListing (items): jobs and

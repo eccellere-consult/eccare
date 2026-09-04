@@ -23,10 +23,14 @@ import {
   PackageCheck,
   Flower2,
   GraduationCap,
+  HeartHandshake,
   Camera,
   MessageCircle,
   IndianRupee,
   Settings,
+  Mail,
+  Scale,
+  Wrench,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -86,6 +90,10 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
       { label: 'Wellness', href: '/admin/wellness', icon: Flower2 },
       { label: 'Self-Help Guides', href: '/admin/help-guides', icon: GraduationCap },
       { label: 'Providers', href: '/admin/providers', icon: Briefcase },
+      { label: 'Volunteers', href: '/admin/volunteers', icon: HeartHandshake },
+      { label: 'Newsletters', href: '/admin/newsletters', icon: Mail },
+      { label: 'Advisory', href: '/admin/advisory', icon: Scale },
+      { label: 'Property Management', href: '/admin/property', icon: Wrench },
       { label: 'WhatsApp Invite', href: '/admin/invite', icon: MessageCircle },
       { label: 'Settings', href: '/admin/settings', icon: Settings },
       { label: 'Profile', href: '/admin/profile', icon: User },
@@ -245,7 +253,14 @@ export function AppShell({ role, userName, children }: AppShellProps) {
 
       {/* Main content */}
       <main className="flex-1 pb-20 md:pb-0">
-        <div className="mx-auto w-full max-w-5xl p-4 sm:p-6 lg:p-8">{children}</div>
+        <div className="mx-auto w-full max-w-5xl p-4 sm:p-6 lg:p-8">
+          {children}
+          <footer className="mt-12 flex justify-center gap-4 border-t border-border pt-6 text-xs text-text-secondary">
+            <Link href="/newsletter" className="hover:text-primary-600 hover:underline">Newsletter</Link>
+            <Link href="/terms" className="hover:text-primary-600 hover:underline">Terms &amp; Conditions</Link>
+            <Link href="/privacy" className="hover:text-primary-600 hover:underline">Privacy Policy</Link>
+          </footer>
+        </div>
       </main>
 
       {/* Mobile bottom nav */}

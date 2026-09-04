@@ -239,6 +239,10 @@ export default function PrivacyPolicyPage() {
         </Section>
 
         <div className="mt-16 border-t border-border pt-8 text-center text-sm text-text-secondary">
+          <Link href="/terms" className="text-primary-600 hover:underline">
+            Terms &amp; Conditions
+          </Link>
+          {' · '}
           <Link href="/" className="text-primary-600 hover:underline">Back to EC</Link>
         </div>
       </main>

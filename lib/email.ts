@@ -53,3 +53,20 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string): Prom
   }
   return true;
 }
+
+/** Generic HTML email — the newsletter dispatch pipeline's email leg. Same
+ *  graceful no-op-without-a-key behavior as sendPasswordResetEmail. */
+export async function sendGenericEmail(to: string, subject: string, html: string): Promise<boolean> {
+  const client = getClient();
+  if (!client) {
+    console.warn('[email] RESEND_API_KEY not set — skipping email send.', { to, subject });
+    return false;
+  }
+
+  const { error } = await client.emails.send({ from: fromAddress(), to, subject, html });
+  if (error) {
+    console.error('[email] Resend send failed:', error);
+    return false;
+  }
+  return true;
+}
