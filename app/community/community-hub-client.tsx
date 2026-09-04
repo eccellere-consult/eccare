@@ -24,6 +24,7 @@ import {
   Palette,
   Car,
   Stethoscope,
+  HeartHandshake,
   type LucideIcon,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -44,6 +45,7 @@ const BASE_TILES: { href: string; label: string; sub: string; icon: LucideIcon }
   { href: '/community/announcements', label: 'Announcements', sub: 'Notices from the committee', icon: Megaphone },
   { href: '/community/events', label: 'Entertainment & Social Events', sub: 'Cultural activities, tours, movies & more', icon: Calendar },
   { href: '/community/directory', label: 'Neighbours', sub: 'Say hello or call', icon: Users },
+  { href: '/community/volunteers', label: 'Volunteers', sub: 'Verified neighbours ready to help', icon: HeartHandshake },
   { href: '/community/helplines', label: 'Helplines', sub: 'Emergency numbers', icon: Phone },
   { href: '/community/vendors', label: 'Vendors', sub: 'Trusted local services', icon: Store },
   { href: '/community/home-services', label: 'Home services', sub: 'Leakage, cleaning, maid, cook & more', icon: Wrench },

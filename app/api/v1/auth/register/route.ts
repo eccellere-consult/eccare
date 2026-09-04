@@ -21,6 +21,12 @@ const schema = z
     role: z.enum(['elder', 'caregiver', 'provider']),
     businessName: z.string().min(1).max(160).optional(),
     category: z.string().min(1).max(80).optional(),
+    // "Register as a Community Volunteer" — only meaningful for caregivers, since
+    // volunteering is something a family member/neighbour does for other elders,
+    // not something an elder registers to do for themselves.
+    isVolunteer: z.boolean().optional(),
+    volunteerAvailability: z.enum(['weekdays', 'weekends', 'always']).optional(),
+    volunteerAssistanceTypes: z.array(z.enum(['medical_runs', 'companionship', 'errands', 'tech_support'])).optional(),
   })
   .superRefine((data, ctx) => {
     if (data.role === 'provider') {
@@ -29,6 +35,17 @@ const schema = z
       }
       if (!data.category) {
         ctx.addIssue({ code: 'custom', path: ['category'], message: 'Category is required.' });
+      }
+    }
+    if (data.isVolunteer) {
+      if (data.role !== 'caregiver') {
+        ctx.addIssue({ code: 'custom', path: ['isVolunteer'], message: 'Only family members can register as a volunteer.' });
+      }
+      if (!data.volunteerAvailability) {
+        ctx.addIssue({ code: 'custom', path: ['volunteerAvailability'], message: 'Please select your availability.' });
+      }
+      if (!data.volunteerAssistanceTypes || data.volunteerAssistanceTypes.length === 0) {
+        ctx.addIssue({ code: 'custom', path: ['volunteerAssistanceTypes'], message: 'Please select at least one way you can help.' });
       }
     }
   });
@@ -43,7 +60,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { email, password, name, role, businessName, category } = parsed.data;
+  const { email, password, name, role, businessName, category, isVolunteer, volunteerAvailability, volunteerAssistanceTypes } = parsed.data;
   const phone = normalizePhone(parsed.data.phone);
   const passwordHash = await hashPassword(password);
 
@@ -132,6 +149,18 @@ export async function POST(req: NextRequest) {
       );
     }
     throw err;
+  }
+
+  // Upsert, not create — covers the "existing" claim-path (an invited-but-unclaimed
+  // account completing registration) re-registering, same as the user upsert above.
+  // verificationStatus always starts 'pending' regardless of any prior value; a
+  // volunteer doesn't get to re-verify themselves by re-registering.
+  if (isVolunteer && role === 'caregiver' && volunteerAvailability && volunteerAssistanceTypes) {
+    await prisma.volunteerProfile.upsert({
+      where: { userId: user.id },
+      create: { userId: user.id, availability: volunteerAvailability, assistanceTypes: volunteerAssistanceTypes, verificationStatus: 'pending' },
+      update: { availability: volunteerAvailability, assistanceTypes: volunteerAssistanceTypes, verificationStatus: 'pending' },
+    });
   }
 
   const token = await createToken(user.id, user.role);
