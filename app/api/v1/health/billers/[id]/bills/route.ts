@@ -57,7 +57,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         title: `New ${biller.billerType.replace('_', ' ')} bill — ${biller.billerName}`,
         body: `₹${parsed.data.amount} due${parsed.data.dueDate ? ` on ${new Date(parsed.data.dueDate).toLocaleDateString('en-IN')}` : ''}. Autopay is on for this biller — tap to pay now.`,
         channelId: 'default',
-        data: { type: 'bill_due', billId: bill.id, linkedBillerId: id },
+        data: { type: 'bill_due', billId: bill.id, linkedBillerId: id, elderUserId: biller.elderUserId },
       });
     }
   }
