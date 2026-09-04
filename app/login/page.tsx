@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { isValidEmail, isValidPhone, EMAIL_FORMAT_MESSAGE, PHONE_FORMAT_MESSAGE } from '@/lib/validation';
 import { HelpGuidesSection } from '@/components/help-guides-section';
 import { TourButton } from '@/components/tour/TourButton';
+import { DedicationFooter } from '@/components/dedication-footer';
 
 const ROLE_HOME: Record<string, string> = {
   elder: '/elder',
@@ -306,6 +307,7 @@ function LoginPageContent() {
         </Card>
 
         {view === 'register' && <HelpGuidesSection />}
+        <DedicationFooter />
       </div>
     </main>
   );
