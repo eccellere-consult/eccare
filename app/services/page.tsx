@@ -17,6 +17,7 @@ import {
   FlaskConical,
   Home as HomeIcon,
   Scale,
+  Wrench,
   type LucideIcon,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -159,6 +160,21 @@ export default function ServicesPage() {
             <div className="flex-1">
               <p className="font-bold text-text">Financial, Legal &amp; Advisory Services</p>
               <p className="text-sm text-text-secondary">Wills, reverse mortgage, senior insurance</p>
+            </div>
+            <ChevronRight className="h-5 w-5 shrink-0 text-text-secondary" />
+          </CardContent>
+        </Card>
+      </Link>
+
+      <Link href="/services/property-management" className="mt-4 block">
+        <Card className="border-border bg-surface transition-shadow hover:shadow-md">
+          <CardContent className="flex items-center gap-4 pt-6">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-50">
+              <Wrench className="h-6 w-6 text-primary-600" />
+            </span>
+            <div className="flex-1">
+              <p className="font-bold text-text">Property Management</p>
+              <p className="text-sm text-text-secondary">Periodic home reviews, inspections, and repair estimates</p>
             </div>
             <ChevronRight className="h-5 w-5 shrink-0 text-text-secondary" />
           </CardContent>
