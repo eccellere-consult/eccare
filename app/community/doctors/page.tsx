@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { CommunityPageFrame } from '@/components/community/page-frame';
 import { communityApi, useCommunityData } from '@/lib/community-client';
+import { buildWaLink } from '@/lib/whatsapp';
 
 type VerificationStatus = 'pending' | 'verified' | 'rejected';
 interface Slot {
@@ -244,7 +245,7 @@ export default function DoctorsPage() {
         `Consultation fee: ₹${doctor.consultationFee}`,
         'Please call or reply to confirm this slot. Thank you!',
       ].join('\n');
-      window.open(`https://wa.me/${doctor.phone.replace(/[^\d]/g, '')}?text=${encodeURIComponent(message)}`, '_blank');
+      window.open(buildWaLink(doctor.phone, message), '_blank');
       reload();
       reloadBookings();
       setTab('bookings');

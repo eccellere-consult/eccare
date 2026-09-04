@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { buildWaLink as waLink } from '@/lib/whatsapp';
 
 interface Listing {
   id: string;
@@ -48,10 +49,6 @@ const ACCESSIBILITY_TAGS = [
 ] as const;
 const STATUS_OPTIONS = ['active', 'in_negotiation', 'rented'] as const;
 const INQUIRY_STATUS_OPTIONS = ['open', 'scheduled', 'closed'] as const;
-
-function waLink(phone: string): string {
-  return `https://wa.me/${phone.replace(/[^\d]/g, '')}`;
-}
 
 export default function RentalDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);

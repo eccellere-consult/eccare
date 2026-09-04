@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useCommunityData } from '@/lib/community-client';
+import { buildWaLink, toWhatsAppNumber } from '@/lib/whatsapp';
 
 interface Neighborhood {
   id: string;
@@ -42,10 +43,6 @@ function buildDefaultMessage(registrationLink: string, community: Neighborhood |
   ]
     .filter(Boolean)
     .join('\n');
-}
-
-function digitsOnly(phone: string): string {
-  return phone.replace(/[^\d]/g, '');
 }
 
 /** No paid WhatsApp Business API or SMS gateway — every send here is still a
@@ -125,7 +122,7 @@ function SingleInvite({ registrationLink, communities, neighborhoodId, setNeighb
 
   const message = buildDefaultMessage(registrationLink, selectedCommunity).replace('{{name}}', 'there');
   const waLink = phone.trim()
-    ? `https://wa.me/${digitsOnly(phone)}?text=${encodeURIComponent(message)}`
+    ? buildWaLink(phone, message)
     : `https://wa.me/?text=${encodeURIComponent(message)}`;
 
   async function copyMessage() {
@@ -247,8 +244,8 @@ function BulkInvite({ registrationLink, communities, neighborhoodId, setNeighbor
   if (queue) {
     const recipient = queue[queueIndex];
     const personalized = personalize(recipient);
-    const waLink = `https://wa.me/${digitsOnly(recipient.phone!)}?text=${encodeURIComponent(personalized)}`;
-    const smsLink = `sms:${recipient.phone}?body=${encodeURIComponent(personalized)}`;
+    const waLink = buildWaLink(recipient.phone!, personalized);
+    const smsLink = `sms:+${toWhatsAppNumber(recipient.phone!)}?body=${encodeURIComponent(personalized)}`;
     const isSent = sentIds.has(recipient.id);
 
     return (

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { CompanionCard } from '@/components/companion-card';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
+import { buildWaLink } from '@/lib/whatsapp';
 
 const AMBULANCE_NUMBER = '108';
 const POLICE_NUMBER = '100';
@@ -131,8 +132,7 @@ export function ElderHomeClient({
       const { lat, lng } = await getLocation();
       const locationLine = lat != null && lng != null ? ` My location: https://www.google.com/maps?q=${lat},${lng}` : '';
       const message = `This is an emergency, I need help.${locationLine}`;
-      const waLink = `https://wa.me/${primaryContact.phone.replace(/[^\d]/g, '')}?text=${encodeURIComponent(message)}`;
-      window.open(waLink, '_blank');
+      window.open(buildWaLink(primaryContact.phone, message), '_blank');
     }
     window.location.href = `tel:${POLICE_NUMBER}`;
   }
