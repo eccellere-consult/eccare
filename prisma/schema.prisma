@@ -695,6 +695,8 @@ model Neighborhood {
   documents      CommunityDocument[]
   expenses       AssociationExpense[]
   hobbyGroups    HobbyGroup[]
+  autoDrivers    AutoDriver[]
+  autoRateCard   AutoRateCard?
 
   @@index([pincode])
 }
@@ -886,6 +888,37 @@ model CommunityHelpline {
   neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
 
   @@index([neighborhoodId, sortOrder])
+}
+
+/// Auto-rickshaw drivers a committee/admin has vetted for the community —
+/// booking itself is a WhatsApp handoff (wa.me deep link with pickup/drop/trip
+/// details pre-filled, same pattern as the Police button), not a live in-app
+/// accept/reject workflow — the driver has no login, so there's nothing to
+/// track server-side beyond the directory and the rate card below.
+model AutoDriver {
+  id             String   @id @default(cuid())
+  neighborhoodId String
+  name           String
+  phone          String
+  vehicleNumber  String?
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+
+  @@index([neighborhoodId, sortOrder])
+}
+
+/// One rate card per community — shown alongside the driver list so a fare can
+/// be roughly estimated/agreed before booking. Committee/admin-set.
+model AutoRateCard {
+  id             String   @id @default(cuid())
+  neighborhoodId String   @unique
+  perKmRate      Decimal  @db.Decimal(10, 2)
+  perMinWaitRate Decimal  @db.Decimal(10, 2)
+  updatedAt      DateTime @updatedAt
+
+  neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
 }
 
 /// Vendors / local services directory. neighborhoodId is nullable so a listing can be
