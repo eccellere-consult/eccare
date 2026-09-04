@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { TourButton } from '@/components/tour/TourButton';
 import { isValidEmail, isValidPhone, EMAIL_FORMAT_MESSAGE, PHONE_FORMAT_MESSAGE } from '@/lib/validation';
 
 export default function InviteElderPage() {
@@ -72,7 +73,11 @@ export default function InviteElderPage() {
         They'll see this invite the next time they sign in to EC and can accept it themselves.
       </p>
 
-      <Card className="mt-6">
+      <div className="mt-4">
+        <TourButton tourId="addElder" />
+      </div>
+
+      <Card className="mt-3">
         <CardHeader>
           <CardTitle>Elder's details</CardTitle>
           <CardDescription>We'll link their account to yours once they accept.</CardDescription>

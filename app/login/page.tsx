@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { isValidEmail, isValidPhone, EMAIL_FORMAT_MESSAGE, PHONE_FORMAT_MESSAGE } from '@/lib/validation';
 import { HelpGuidesSection } from '@/components/help-guides-section';
+import { TourButton } from '@/components/tour/TourButton';
 
 const ROLE_HOME: Record<string, string> = {
   elder: '/elder',
@@ -287,6 +288,11 @@ function LoginPageContent() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {view === 'register' && (
+              <div className="mb-4 flex justify-center">
+                <TourButton tourId="register" />
+              </div>
+            )}
             {view === 'signin' ? <SignInForm onSuccess={handleSuccess} /> : <CreateAccountForm onSuccess={handleSuccess} />}
 
             <button

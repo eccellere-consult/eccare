@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CommunityPageFrame } from '@/components/community/page-frame';
+import { TourButton } from '@/components/tour/TourButton';
 import { communityApi } from '@/lib/community-client';
 
 export default function JoinCommunityPage() {
@@ -39,7 +40,11 @@ export default function JoinCommunityPage() {
       title="Join your community"
       subtitle="Enter the code shared by your management committee."
     >
-      <Card className="max-w-lg">
+      <div className="max-w-lg">
+        <TourButton tourId="joinCommunity" />
+      </div>
+
+      <Card className="mt-3 max-w-lg">
         <CardContent className="pt-6">
           <form onSubmit={submit} className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
