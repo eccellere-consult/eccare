@@ -15,6 +15,7 @@ import {
   HeartHandshake,
   ChevronRight,
   FlaskConical,
+  Home as HomeIcon,
   type LucideIcon,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -142,6 +143,21 @@ export default function ServicesPage() {
             <div className="flex-1">
               <p className="font-bold text-text">Elder Care Services</p>
               <p className="text-sm text-text-secondary">Home treatment, nursing, companion service, and local errands</p>
+            </div>
+            <ChevronRight className="h-5 w-5 shrink-0 text-text-secondary" />
+          </CardContent>
+        </Card>
+      </Link>
+
+      <Link href="/rentals" className="mt-4 block">
+        <Card className="border-border bg-surface transition-shadow hover:shadow-md">
+          <CardContent className="flex items-center gap-4 pt-6">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-50">
+              <HomeIcon className="h-6 w-6 text-primary-600" />
+            </span>
+            <div className="flex-1">
+              <p className="font-bold text-text">Senior-Friendly Rentals</p>
+              <p className="text-sm text-text-secondary">Houses and rooms with accessibility filters</p>
             </div>
             <ChevronRight className="h-5 w-5 shrink-0 text-text-secondary" />
           </CardContent>
