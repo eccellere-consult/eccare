@@ -51,6 +51,8 @@ model User {
   healthNotes        HealthNote[]         @relation("HealthNoteUser")
   sosEvents          SOSEvent[]
   emergencyContacts  EmergencyContact[]
+  linkedAsEmergencyContact EmergencyContact[] @relation("EmergencyContactLinkedUser")
+  volunteerProfile   VolunteerProfile?
   foodRequests       FoodRequest[]
   mealReminders      MealReminder[]
   voiceLogs          VoiceLog[]
@@ -240,6 +242,62 @@ model EmergencyContact {
   relationship String
   callOrder    Int     @default(1)
   notifyOnSos  Boolean @default(true)
+  // Set when this contact is a registered EC user (a community volunteer or a
+  // linked family member) rather than a free-text name/phone — the "Emergency
+  // Contact Matrix": up to 3 per elder, each with a priorityLevel (enforced in
+  // the API, not the schema — Prisma has no "max N rows matching a condition"
+  // constraint). onDelete: SetNull, not Cascade — if the linked user's account
+  // is ever deleted, the contact card itself (name/phone as last known) stays.
+  linkedUserId  String?
+  priorityLevel EmergencyPriorityLevel?
+
+  user       User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  linkedUser User? @relation("EmergencyContactLinkedUser", fields: [linkedUserId], references: [id], onDelete: SetNull)
+
+  @@index([linkedUserId])
+}
+
+enum EmergencyPriorityLevel {
+  primary
+  secondary
+  backup
+}
+
+enum VolunteerAvailability {
+  weekdays
+  weekends
+  always // "24/7"
+}
+
+enum AssistanceType {
+  medical_runs
+  companionship
+  errands
+  tech_support
+}
+
+enum VolunteerVerificationStatus {
+  pending
+  verified
+  rejected
+}
+
+/// One per user who opted into "Register as a Community Volunteer" at signup (or
+/// later from their profile). "Geo-filtered" directory means scoped to the
+/// volunteer's own community/neighborhood via NeighborhoodMember, the same
+/// pattern every other "local" directory in this app uses (Doctors, Auto
+/// Drivers, Vendors) — there's no raw lat/lng radius search anywhere in this
+/// codebase, and community membership already is the geographic boundary that
+/// matters here (who's actually nearby enough to help).
+model VolunteerProfile {
+  id                 String                       @id @default(cuid())
+  userId             String                       @unique
+  availability       VolunteerAvailability
+  assistanceTypes    Json // AssistanceType[]
+  verificationStatus VolunteerVerificationStatus  @default(pending)
+  isActive           Boolean                      @default(true) // volunteer can pause visibility without deleting the profile
+  createdAt          DateTime                     @default(now())
+  updatedAt          DateTime                     @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

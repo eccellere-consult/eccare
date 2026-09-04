@@ -108,6 +108,20 @@ const ROLE_TOGGLE_OPTIONS = [
   { value: 'provider', label: 'A service provider' },
 ] as const;
 
+const VOLUNTEER_AVAILABILITY_OPTIONS = [
+  { value: 'weekdays', label: 'Weekdays' },
+  { value: 'weekends', label: 'Weekends' },
+  { value: 'always', label: '24/7' },
+] as const;
+const VOLUNTEER_ASSISTANCE_OPTIONS = [
+  { value: 'medical_runs', label: 'Medical Runs' },
+  { value: 'companionship', label: 'Companionship' },
+  { value: 'errands', label: 'Errands' },
+  { value: 'tech_support', label: 'Tech Support' },
+] as const;
+type VolunteerAvailability = (typeof VOLUNTEER_AVAILABILITY_OPTIONS)[number]['value'];
+type AssistanceType = (typeof VOLUNTEER_ASSISTANCE_OPTIONS)[number]['value'];
+
 function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void }) {
   const [role, setRole] = useState<'elder' | 'caregiver' | 'provider'>('elder');
   const [name, setName] = useState('');
@@ -116,8 +130,15 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
   const [password, setPassword] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [category, setCategory] = useState('');
+  const [isVolunteer, setIsVolunteer] = useState(false);
+  const [availability, setAvailability] = useState<VolunteerAvailability | ''>('');
+  const [assistanceTypes, setAssistanceTypes] = useState<AssistanceType[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  function toggleAssistanceType(type: AssistanceType) {
+    setAssistanceTypes((prev) => (prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]));
+  }
 
   async function register(e: React.FormEvent) {
     e.preventDefault();
@@ -142,6 +163,10 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
       setError('Please enter your business name and category.');
       return;
     }
+    if (role === 'caregiver' && isVolunteer && (!availability || assistanceTypes.length === 0)) {
+      setError('Please select your availability and at least one way you can help.');
+      return;
+    }
     setLoading(true);
     try {
       const data = await api('/auth/register', {
@@ -151,6 +176,9 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
         password,
         role,
         ...(role === 'provider' ? { businessName, category } : {}),
+        ...(role === 'caregiver' && isVolunteer
+          ? { isVolunteer: true, volunteerAvailability: availability, volunteerAssistanceTypes: assistanceTypes }
+          : {}),
       });
       onSuccess(data.user.role);
     } catch (err) {
@@ -231,6 +259,64 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
           placeholder="At least 8 characters"
         />
       </div>
+      {role === 'caregiver' && (
+        <div className="flex flex-col gap-2 rounded-xl border border-border p-3">
+          <label className="flex items-center gap-2 text-sm font-semibold text-text">
+            <input
+              type="checkbox"
+              checked={isVolunteer}
+              onChange={(e) => setIsVolunteer(e.target.checked)}
+              className="h-5 w-5 rounded border-border pointer-coarse:h-6 pointer-coarse:w-6"
+            />
+            Register as a Community Volunteer
+          </label>
+          <p className="text-xs text-text-secondary">
+            Offer to help elders near you — a committee/admin reviews and verifies volunteers before
+            they're shown in the community directory.
+          </p>
+
+          {isVolunteer && (
+            <div className="mt-2 flex flex-col gap-3">
+              <div className="flex flex-col gap-2">
+                <Label>Availability</Label>
+                <div className="flex flex-wrap gap-2">
+                  {VOLUNTEER_AVAILABILITY_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setAvailability(opt.value)}
+                      className={cn(
+                        'rounded-xl border px-3 py-1.5 text-xs font-semibold',
+                        availability === opt.value ? 'border-primary-600 bg-primary-50 text-primary-900' : 'border-border text-text-secondary',
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label>How can you help? (select all that apply)</Label>
+                <div className="flex flex-wrap gap-2">
+                  {VOLUNTEER_ASSISTANCE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => toggleAssistanceType(opt.value)}
+                      className={cn(
+                        'rounded-xl border px-3 py-1.5 text-xs font-semibold',
+                        assistanceTypes.includes(opt.value) ? 'border-primary-600 bg-primary-50 text-primary-900' : 'border-border text-text-secondary',
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
       {role === 'provider' && (
         <>
           <div className="flex flex-col gap-2">

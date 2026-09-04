@@ -11,6 +11,12 @@ const createSchema = z.object({
   callOrder: z.number().int().min(1).optional(),
   notifyOnSos: z.boolean().optional(),
   elderUserId: z.string().optional(),
+  // "Emergency Contact Matrix" — linking a registered volunteer or family member
+  // (not just free-text name/phone) with a priority level. Capped at 3 per
+  // elder, one per priorityLevel, enforced below (Prisma has no "max N rows"
+  // schema constraint).
+  linkedUserId: z.string().optional(),
+  priorityLevel: z.enum(['primary', 'secondary', 'backup']).optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -67,6 +73,40 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const { linkedUserId, priorityLevel } = parsed.data;
+
+  if (linkedUserId || priorityLevel) {
+    if (!linkedUserId || !priorityLevel) {
+      return NextResponse.json(
+        { success: false, error: { code: 'INVALID_INPUT', message: 'A priority level requires linking a registered volunteer or family member, and vice versa.' } },
+        { status: 400 },
+      );
+    }
+
+    const existingLinked = await prisma.emergencyContact.findMany({
+      where: { userId: targetUserId, linkedUserId: { not: null } },
+      select: { linkedUserId: true, priorityLevel: true },
+    });
+    if (existingLinked.length >= 3) {
+      return NextResponse.json(
+        { success: false, error: { code: 'MATRIX_FULL', message: 'Up to 3 registered volunteers or family members can be linked — remove one first to add another.' } },
+        { status: 409 },
+      );
+    }
+    if (existingLinked.some((c) => c.linkedUserId === linkedUserId)) {
+      return NextResponse.json(
+        { success: false, error: { code: 'ALREADY_LINKED', message: 'This person is already linked as an emergency contact.' } },
+        { status: 409 },
+      );
+    }
+    if (existingLinked.some((c) => c.priorityLevel === priorityLevel)) {
+      return NextResponse.json(
+        { success: false, error: { code: 'PRIORITY_TAKEN', message: `Someone is already set as ${priorityLevel} — change theirs first.` } },
+        { status: 409 },
+      );
+    }
+  }
+
   const contact = await prisma.emergencyContact.create({
     data: {
       userId: targetUserId,
@@ -75,6 +115,8 @@ export async function POST(req: NextRequest) {
       relationship: parsed.data.relationship,
       callOrder: parsed.data.callOrder ?? 1,
       notifyOnSos: parsed.data.notifyOnSos ?? true,
+      linkedUserId,
+      priorityLevel,
     },
   });
 
