@@ -1265,9 +1265,23 @@ model AutoDriver {
   neighborhoodId String
   name           String
   phone          String
+  whatsapp       String? // separate from phone per spec; UI falls back to phone if unset
   vehicleNumber  String?
+  serviceArea    String?
+  // Per-driver indicative rate, optional — falls back to the community's
+  // AutoRateCard below when a driver hasn't set their own. Nullable rather than
+  // required so existing drivers don't need a backfill migration.
+  perKmRate      Decimal? @db.Decimal(10, 2)
+  perMinWaitRate Decimal? @db.Decimal(10, 2)
+  isAvailable    Boolean  @default(true)
   sortOrder      Int      @default(0)
   createdAt      DateTime @default(now())
+
+  // Optional link to a ServiceProvider row, purely for reusing its
+  // verificationStatus + the existing admin approval queue (app/admin/providers) —
+  // the driver still has no EC login; see lib/provider-directory.ts.
+  providerId String?         @unique
+  provider   ServiceProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
 
   neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
 
@@ -1294,6 +1308,8 @@ model LocalDoctor {
   id              String   @id @default(cuid())
   neighborhoodId  String
   name            String
+  photoPath       String? // R2 URL, uploaded separately after the doctor is created
+  clinicName      String? // "Clinic/hospital" — distinct from locality (an area, not a venue name)
   specialty       String
   qualifications  String?  @db.Text
   background      String?  @db.Text
@@ -1307,6 +1323,13 @@ model LocalDoctor {
   addedById       String
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  // Optional link to a ServiceProvider row, purely for reusing its
+  // verificationStatus + the existing admin approval queue (app/admin/providers) —
+  // the doctor still has no EC login; see lib/provider-directory.ts. Null means a
+  // legacy doctor added before this existed — treated as already-verified/bookable.
+  providerId String?         @unique
+  provider   ServiceProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
 
   neighborhood Neighborhood    @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
   addedBy      User            @relation(fields: [addedById], references: [id], onDelete: Cascade)
@@ -1892,6 +1915,11 @@ model ServiceProvider {
   communityListings CommunityProviderListing[]
   catalogItems       CatalogItem[]
   orders             Order[]
+  // Doctors & Elder Transport module: a directory entry (which has no login of
+  // its own) optionally links here purely to reuse verificationStatus + the
+  // admin approval queue. At most one of each per ServiceProvider row.
+  localDoctor  LocalDoctor?
+  autoDriver   AutoDriver?
 
   @@index([verificationStatus])
   @@index([elderCareCategory])

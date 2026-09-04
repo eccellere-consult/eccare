@@ -9,6 +9,7 @@ const fail = (code: string, message: string, status = 400) =>
 const schema = z.object({
   name: z.string().min(1).max(120).optional(),
   specialty: z.string().min(1).max(120).optional(),
+  clinicName: z.string().max(200).nullable().optional(),
   qualifications: z.string().max(1000).nullable().optional(),
   background: z.string().max(2000).nullable().optional(),
   locality: z.string().max(160).nullable().optional(),
