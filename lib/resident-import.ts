@@ -135,6 +135,16 @@ export async function createResidents(
   let created = 0;
   let skipped = 0;
 
+  // House/flat number previously only ever reached NeighborhoodMember.flatNumber
+  // (which is what the community Members list and neighbour directory already
+  // read) — the User's own address/city/pincode stayed blank, so a resident's
+  // own profile never showed where they actually live. Fetched once for the
+  // whole batch since every row shares the same community's city/pincode.
+  const neighborhood = await prisma.neighborhood.findUnique({
+    where: { id: neighborhoodId },
+    select: { city: true, pincode: true },
+  });
+
   for (const row of rows) {
     if (row.status !== 'ready' || !row.phone || !row.role || !includedRowNumbers.has(row.rowNumber)) {
       skipped++;
@@ -143,7 +153,16 @@ export async function createResidents(
 
     try {
       const user = await prisma.user.create({
-        data: { name: row.name, phone: row.phone, email: row.email ?? undefined, role: row.role, passwordHash },
+        data: {
+          name: row.name,
+          phone: row.phone,
+          email: row.email ?? undefined,
+          role: row.role,
+          passwordHash,
+          address: row.houseNumber ?? undefined,
+          city: neighborhood?.city ?? undefined,
+          pincode: neighborhood?.pincode ?? undefined,
+        },
       });
       await prisma.neighborhoodMember.create({
         data: { neighborhoodId, userId: user.id, flatNumber: row.houseNumber ?? undefined },
