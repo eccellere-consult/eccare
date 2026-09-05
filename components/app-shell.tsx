@@ -31,6 +31,7 @@ import {
   Mail,
   Scale,
   Wrench,
+  CalendarClock,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -103,6 +104,7 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
     label: 'Provider',
     items: [
       { label: 'Overview', href: '/provider', icon: LayoutDashboard },
+      { label: 'Appointments', href: '/provider/appointments', icon: CalendarClock },
       { label: 'Catalog', href: '/provider/catalog', icon: Package },
       { label: 'Orders', href: '/provider/orders', icon: PackageCheck },
     ],
