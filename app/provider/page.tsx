@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Store, Inbox, CalendarClock, ChevronRight } from 'lucide-react';
+import { Store, Inbox, CalendarClock, Car, Scale, Home, ChevronRight, type LucideIcon } from 'lucide-react';
 import { prisma } from '@/lib/db';
 import { getServerUser } from '@/lib/server-session';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,11 +7,21 @@ import { Badge } from '@/components/ui/badge';
 import { ProviderProfileClient } from './provider-profile-client';
 import { CommunityRequestsClient } from './community-requests-client';
 import { ProviderAccountClient } from './account-client';
-import { AutoDriverSelfService } from '@/components/provider/auto-driver-self-service';
-import { AdvisorySelfService } from '@/components/provider/advisory-self-service';
-import { PropertyManagementSelfService } from '@/components/provider/property-management-self-service';
 
 export const dynamic = 'force-dynamic';
+
+/** One category-specific management page per self-service module, each a
+ *  dedicated route (not inline sections here) so they're reachable from the
+ *  sidebar nav (components/app-shell.tsx) regardless of which category a
+ *  provider is — a category that was only ever an inline conditional
+ *  section, with no nav link, was easy to mistake for "doesn't exist". */
+const CATEGORY_PAGES: { category: string; href: string; label: string; description: string; icon: LucideIcon }[] = [
+  { category: 'doctor', href: '/provider/appointments', label: 'Appointments', description: 'Manage your bookable time slots and see who’s booked', icon: CalendarClock },
+  { category: 'auto_transport', href: '/provider/transport', label: 'Your rates & listings', description: 'Manage your rates, WhatsApp number, and availability', icon: Car },
+  { category: 'legal_help', href: '/provider/advisory', label: 'Advisory profile & consultations', description: 'Manage your profile and move consultations along', icon: Scale },
+  { category: 'insurance', href: '/provider/advisory', label: 'Advisory profile & consultations', description: 'Manage your profile and move consultations along', icon: Scale },
+  { category: 'property_management', href: '/provider/property-management', label: 'Rates, clients & inspections', description: 'Set your rates and submit inspection reports', icon: Home },
+];
 
 /**
  * Provider landing page.
@@ -38,38 +48,7 @@ export default async function ProviderHomePage() {
       ])
     : [[], null];
 
-  const autoDriverRows =
-    provider?.category === 'auto_transport'
-      ? await prisma.autoDriver.findMany({
-          where: { providerId: provider.id },
-          include: { neighborhood: { select: { id: true, name: true } } },
-          orderBy: { createdAt: 'desc' },
-        })
-      : [];
-  // Prisma's Decimal isn't a plain string — serialize explicitly rather than
-  // pass it through to a Client Component untyped.
-  const autoDrivers = autoDriverRows.map((d) => ({
-    ...d,
-    perKmRate: d.perKmRate?.toString() ?? null,
-    perMinWaitRate: d.perMinWaitRate?.toString() ?? null,
-  }));
-
-  const advisoryExpert =
-    provider?.category === 'legal_help' || provider?.category === 'insurance'
-      ? await prisma.advisoryExpert.findUnique({ where: { providerId: provider.id } })
-      : null;
-
-  const propertyManagementProfileRow =
-    provider?.category === 'property_management'
-      ? await prisma.propertyManagementProfile.findUnique({ where: { providerId: provider.id } })
-      : null;
-  const propertyManagementProfile = propertyManagementProfileRow
-    ? {
-        monthlyFee: propertyManagementProfileRow.monthlyFee?.toString() ?? null,
-        quarterlyFee: propertyManagementProfileRow.quarterlyFee?.toString() ?? null,
-        biannualFee: propertyManagementProfileRow.biannualFee?.toString() ?? null,
-      }
-    : null;
+  const categoryPage = CATEGORY_PAGES.find((c) => c.category === provider?.category);
 
   return (
     <div>
@@ -90,28 +69,21 @@ export default async function ProviderHomePage() {
         </div>
       )}
 
-      {provider?.category === 'doctor' && (
-        <Link href="/provider/appointments" className="mt-6 block">
+      {categoryPage && (
+        <Link href={categoryPage.href} className="mt-6 block">
           <Card className="border-primary-100 bg-primary-50 transition-shadow hover:shadow-md">
             <CardContent className="flex items-center gap-4 pt-6">
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface">
-                <CalendarClock className="h-5 w-5 text-primary-600" />
+                <categoryPage.icon className="h-5 w-5 text-primary-600" />
               </span>
               <div className="flex-1">
-                <p className="font-bold text-text">Appointments</p>
-                <p className="text-sm text-text-secondary">Manage your bookable time slots and see who&rsquo;s booked</p>
+                <p className="font-bold text-text">{categoryPage.label}</p>
+                <p className="text-sm text-text-secondary">{categoryPage.description}</p>
               </div>
               <ChevronRight className="h-5 w-5 shrink-0 text-text-secondary" />
             </CardContent>
           </Card>
         </Link>
-      )}
-      {provider?.category === 'auto_transport' && <AutoDriverSelfService initial={autoDrivers} />}
-      {(provider?.category === 'legal_help' || provider?.category === 'insurance') && (
-        <AdvisorySelfService initial={advisoryExpert} />
-      )}
-      {provider?.category === 'property_management' && (
-        <PropertyManagementSelfService initialProfile={propertyManagementProfile} />
       )}
 
       <div className="mt-6">
