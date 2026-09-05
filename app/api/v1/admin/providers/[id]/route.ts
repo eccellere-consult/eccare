@@ -45,7 +45,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       verifiedAt: verificationStatus === 'verified' ? new Date() : null,
       verifiedById: verificationStatus === 'verified' ? auth.userId : null,
     },
-    include: { user: { select: { id: true, name: true, email: true, phone: true } }, advisoryExpert: true },
+    include: {
+      user: { select: { id: true, name: true, email: true, phone: true } },
+      advisoryExpert: true,
+      propertyManagementProfile: true,
+    },
   });
 
   // Legal Help / Insurance providers aren't community-scoped, so there's no
@@ -67,6 +71,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         },
       });
     }
+  }
+
+  // Same reasoning for Property Management — no directory-entry creation
+  // step either, just a blank rate profile the provider fills in themselves;
+  // becoming browsable is just a matter of being verified with this category.
+  if (verificationStatus === 'verified' && provider.category === 'property_management' && !provider.propertyManagementProfile) {
+    await prisma.propertyManagementProfile.create({ data: { providerId: provider.id } });
   }
 
   return NextResponse.json({ success: true, data: provider });

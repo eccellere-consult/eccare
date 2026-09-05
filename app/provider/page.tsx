@@ -9,6 +9,7 @@ import { ProviderAccountClient } from './account-client';
 import { AutoDriverSelfService } from '@/components/provider/auto-driver-self-service';
 import { DoctorSelfService } from '@/components/provider/doctor-self-service';
 import { AdvisorySelfService } from '@/components/provider/advisory-self-service';
+import { PropertyManagementSelfService } from '@/components/provider/property-management-self-service';
 
 export const dynamic = 'force-dynamic';
 
@@ -75,6 +76,18 @@ export default async function ProviderHomePage() {
       ? await prisma.advisoryExpert.findUnique({ where: { providerId: provider.id } })
       : null;
 
+  const propertyManagementProfileRow =
+    provider?.category === 'property_management'
+      ? await prisma.propertyManagementProfile.findUnique({ where: { providerId: provider.id } })
+      : null;
+  const propertyManagementProfile = propertyManagementProfileRow
+    ? {
+        monthlyFee: propertyManagementProfileRow.monthlyFee?.toString() ?? null,
+        quarterlyFee: propertyManagementProfileRow.quarterlyFee?.toString() ?? null,
+        biannualFee: propertyManagementProfileRow.biannualFee?.toString() ?? null,
+      }
+    : null;
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-text">
@@ -98,6 +111,9 @@ export default async function ProviderHomePage() {
       {provider?.category === 'doctor' && <DoctorSelfService initial={doctors} />}
       {(provider?.category === 'legal_help' || provider?.category === 'insurance') && (
         <AdvisorySelfService initial={advisoryExpert} />
+      )}
+      {provider?.category === 'property_management' && (
+        <PropertyManagementSelfService initialProfile={propertyManagementProfile} />
       )}
 
       <div className="mt-6">

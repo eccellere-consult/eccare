@@ -588,14 +588,19 @@ enum SubscriptionStatus {
   cancelled
 }
 
-/// A caregiver subscribes an elder's home to periodic property review visits.
-/// One rate per frequency, admin-set (see /admin/property/rates) — not a
-/// per-property quote, since there's no real-estate valuation integration to
-/// price one automatically.
+/// A caregiver subscribes an elder's home to periodic property review visits
+/// — either with a specific verified provider (providerId set; that
+/// provider's own account submits inspections themselves, self-service) or
+/// the legacy generic path (providerId null; admin submits inspections on
+/// an unspecified field agent's behalf, no provider picked — see
+/// admin/property-inspections). Fee comes from the chosen provider's own
+/// PropertyManagementProfile rate for the frequency when one is picked,
+/// falling back to the flat PROPERTY_REVIEW_RATES table otherwise.
 model PropertySubscription {
   id             String              @id @default(cuid())
   elderUserId    String
   subscribedById String
+  providerId     String?
   frequency      ReviewFrequency
   status         SubscriptionStatus  @default(active)
   fee            Decimal             @db.Decimal(10, 2)
@@ -604,9 +609,29 @@ model PropertySubscription {
 
   elderUser    User                 @relation("PropertySubscriptionElder", fields: [elderUserId], references: [id], onDelete: Cascade)
   subscribedBy User                 @relation("PropertySubscriptionSubscriber", fields: [subscribedById], references: [id], onDelete: Cascade)
+  provider     ServiceProvider?     @relation(fields: [providerId], references: [id], onDelete: SetNull)
   inspections  PropertyInspection[]
 
   @@index([elderUserId])
+  @@index([providerId])
+}
+
+/// One row per property-management ServiceProvider — their own rates per
+/// review frequency, auto-created blank when their account is verified
+/// (see admin/providers/[id]), filled in via self-service. Kept as its own
+/// model rather than fields on ServiceProvider directly, matching how
+/// AutoDriver/LocalDoctor keep their own category-specific fields separate
+/// from the generic provider profile.
+model PropertyManagementProfile {
+  id           String   @id @default(cuid())
+  providerId   String   @unique
+  monthlyFee   Decimal? @db.Decimal(10, 2)
+  quarterlyFee Decimal? @db.Decimal(10, 2)
+  biannualFee  Decimal? @db.Decimal(10, 2)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  provider ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
 }
 
 enum ChecklistItemStatus {
@@ -1943,6 +1968,8 @@ model ServiceProvider {
   localDoctors LocalDoctor[]
   autoDrivers  AutoDriver[]
   advisoryExpert AdvisoryExpert?
+  propertyManagementProfile PropertyManagementProfile?
+  propertySubscriptions     PropertySubscription[]
 
   @@index([verificationStatus])
   @@index([elderCareCategory])
