@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Home, CheckCircle2, XCircle, AlertTriangle, Image as ImageIcon, IndianRupee } from 'lucide-react';
+import { ArrowLeft, Home, CheckCircle2, XCircle, AlertTriangle, Image as ImageIcon, IndianRupee, Building2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -37,10 +37,26 @@ interface Subscription {
   frequency: Frequency;
   status: 'active' | 'paused' | 'cancelled';
   fee: string;
+  provider: { id: string; businessName: string; phone: string | null } | null;
   inspections: Inspection[];
+}
+interface Provider {
+  id: string;
+  businessName: string;
+  description: string | null;
+  serviceArea: string | null;
+  phone: string | null;
+  monthlyFee: string | null;
+  quarterlyFee: string | null;
+  biannualFee: string | null;
 }
 
 const FREQUENCY_LABEL: Record<Frequency, string> = { monthly: 'Monthly', quarterly: 'Quarterly', biannually: 'Bi-annually' };
+const FREQUENCY_RATE_FIELD: Record<Frequency, keyof Pick<Provider, 'monthlyFee' | 'quarterlyFee' | 'biannualFee'>> = {
+  monthly: 'monthlyFee',
+  quarterly: 'quarterlyFee',
+  biannually: 'biannualFee',
+};
 const CHECKLIST_ICON: Record<ChecklistStatus, typeof CheckCircle2> = { pass: CheckCircle2, fail: XCircle, needs_attention: AlertTriangle };
 const CHECKLIST_COLOR: Record<ChecklistStatus, string> = { pass: 'text-success-600', fail: 'text-danger-600', needs_attention: 'text-accent-600' };
 
@@ -62,6 +78,8 @@ function loadRazorpayScript(): Promise<boolean> {
 
 export default function PropertyManagementPage() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [selectedProviderId, setSelectedProviderId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [subscribing, setSubscribing] = useState<Frequency | null>(null);
@@ -79,6 +97,20 @@ export default function PropertyManagementPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    fetch('/api/v1/property-management/providers', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((j) => { if (j.success) setProviders(j.data); })
+      .catch(() => {});
+  }, []);
+
+  const selectedProvider = providers.find((p) => p.id === selectedProviderId);
+
+  function rateFor(frequency: Frequency): number {
+    const custom = selectedProvider?.[FREQUENCY_RATE_FIELD[frequency]];
+    return custom ? Number(custom) : PROPERTY_REVIEW_RATES[frequency];
+  }
+
   async function subscribe(frequency: Frequency) {
     setSubscribing(frequency);
     setError('');
@@ -87,7 +119,7 @@ export default function PropertyManagementPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ frequency }),
+        body: JSON.stringify({ frequency, providerId: selectedProviderId || undefined }),
       });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Could not subscribe.');
@@ -182,12 +214,44 @@ export default function PropertyManagementPage() {
       ) : subscriptions.length === 0 ? (
         <Card className="mt-4">
           <CardContent className="pt-6">
-            <p className="text-sm font-bold text-text">Subscribe to a review plan</p>
+            <p className="text-sm font-bold text-text">Choose who reviews your property</p>
+
+            <div className="mt-3 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedProviderId('')}
+                className={`flex items-center justify-between rounded-xl border p-3 text-left ${selectedProviderId === '' ? 'border-primary-600 bg-primary-50' : 'border-border'}`}
+              >
+                <div>
+                  <p className="font-semibold text-text">EC standard plan</p>
+                  <p className="text-xs text-text-secondary">Admin arranges a field visit — no specific company picked</p>
+                </div>
+              </button>
+              {providers.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setSelectedProviderId(p.id)}
+                  className={`flex items-center justify-between gap-2 rounded-xl border p-3 text-left ${selectedProviderId === p.id ? 'border-primary-600 bg-primary-50' : 'border-border'}`}
+                >
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-1.5 font-semibold text-text">
+                      <Building2 className="h-4 w-4 shrink-0 text-primary-600" /> {p.businessName}
+                    </p>
+                    {(p.serviceArea || p.description) && (
+                      <p className="text-xs text-text-secondary">{p.serviceArea || p.description}</p>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <p className="mt-4 text-sm font-bold text-text">Subscribe to a review plan</p>
             <div className="mt-3 grid gap-3 sm:grid-cols-3">
               {(Object.keys(FREQUENCY_LABEL) as Frequency[]).map((freq) => (
                 <button key={freq} type="button" disabled={subscribing === freq} onClick={() => subscribe(freq)} className="rounded-2xl border border-border p-4 text-left hover:border-primary-600 hover:bg-primary-50 disabled:opacity-50">
                   <p className="font-bold text-text">{FREQUENCY_LABEL[freq]}</p>
-                  <p className="mt-1 flex items-center gap-1 text-sm text-primary-900"><IndianRupee className="h-3.5 w-3.5" />{PROPERTY_REVIEW_RATES[freq]}</p>
+                  <p className="mt-1 flex items-center gap-1 text-sm text-primary-900"><IndianRupee className="h-3.5 w-3.5" />{rateFor(freq)}</p>
                   <p className="mt-1 text-xs text-text-secondary">{subscribing === freq ? 'Subscribing…' : 'Tap to subscribe'}</p>
                 </button>
               ))}
@@ -205,6 +269,7 @@ export default function PropertyManagementPage() {
                   </span>
                   <div>
                     <p className="font-bold text-text">{FREQUENCY_LABEL[sub.frequency]} property review — ₹{sub.fee}</p>
+                    <p className="text-xs text-text-secondary">{sub.provider ? sub.provider.businessName : 'EC standard plan'}</p>
                     <Badge variant={sub.status === 'active' ? 'success' : 'muted'}>{sub.status}</Badge>
                   </div>
                 </div>
