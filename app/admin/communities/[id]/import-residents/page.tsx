@@ -14,7 +14,6 @@ interface ImportRow {
   name: string;
   age: number | null;
   houseNumber: string | null;
-  grNo: string | null;
   email: string | null;
   rawPhone: string;
   phone: string | null;
@@ -211,7 +210,7 @@ export default function ImportResidentsPage({ params }: { params: Promise<{ id: 
                   <th className="px-3 py-2 font-semibold">Row</th>
                   <th className="px-3 py-2 font-semibold">Name</th>
                   <th className="px-3 py-2 font-semibold">Age → Role</th>
-                  <th className="px-3 py-2 font-semibold">House / GR No.</th>
+                  <th className="px-3 py-2 font-semibold">House No.</th>
                   <th className="px-3 py-2 font-semibold">Phone</th>
                   <th className="px-3 py-2 font-semibold">Email</th>
                   <th className="px-3 py-2 font-semibold">Status</th>
@@ -235,10 +234,7 @@ export default function ImportResidentsPage({ params }: { params: Promise<{ id: 
                       <td className="px-3 py-2 text-text-secondary">
                         {row.age ?? '—'} {row.role && `→ ${row.role === 'elder' ? 'Elder' : 'Family member'}`}
                       </td>
-                      <td className="px-3 py-2 text-text-secondary">
-                        {row.houseNumber ?? '—'}
-                        {row.grNo && <span className="ml-1 text-xs">(GR {row.grNo})</span>}
-                      </td>
+                      <td className="px-3 py-2 text-text-secondary">{row.houseNumber ?? '—'}</td>
                       <td className="px-3 py-2 text-text-secondary">{row.phone ?? (row.rawPhone || '—')}</td>
                       <td className="px-3 py-2 text-text-secondary">{row.email ?? '—'}</td>
                       <td className="px-3 py-2">
@@ -271,7 +267,7 @@ export default function ImportResidentsPage({ params }: { params: Promise<{ id: 
 
           <p className="mt-3 flex items-center gap-1.5 text-xs text-text-secondary">
             <AlertTriangle className="h-3.5 w-3.5" />
-            GR No. is shown for your own cross-reference only — it isn&rsquo;t stored anywhere.
+            House No. is saved to each resident&rsquo;s own profile and community membership.
           </p>
         </>
       )}

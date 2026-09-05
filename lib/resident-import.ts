@@ -9,7 +9,6 @@ export interface ImportRow {
   name: string;
   age: number | null;
   houseNumber: string | null;
-  grNo: string | null; // shown for review only — no field for this in the data model
   email: string | null;
   rawPhone: string;
   phone: string | null; // normalized; null if nothing usable was found
@@ -22,7 +21,6 @@ const HEADER_MATCHERS: Record<string, (label: string) => boolean> = {
   name: (l) => l.includes('name'),
   age: (l) => l === 'age',
   house: (l) => l.includes('house') || l.includes('flat'),
-  gr: (l) => l.includes('gr'),
   email: (l) => l.includes('email'),
   phone: (l) => l.includes('mobile') || l.includes('phone'),
 };
@@ -65,7 +63,6 @@ export async function parseResidentWorkbook(
     const ageText = cellText(row, colIndex.age);
     const age = /^\d{1,3}$/.test(ageText) ? Number(ageText) : null;
     const houseNumber = cellText(row, colIndex.house) || null;
-    const grNo = cellText(row, colIndex.gr) || null;
 
     const emailText = cellText(row, colIndex.email);
     const email = isValidEmail(emailText) ? emailText : null;
@@ -78,7 +75,7 @@ export async function parseResidentWorkbook(
 
     const role: ImportRow['role'] = age === null ? null : age >= 60 ? 'elder' : 'caregiver';
 
-    rows.push({ rowNumber: r, name, age, houseNumber, grNo, email, rawPhone, phone, role });
+    rows.push({ rowNumber: r, name, age, houseNumber, email, rawPhone, phone, role });
   }
   return rows;
 }
