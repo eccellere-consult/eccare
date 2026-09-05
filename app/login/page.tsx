@@ -12,6 +12,7 @@ import { isValidEmail, isValidPhone, EMAIL_FORMAT_MESSAGE, PHONE_FORMAT_MESSAGE 
 import { HelpGuidesSection } from '@/components/help-guides-section';
 import { TourButton } from '@/components/tour/TourButton';
 import { DedicationFooter } from '@/components/dedication-footer';
+import { PROVIDER_CATEGORIES } from '@/lib/provider-categories';
 
 const ROLE_HOME: Record<string, string> = {
   elder: '/elder',
@@ -130,6 +131,7 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
   const [password, setPassword] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [category, setCategory] = useState('');
+  const [otherCategory, setOtherCategory] = useState('');
   const [isVolunteer, setIsVolunteer] = useState(false);
   const [availability, setAvailability] = useState<VolunteerAvailability | ''>('');
   const [assistanceTypes, setAssistanceTypes] = useState<AssistanceType[]>([]);
@@ -159,7 +161,8 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
       setError('Password must be at least 8 characters.');
       return;
     }
-    if (role === 'provider' && (!businessName.trim() || !category.trim())) {
+    const resolvedCategory = category === 'other' ? otherCategory.trim() : category;
+    if (role === 'provider' && (!businessName.trim() || !resolvedCategory)) {
       setError('Please enter your business name and category.');
       return;
     }
@@ -175,7 +178,7 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
         ...(email.trim() ? { email: email.trim() } : {}),
         password,
         role,
-        ...(role === 'provider' ? { businessName, category } : {}),
+        ...(role === 'provider' ? { businessName, category: resolvedCategory } : {}),
         ...(role === 'caregiver' && isVolunteer
           ? { isVolunteer: true, volunteerAvailability: availability, volunteerAssistanceTypes: assistanceTypes }
           : {}),
@@ -330,13 +333,29 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="reg-category">Category</Label>
-            <Input
+            <select
               id="reg-category"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              placeholder="Nursing, physiotherapy, home care…"
-            />
+              className="flex h-11 w-full rounded-xl border border-border bg-surface px-4 py-2 text-base text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+            >
+              <option value="">Select a category…</option>
+              {PROVIDER_CATEGORIES.map((c) => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
           </div>
+          {category === 'other' && (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="reg-category-other">Tell us your category</Label>
+              <Input
+                id="reg-category-other"
+                value={otherCategory}
+                onChange={(e) => setOtherCategory(e.target.value)}
+                placeholder="e.g. Home care, catering, tutoring…"
+              />
+            </div>
+          )}
         </>
       )}
       {error && <p className="text-sm text-danger-600">{error}</p>}

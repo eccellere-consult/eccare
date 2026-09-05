@@ -24,6 +24,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { HealthEssentials } from '@/components/health-essentials';
+import { PrescriptionUploadSection } from '@/components/prescription-upload-section';
 import { healthApi, useHealthData } from '@/lib/health-client';
 import { useCommunityData } from '@/lib/community-client';
 import { getSlotForDate, formatIstTime, SLOT_META, SLOT_ORDER, todayIST, type MedicineSlot } from '@/lib/medicine-slots';
@@ -340,6 +341,17 @@ export default function ElderHealthPage() {
           <FileImage className="h-5 w-5 text-primary-600" />
           {t('common.myPrescriptions')}
         </h2>
+        <p className="mt-1 text-sm text-text-secondary">
+          Upload a prescription photo yourself — AI will read it and set up the medicine calendar automatically.
+        </p>
+        <PrescriptionUploadSection
+          onSaved={() => {
+            prescriptions.reload();
+            meds.reload();
+            appts.reload();
+          }}
+        />
+
         {prescriptions.loading ? (
           <p className="mt-3 text-text-secondary">{t('common.loading')}</p>
         ) : (prescriptions.data?.length ?? 0) === 0 ? (

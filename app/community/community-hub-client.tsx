@@ -25,6 +25,7 @@ import {
   Car,
   Stethoscope,
   HeartHandshake,
+  Mail,
   type LucideIcon,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -43,6 +44,7 @@ interface MeResponse {
 
 const BASE_TILES: { href: string; label: string; sub: string; icon: LucideIcon }[] = [
   { href: '/community/announcements', label: 'Announcements', sub: 'Notices from the committee', icon: Megaphone },
+  { href: '/newsletter', label: 'Newsletter', sub: 'The latest from EC', icon: Mail },
   { href: '/community/events', label: 'Entertainment & Social Events', sub: 'Cultural activities, tours, movies & more', icon: Calendar },
   { href: '/community/directory', label: 'Neighbours', sub: 'Say hello or call', icon: Users },
   { href: '/community/volunteers', label: 'Volunteers', sub: 'Verified neighbours ready to help', icon: HeartHandshake },

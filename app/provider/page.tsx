@@ -6,6 +6,10 @@ import { Badge } from '@/components/ui/badge';
 import { ProviderProfileClient } from './provider-profile-client';
 import { CommunityRequestsClient } from './community-requests-client';
 import { ProviderAccountClient } from './account-client';
+import { AutoDriverSelfService } from '@/components/provider/auto-driver-self-service';
+import { DoctorSelfService } from '@/components/provider/doctor-self-service';
+import { AdvisorySelfService } from '@/components/provider/advisory-self-service';
+import { PropertyManagementSelfService } from '@/components/provider/property-management-self-service';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +38,56 @@ export default async function ProviderHomePage() {
       ])
     : [[], null];
 
+  const autoDriverRows =
+    provider?.category === 'auto_transport'
+      ? await prisma.autoDriver.findMany({
+          where: { providerId: provider.id },
+          include: { neighborhood: { select: { id: true, name: true } } },
+          orderBy: { createdAt: 'desc' },
+        })
+      : [];
+  // Prisma's Decimal isn't a plain string — serialize explicitly rather than
+  // pass it through to a Client Component untyped.
+  const autoDrivers = autoDriverRows.map((d) => ({
+    ...d,
+    perKmRate: d.perKmRate?.toString() ?? null,
+    perMinWaitRate: d.perMinWaitRate?.toString() ?? null,
+  }));
+
+  const doctorRows =
+    provider?.category === 'doctor'
+      ? await prisma.localDoctor.findMany({
+          where: { providerId: provider.id },
+          include: {
+            neighborhood: { select: { id: true, name: true } },
+            slots: { where: { isBooked: false, startsAt: { gte: new Date() } }, orderBy: { startsAt: 'asc' } },
+          },
+          orderBy: { createdAt: 'desc' },
+        })
+      : [];
+  const doctors = doctorRows.map((d) => ({
+    ...d,
+    consultationFee: d.consultationFee.toString(),
+    slots: d.slots.map((s) => ({ ...s, startsAt: s.startsAt.toISOString() })),
+  }));
+
+  const advisoryExpert =
+    provider?.category === 'legal_help' || provider?.category === 'insurance'
+      ? await prisma.advisoryExpert.findUnique({ where: { providerId: provider.id } })
+      : null;
+
+  const propertyManagementProfileRow =
+    provider?.category === 'property_management'
+      ? await prisma.propertyManagementProfile.findUnique({ where: { providerId: provider.id } })
+      : null;
+  const propertyManagementProfile = propertyManagementProfileRow
+    ? {
+        monthlyFee: propertyManagementProfileRow.monthlyFee?.toString() ?? null,
+        quarterlyFee: propertyManagementProfileRow.quarterlyFee?.toString() ?? null,
+        biannualFee: propertyManagementProfileRow.biannualFee?.toString() ?? null,
+      }
+    : null;
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-text">
@@ -51,6 +105,15 @@ export default async function ProviderHomePage() {
         <div className="mt-6">
           <CommunityRequestsClient />
         </div>
+      )}
+
+      {provider?.category === 'auto_transport' && <AutoDriverSelfService initial={autoDrivers} />}
+      {provider?.category === 'doctor' && <DoctorSelfService initial={doctors} />}
+      {(provider?.category === 'legal_help' || provider?.category === 'insurance') && (
+        <AdvisorySelfService initial={advisoryExpert} />
+      )}
+      {provider?.category === 'property_management' && (
+        <PropertyManagementSelfService initialProfile={propertyManagementProfile} />
       )}
 
       <div className="mt-6">

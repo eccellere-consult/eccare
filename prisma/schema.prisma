@@ -498,6 +498,12 @@ enum AdvisoryCategory {
 /// login exists — same reasoning as doctors/auto drivers: coordination with a
 /// real advisor happens by phone/email once a consultation request connects
 /// you, not through an in-app advisor portal.
+/// Not community-scoped (unlike LocalDoctor/AutoDriver) — advisory services
+/// have no per-neighborhood boundary, so a self-registered provider (category
+/// legal_help/insurance) needs no "join a community" step: verifying their
+/// ServiceProvider account (admin/providers) directly creates this row —
+/// see admin/providers/[id]. providerId stays unique (one provider, one
+/// expert profile), unlike AutoDriver/LocalDoctor's one-row-per-community.
 model AdvisoryExpert {
   id        String           @id @default(cuid())
   category  AdvisoryCategory
@@ -508,6 +514,9 @@ model AdvisoryExpert {
   bio       String?          @db.Text
   isActive  Boolean          @default(true)
   createdAt DateTime         @default(now())
+
+  providerId String?         @unique
+  provider   ServiceProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
 
   requests ConsultationRequest[]
 
@@ -579,14 +588,19 @@ enum SubscriptionStatus {
   cancelled
 }
 
-/// A caregiver subscribes an elder's home to periodic property review visits.
-/// One rate per frequency, admin-set (see /admin/property/rates) — not a
-/// per-property quote, since there's no real-estate valuation integration to
-/// price one automatically.
+/// A caregiver subscribes an elder's home to periodic property review visits
+/// — either with a specific verified provider (providerId set; that
+/// provider's own account submits inspections themselves, self-service) or
+/// the legacy generic path (providerId null; admin submits inspections on
+/// an unspecified field agent's behalf, no provider picked — see
+/// admin/property-inspections). Fee comes from the chosen provider's own
+/// PropertyManagementProfile rate for the frequency when one is picked,
+/// falling back to the flat PROPERTY_REVIEW_RATES table otherwise.
 model PropertySubscription {
   id             String              @id @default(cuid())
   elderUserId    String
   subscribedById String
+  providerId     String?
   frequency      ReviewFrequency
   status         SubscriptionStatus  @default(active)
   fee            Decimal             @db.Decimal(10, 2)
@@ -595,9 +609,29 @@ model PropertySubscription {
 
   elderUser    User                 @relation("PropertySubscriptionElder", fields: [elderUserId], references: [id], onDelete: Cascade)
   subscribedBy User                 @relation("PropertySubscriptionSubscriber", fields: [subscribedById], references: [id], onDelete: Cascade)
+  provider     ServiceProvider?     @relation(fields: [providerId], references: [id], onDelete: SetNull)
   inspections  PropertyInspection[]
 
   @@index([elderUserId])
+  @@index([providerId])
+}
+
+/// One row per property-management ServiceProvider — their own rates per
+/// review frequency, auto-created blank when their account is verified
+/// (see admin/providers/[id]), filled in via self-service. Kept as its own
+/// model rather than fields on ServiceProvider directly, matching how
+/// AutoDriver/LocalDoctor keep their own category-specific fields separate
+/// from the generic provider profile.
+model PropertyManagementProfile {
+  id           String   @id @default(cuid())
+  providerId   String   @unique
+  monthlyFee   Decimal? @db.Decimal(10, 2)
+  quarterlyFee Decimal? @db.Decimal(10, 2)
+  biannualFee  Decimal? @db.Decimal(10, 2)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  provider ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
 }
 
 enum ChecklistItemStatus {
@@ -1255,11 +1289,16 @@ model CommunityHelpline {
   @@index([neighborhoodId, sortOrder])
 }
 
-/// Auto-rickshaw drivers a committee/admin has vetted for the community —
-/// booking itself is a WhatsApp handoff (wa.me deep link with pickup/drop/trip
-/// details pre-filled, same pattern as the Police button), not a live in-app
-/// accept/reject workflow — the driver has no login, so there's nothing to
-/// track server-side beyond the directory and the rate card below.
+/// Auto-rickshaw drivers, one row per community they're listed in. Two ways
+/// a row gets created: (a) admin/committee adds one directly (legacy path —
+/// the driver has no login, providerId stays null), or (b) a self-registered
+/// ServiceProvider (category auto_transport) requests to join a community
+/// (CommunityProviderListing) and platform approval auto-creates this row,
+/// linked via providerId — see app/api/v1/admin/provider-requests/[id]. A
+/// provider can be listed in several communities, so providerId is NOT
+/// unique (one provider -> many AutoDriver rows, one per neighborhood);
+/// booking itself stays a WhatsApp handoff (wa.me deep link, no in-app
+/// accept/reject) regardless of which path created the row.
 model AutoDriver {
   id             String   @id @default(cuid())
   neighborhoodId String
@@ -1277,13 +1316,12 @@ model AutoDriver {
   sortOrder      Int      @default(0)
   createdAt      DateTime @default(now())
 
-  // Optional link to a ServiceProvider row, purely for reusing its
-  // verificationStatus + the existing admin approval queue (app/admin/providers) —
-  // the driver still has no EC login; see lib/provider-directory.ts.
-  providerId String?         @unique
+  providerId String?
   provider   ServiceProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
 
   neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+
+  @@index([providerId])
 
   @@index([neighborhoodId, sortOrder])
 }
@@ -1300,10 +1338,16 @@ model AutoRateCard {
   neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
 }
 
-/// Local doctors directory, admin/committee-curated (no doctor login — see
-/// DoctorBooking for how confirmation works without one). Location is either a
-/// lat/lng pair (device geolocation at add-time) or a plain Google Maps link —
-/// whichever the admin has to hand.
+/// Local doctors directory. Two ways a row gets created: (a) admin/committee
+/// adds one directly (legacy path — providerId stays null, confirmation on
+/// bookings is the booker self-reporting since there's no doctor login), or
+/// (b) a self-registered ServiceProvider (category doctor) requests to join
+/// a community and platform approval auto-creates this row with placeholder
+/// specialty/consultationFee for the doctor to fill in themselves — see
+/// app/api/v1/admin/provider-requests/[id]. A doctor can be listed in
+/// several communities, so providerId is NOT unique (one provider -> many
+/// LocalDoctor rows, one per neighborhood). Location is either a lat/lng
+/// pair (device geolocation at add-time) or a plain Google Maps link.
 model LocalDoctor {
   id              String   @id @default(cuid())
   neighborhoodId  String
@@ -1328,7 +1372,7 @@ model LocalDoctor {
   // verificationStatus + the existing admin approval queue (app/admin/providers) —
   // the doctor still has no EC login; see lib/provider-directory.ts. Null means a
   // legacy doctor added before this existed — treated as already-verified/bookable.
-  providerId String?         @unique
+  providerId String?
   provider   ServiceProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
 
   neighborhood Neighborhood    @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
@@ -1337,6 +1381,7 @@ model LocalDoctor {
   bookings     DoctorBooking[]
 
   @@index([neighborhoodId, isActive])
+  @@index([providerId])
 }
 
 /// One bookable time slot for one doctor — admin-entered (calls the clinic to ask
@@ -1915,11 +1960,16 @@ model ServiceProvider {
   communityListings CommunityProviderListing[]
   catalogItems       CatalogItem[]
   orders             Order[]
-  // Doctors & Elder Transport module: a directory entry (which has no login of
-  // its own) optionally links here purely to reuse verificationStatus + the
-  // admin approval queue. At most one of each per ServiceProvider row.
-  localDoctor  LocalDoctor?
-  autoDriver   AutoDriver?
+  // Doctors & Elder Transport module: a directory entry optionally links
+  // here — a real self-service link, one row per community the provider has
+  // joined (see LocalDoctor/AutoDriver's own comments). Legacy admin-added
+  // rows may also link here purely to reuse verificationStatus, with no
+  // login of their own.
+  localDoctors LocalDoctor[]
+  autoDrivers  AutoDriver[]
+  advisoryExpert AdvisoryExpert?
+  propertyManagementProfile PropertyManagementProfile?
+  propertySubscriptions     PropertySubscription[]
 
   @@index([verificationStatus])
   @@index([elderCareCategory])

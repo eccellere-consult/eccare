@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
+import type { ProviderCategoryValue } from '@/lib/provider-categories';
 
 type Tx = Prisma.TransactionClient | PrismaClient;
 
@@ -21,7 +22,7 @@ type Tx = Prisma.TransactionClient | PrismaClient;
  */
 export async function createDirectoryProvider(
   tx: Tx,
-  opts: { name: string; category: 'doctor' | 'auto_transport'; serviceArea?: string | null; phone?: string | null },
+  opts: { name: string; category: ProviderCategoryValue; serviceArea?: string | null; phone?: string | null },
 ) {
   const user = await tx.user.create({
     data: { name: opts.name, role: 'provider' },
