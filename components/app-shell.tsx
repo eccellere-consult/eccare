@@ -101,19 +101,50 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
       { label: 'Profile', href: '/admin/profile', icon: User },
     ],
   },
+  // Provider is deliberately not a static list here — which nav items make
+  // sense depends entirely on which category the account registered under
+  // (a Retail provider has no use for "Appointments", a Doctor has no use
+  // for "Catalog"). See getProviderNavItems below, used in place of this
+  // entry whenever role === 'provider'.
   provider: {
     label: 'Provider',
-    items: [
-      { label: 'Overview', href: '/provider', icon: LayoutDashboard },
-      { label: 'Appointments', href: '/provider/appointments', icon: CalendarClock },
-      { label: 'Transport rates', href: '/provider/transport', icon: Car },
-      { label: 'Advisory', href: '/provider/advisory', icon: Scale },
-      { label: 'Property mgmt', href: '/provider/property-management', icon: Home },
-      { label: 'Catalog', href: '/provider/catalog', icon: Package },
-      { label: 'Orders', href: '/provider/orders', icon: PackageCheck },
-    ],
+    items: [{ label: 'Overview', href: '/provider', icon: LayoutDashboard }],
   },
 };
+
+/** Only the nav items relevant to the provider's own registered category —
+ *  each self-service module (Appointments/Transport/Advisory/Property mgmt)
+ *  is specific to the one category it was built for, and the generic
+ *  Catalog/Orders pair is for every other category (Retail, Pharmacy,
+ *  Grocery, Nursing, Physiotherapy, Food & Restaurant, Others). `category`
+ *  is undefined before a provider profile even exists yet — Overview alone
+ *  covers that case, same as any other unresolved state. */
+function getProviderNavItems(category: string | null | undefined): NavItem[] {
+  const items: NavItem[] = [{ label: 'Overview', href: '/provider', icon: LayoutDashboard }];
+
+  switch (category) {
+    case 'doctor':
+      items.push({ label: 'Appointments', href: '/provider/appointments', icon: CalendarClock });
+      break;
+    case 'auto_transport':
+      items.push({ label: 'Transport', href: '/provider/transport', icon: Car });
+      break;
+    case 'legal_help':
+    case 'insurance':
+      items.push({ label: 'Advisory', href: '/provider/advisory', icon: Scale });
+      break;
+    case 'property_management':
+      items.push({ label: 'Property Management', href: '/provider/property-management', icon: Home });
+      break;
+    default:
+      // Retail, Pharmacy, Grocery, Nursing, Physiotherapy, Food & Restaurant,
+      // Others, or no category yet — the generic catalog/order self-service.
+      items.push({ label: 'Catalog', href: '/provider/catalog', icon: Package });
+      items.push({ label: 'Orders', href: '/provider/orders', icon: PackageCheck });
+  }
+
+  return items;
+}
 
 function LanguageToggle({ compact }: { compact?: boolean }) {
   const lang = useLanguage();
@@ -137,14 +168,17 @@ function LanguageToggle({ compact }: { compact?: boolean }) {
 interface AppShellProps {
   role: PortalRole;
   userName?: string;
+  /** Only meaningful when role === 'provider' — see getProviderNavItems. */
+  providerCategory?: string | null;
   children: React.ReactNode;
 }
 
-export function AppShell({ role, userName, children }: AppShellProps) {
+export function AppShell({ role, userName, providerCategory, children }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const { label: portalLabel, items: navItems } = NAV_CONFIG[role];
+  const { label: portalLabel } = NAV_CONFIG[role];
+  const navItems = role === 'provider' ? getProviderNavItems(providerCategory) : NAV_CONFIG[role].items;
 
   async function handleLogout() {
     await fetch('/api/v1/auth/logout', { method: 'POST' });
