@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { ProviderProfileClient } from './provider-profile-client';
 import { CommunityRequestsClient } from './community-requests-client';
 import { ProviderAccountClient } from './account-client';
+import { AutoDriverSelfService } from '@/components/provider/auto-driver-self-service';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +35,22 @@ export default async function ProviderHomePage() {
       ])
     : [[], null];
 
+  const autoDriverRows =
+    provider?.category === 'auto_transport'
+      ? await prisma.autoDriver.findMany({
+          where: { providerId: provider.id },
+          include: { neighborhood: { select: { id: true, name: true } } },
+          orderBy: { createdAt: 'desc' },
+        })
+      : [];
+  // Prisma's Decimal isn't a plain string — serialize explicitly rather than
+  // pass it through to a Client Component untyped.
+  const autoDrivers = autoDriverRows.map((d) => ({
+    ...d,
+    perKmRate: d.perKmRate?.toString() ?? null,
+    perMinWaitRate: d.perMinWaitRate?.toString() ?? null,
+  }));
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-text">
@@ -52,6 +69,8 @@ export default async function ProviderHomePage() {
           <CommunityRequestsClient />
         </div>
       )}
+
+      {provider?.category === 'auto_transport' && <AutoDriverSelfService initial={autoDrivers} />}
 
       <div className="mt-6">
         <ProviderAccountClient
