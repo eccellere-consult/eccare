@@ -516,7 +516,7 @@ model AdvisoryExpert {
   createdAt DateTime         @default(now())
 
   providerId String?         @unique
-  provider   ServiceProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  provider   ServiceProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull, map: "AdvisoryExpert_providerId_fkey")
 
   requests ConsultationRequest[]
 
@@ -609,7 +609,7 @@ model PropertySubscription {
 
   elderUser    User                 @relation("PropertySubscriptionElder", fields: [elderUserId], references: [id], onDelete: Cascade)
   subscribedBy User                 @relation("PropertySubscriptionSubscriber", fields: [subscribedById], references: [id], onDelete: Cascade)
-  provider     ServiceProvider?     @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  provider     ServiceProvider?     @relation(fields: [providerId], references: [id], onDelete: SetNull, map: "PropertySubscription_providerId_fkey")
   inspections  PropertyInspection[]
 
   @@index([elderUserId])
@@ -631,7 +631,7 @@ model PropertyManagementProfile {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  provider ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  provider ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade, map: "PropertyManagementProfile_providerId_fkey")
 }
 
 enum ChecklistItemStatus {
@@ -1317,7 +1317,7 @@ model AutoDriver {
   createdAt      DateTime @default(now())
 
   providerId String?
-  provider   ServiceProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  provider   ServiceProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull, map: "AutoDriver_providerId_fkey2")
 
   neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
 
@@ -1373,7 +1373,7 @@ model LocalDoctor {
   // the doctor still has no EC login; see lib/provider-directory.ts. Null means a
   // legacy doctor added before this existed — treated as already-verified/bookable.
   providerId String?
-  provider   ServiceProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  provider   ServiceProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull, map: "LocalDoctor_providerId_fkey2")
 
   neighborhood Neighborhood    @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
   addedBy      User            @relation(fields: [addedById], references: [id], onDelete: Cascade)
