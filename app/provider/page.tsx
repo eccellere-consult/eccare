@@ -8,6 +8,7 @@ import { CommunityRequestsClient } from './community-requests-client';
 import { ProviderAccountClient } from './account-client';
 import { AutoDriverSelfService } from '@/components/provider/auto-driver-self-service';
 import { DoctorSelfService } from '@/components/provider/doctor-self-service';
+import { AdvisorySelfService } from '@/components/provider/advisory-self-service';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,6 +70,11 @@ export default async function ProviderHomePage() {
     slots: d.slots.map((s) => ({ ...s, startsAt: s.startsAt.toISOString() })),
   }));
 
+  const advisoryExpert =
+    provider?.category === 'legal_help' || provider?.category === 'insurance'
+      ? await prisma.advisoryExpert.findUnique({ where: { providerId: provider.id } })
+      : null;
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-text">
@@ -90,6 +96,9 @@ export default async function ProviderHomePage() {
 
       {provider?.category === 'auto_transport' && <AutoDriverSelfService initial={autoDrivers} />}
       {provider?.category === 'doctor' && <DoctorSelfService initial={doctors} />}
+      {(provider?.category === 'legal_help' || provider?.category === 'insurance') && (
+        <AdvisorySelfService initial={advisoryExpert} />
+      )}
 
       <div className="mt-6">
         <ProviderAccountClient

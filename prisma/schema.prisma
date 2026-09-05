@@ -498,6 +498,12 @@ enum AdvisoryCategory {
 /// login exists — same reasoning as doctors/auto drivers: coordination with a
 /// real advisor happens by phone/email once a consultation request connects
 /// you, not through an in-app advisor portal.
+/// Not community-scoped (unlike LocalDoctor/AutoDriver) — advisory services
+/// have no per-neighborhood boundary, so a self-registered provider (category
+/// legal_help/insurance) needs no "join a community" step: verifying their
+/// ServiceProvider account (admin/providers) directly creates this row —
+/// see admin/providers/[id]. providerId stays unique (one provider, one
+/// expert profile), unlike AutoDriver/LocalDoctor's one-row-per-community.
 model AdvisoryExpert {
   id        String           @id @default(cuid())
   category  AdvisoryCategory
@@ -508,6 +514,9 @@ model AdvisoryExpert {
   bio       String?          @db.Text
   isActive  Boolean          @default(true)
   createdAt DateTime         @default(now())
+
+  providerId String?         @unique
+  provider   ServiceProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
 
   requests ConsultationRequest[]
 
@@ -1933,6 +1942,7 @@ model ServiceProvider {
   // login of their own.
   localDoctors LocalDoctor[]
   autoDrivers  AutoDriver[]
+  advisoryExpert AdvisoryExpert?
 
   @@index([verificationStatus])
   @@index([elderCareCategory])
