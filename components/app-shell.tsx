@@ -32,6 +32,7 @@ import {
   Scale,
   Wrench,
   CalendarClock,
+  Car,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -105,6 +106,9 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
     items: [
       { label: 'Overview', href: '/provider', icon: LayoutDashboard },
       { label: 'Appointments', href: '/provider/appointments', icon: CalendarClock },
+      { label: 'Transport rates', href: '/provider/transport', icon: Car },
+      { label: 'Advisory', href: '/provider/advisory', icon: Scale },
+      { label: 'Property mgmt', href: '/provider/property-management', icon: Home },
       { label: 'Catalog', href: '/provider/catalog', icon: Package },
       { label: 'Orders', href: '/provider/orders', icon: PackageCheck },
     ],
