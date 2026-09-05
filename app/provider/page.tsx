@@ -1,4 +1,5 @@
-import { Store, Inbox } from 'lucide-react';
+import Link from 'next/link';
+import { Store, Inbox, CalendarClock, ChevronRight } from 'lucide-react';
 import { prisma } from '@/lib/db';
 import { getServerUser } from '@/lib/server-session';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,7 +8,6 @@ import { ProviderProfileClient } from './provider-profile-client';
 import { CommunityRequestsClient } from './community-requests-client';
 import { ProviderAccountClient } from './account-client';
 import { AutoDriverSelfService } from '@/components/provider/auto-driver-self-service';
-import { DoctorSelfService } from '@/components/provider/doctor-self-service';
 import { AdvisorySelfService } from '@/components/provider/advisory-self-service';
 import { PropertyManagementSelfService } from '@/components/provider/property-management-self-service';
 
@@ -54,23 +54,6 @@ export default async function ProviderHomePage() {
     perMinWaitRate: d.perMinWaitRate?.toString() ?? null,
   }));
 
-  const doctorRows =
-    provider?.category === 'doctor'
-      ? await prisma.localDoctor.findMany({
-          where: { providerId: provider.id },
-          include: {
-            neighborhood: { select: { id: true, name: true } },
-            slots: { where: { isBooked: false, startsAt: { gte: new Date() } }, orderBy: { startsAt: 'asc' } },
-          },
-          orderBy: { createdAt: 'desc' },
-        })
-      : [];
-  const doctors = doctorRows.map((d) => ({
-    ...d,
-    consultationFee: d.consultationFee.toString(),
-    slots: d.slots.map((s) => ({ ...s, startsAt: s.startsAt.toISOString() })),
-  }));
-
   const advisoryExpert =
     provider?.category === 'legal_help' || provider?.category === 'insurance'
       ? await prisma.advisoryExpert.findUnique({ where: { providerId: provider.id } })
@@ -107,8 +90,23 @@ export default async function ProviderHomePage() {
         </div>
       )}
 
+      {provider?.category === 'doctor' && (
+        <Link href="/provider/appointments" className="mt-6 block">
+          <Card className="border-primary-100 bg-primary-50 transition-shadow hover:shadow-md">
+            <CardContent className="flex items-center gap-4 pt-6">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface">
+                <CalendarClock className="h-5 w-5 text-primary-600" />
+              </span>
+              <div className="flex-1">
+                <p className="font-bold text-text">Appointments</p>
+                <p className="text-sm text-text-secondary">Manage your bookable time slots and see who&rsquo;s booked</p>
+              </div>
+              <ChevronRight className="h-5 w-5 shrink-0 text-text-secondary" />
+            </CardContent>
+          </Card>
+        </Link>
+      )}
       {provider?.category === 'auto_transport' && <AutoDriverSelfService initial={autoDrivers} />}
-      {provider?.category === 'doctor' && <DoctorSelfService initial={doctors} />}
       {(provider?.category === 'legal_help' || provider?.category === 'insurance') && (
         <AdvisorySelfService initial={advisoryExpert} />
       )}
