@@ -56,6 +56,27 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const updated = await prisma.$transaction(async (tx) => {
+    // Auto & Taxi providers get their own AutoDriver row instead of a
+    // generic vendor listing — Auto Booking (/community/auto-booking) is
+    // its own dedicated directory, not part of Vendors, so a LocalListing
+    // here would just be a second, unused entry nobody browses.
+    if (request.provider.category === 'auto_transport') {
+      await tx.autoDriver.create({
+        data: {
+          neighborhoodId: request.neighborhoodId,
+          name: request.provider.businessName,
+          phone: request.provider.phone ?? '',
+          serviceArea: request.provider.serviceArea,
+          providerId: request.provider.id,
+        },
+      });
+
+      return tx.communityProviderListing.update({
+        where: { id },
+        data: { status: 'approved', platformApprovedAt: new Date(), platformApprovedById: auth.userId },
+      });
+    }
+
     const listing = await tx.localListing.create({
       data: {
         neighborhoodId: request.neighborhoodId,
