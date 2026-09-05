@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { PROVIDER_CATEGORIES } from '@/lib/provider-categories';
 
 type ElderCareCategory = 'home_treatment' | 'home_nursing' | 'companion_service' | 'local_errands' | 'other';
 const ELDER_CARE_CATEGORIES: { key: ElderCareCategory; label: string }[] = [
@@ -69,7 +70,12 @@ async function api(path: string, init?: RequestInit) {
 export function ProviderProfileClient({ initial }: { initial: ServiceProvider }) {
   const [provider, setProvider] = useState(initial);
   const [businessName, setBusinessName] = useState(initial.businessName);
-  const [category, setCategory] = useState(initial.category);
+  // A category saved before this dropdown existed (or "Others" with custom
+  // text) won't match any known value — fall back to "other" with that text
+  // pre-filled, rather than silently losing/hiding it.
+  const isKnownCategory = PROVIDER_CATEGORIES.some((c) => c.value === initial.category);
+  const [category, setCategory] = useState(isKnownCategory ? initial.category : 'other');
+  const [otherCategory, setOtherCategory] = useState(isKnownCategory ? '' : initial.category);
   const [description, setDescription] = useState(initial.description ?? '');
   const [serviceArea, setServiceArea] = useState(initial.serviceArea ?? '');
   const [phone, setPhone] = useState(initial.phone ?? '');
@@ -94,7 +100,7 @@ export function ProviderProfileClient({ initial }: { initial: ServiceProvider })
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           businessName,
-          category,
+          category: category === 'other' ? otherCategory.trim() : category,
           description: description || undefined,
           serviceArea: serviceArea || undefined,
           phone: phone || undefined,
@@ -199,8 +205,23 @@ export function ProviderProfileClient({ initial }: { initial: ServiceProvider })
               </div>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="category">Category</Label>
-                <Input id="category" value={category} onChange={(e) => setCategory(e.target.value)} />
+                <select
+                  id="category"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="flex h-11 w-full rounded-xl border border-border bg-surface px-4 py-2 text-base text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+                >
+                  {PROVIDER_CATEGORIES.map((c) => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
+                </select>
               </div>
+              {category === 'other' && (
+                <div className="flex flex-col gap-2 sm:col-span-2">
+                  <Label htmlFor="category-other">Tell us your category</Label>
+                  <Input id="category-other" value={otherCategory} onChange={(e) => setOtherCategory(e.target.value)} placeholder="e.g. Home care, catering, tutoring…" />
+                </div>
+              )}
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="description">Description</Label>
