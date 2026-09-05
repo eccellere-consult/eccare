@@ -1304,10 +1304,16 @@ model AutoRateCard {
   neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
 }
 
-/// Local doctors directory, admin/committee-curated (no doctor login — see
-/// DoctorBooking for how confirmation works without one). Location is either a
-/// lat/lng pair (device geolocation at add-time) or a plain Google Maps link —
-/// whichever the admin has to hand.
+/// Local doctors directory. Two ways a row gets created: (a) admin/committee
+/// adds one directly (legacy path — providerId stays null, confirmation on
+/// bookings is the booker self-reporting since there's no doctor login), or
+/// (b) a self-registered ServiceProvider (category doctor) requests to join
+/// a community and platform approval auto-creates this row with placeholder
+/// specialty/consultationFee for the doctor to fill in themselves — see
+/// app/api/v1/admin/provider-requests/[id]. A doctor can be listed in
+/// several communities, so providerId is NOT unique (one provider -> many
+/// LocalDoctor rows, one per neighborhood). Location is either a lat/lng
+/// pair (device geolocation at add-time) or a plain Google Maps link.
 model LocalDoctor {
   id              String   @id @default(cuid())
   neighborhoodId  String
@@ -1332,7 +1338,7 @@ model LocalDoctor {
   // verificationStatus + the existing admin approval queue (app/admin/providers) —
   // the doctor still has no EC login; see lib/provider-directory.ts. Null means a
   // legacy doctor added before this existed — treated as already-verified/bookable.
-  providerId String?         @unique
+  providerId String?
   provider   ServiceProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
 
   neighborhood Neighborhood    @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
@@ -1341,6 +1347,7 @@ model LocalDoctor {
   bookings     DoctorBooking[]
 
   @@index([neighborhoodId, isActive])
+  @@index([providerId])
 }
 
 /// One bookable time slot for one doctor — admin-entered (calls the clinic to ask
@@ -1920,10 +1927,11 @@ model ServiceProvider {
   catalogItems       CatalogItem[]
   orders             Order[]
   // Doctors & Elder Transport module: a directory entry optionally links
-  // here — for LocalDoctor, purely to reuse verificationStatus (no login of
-  // its own); for AutoDriver, a real self-service link, one row per
-  // community the provider has joined (see AutoDriver's own comment).
-  localDoctor  LocalDoctor?
+  // here — a real self-service link, one row per community the provider has
+  // joined (see LocalDoctor/AutoDriver's own comments). Legacy admin-added
+  // rows may also link here purely to reuse verificationStatus, with no
+  // login of their own.
+  localDoctors LocalDoctor[]
   autoDrivers  AutoDriver[]
 
   @@index([verificationStatus])

@@ -7,6 +7,7 @@ import { ProviderProfileClient } from './provider-profile-client';
 import { CommunityRequestsClient } from './community-requests-client';
 import { ProviderAccountClient } from './account-client';
 import { AutoDriverSelfService } from '@/components/provider/auto-driver-self-service';
+import { DoctorSelfService } from '@/components/provider/doctor-self-service';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,6 +52,23 @@ export default async function ProviderHomePage() {
     perMinWaitRate: d.perMinWaitRate?.toString() ?? null,
   }));
 
+  const doctorRows =
+    provider?.category === 'doctor'
+      ? await prisma.localDoctor.findMany({
+          where: { providerId: provider.id },
+          include: {
+            neighborhood: { select: { id: true, name: true } },
+            slots: { where: { isBooked: false, startsAt: { gte: new Date() } }, orderBy: { startsAt: 'asc' } },
+          },
+          orderBy: { createdAt: 'desc' },
+        })
+      : [];
+  const doctors = doctorRows.map((d) => ({
+    ...d,
+    consultationFee: d.consultationFee.toString(),
+    slots: d.slots.map((s) => ({ ...s, startsAt: s.startsAt.toISOString() })),
+  }));
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-text">
@@ -71,6 +89,7 @@ export default async function ProviderHomePage() {
       )}
 
       {provider?.category === 'auto_transport' && <AutoDriverSelfService initial={autoDrivers} />}
+      {provider?.category === 'doctor' && <DoctorSelfService initial={doctors} />}
 
       <div className="mt-6">
         <ProviderAccountClient

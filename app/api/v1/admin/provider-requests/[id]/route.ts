@@ -77,6 +77,31 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       });
     }
 
+    // Doctors are their own dedicated directory too (booking + slots), not a
+    // generic vendor listing. ServiceProvider has no specialty/fee field —
+    // 'General'/0 are placeholders the doctor is expected to replace via
+    // their own profile before the listing is really useful (same posture
+    // as an Auto driver's rates starting null).
+    if (request.provider.category === 'doctor') {
+      await tx.localDoctor.create({
+        data: {
+          neighborhoodId: request.neighborhoodId,
+          name: request.provider.businessName,
+          phone: request.provider.phone ?? '',
+          locality: request.provider.serviceArea,
+          specialty: 'General',
+          consultationFee: 0,
+          addedById: auth.userId,
+          providerId: request.provider.id,
+        },
+      });
+
+      return tx.communityProviderListing.update({
+        where: { id },
+        data: { status: 'approved', platformApprovedAt: new Date(), platformApprovedById: auth.userId },
+      });
+    }
+
     const listing = await tx.localListing.create({
       data: {
         neighborhoodId: request.neighborhoodId,
