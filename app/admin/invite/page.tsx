@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { MessageCircle, Copy, Check, Smartphone, Search, ChevronRight, ChevronLeft, X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -181,6 +181,7 @@ function BulkInvite({ registrationLink, communities, neighborhoodId, setNeighbor
   const [queue, setQueue] = useState<UserRow[] | null>(null);
   const [queueIndex, setQueueIndex] = useState(0);
   const [sentIds, setSentIds] = useState<Set<string>>(new Set());
+  const nextButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!message) setMessage(buildDefaultMessage(registrationLink, selectedCommunity));
@@ -241,6 +242,41 @@ function BulkInvite({ registrationLink, communities, neighborhoodId, setNeighbor
     setQueueIndex(0);
   }
 
+  // Enter advances the same way clicking "Sent — next" does — only while the
+  // send-through queue is actually open, so it doesn't hijack Enter in the
+  // setup form's message textarea (where Enter should just insert a newline).
+  useEffect(() => {
+    if (!queue) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        markSentAndNext();
+      }
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [queue, markSentAndNext]);
+
+  // Keeps the next button focused so a bare Enter press works immediately —
+  // on mount/advance, and again whenever the tab regains focus (the admin
+  // alt-tabbing back from WhatsApp/SMS after tapping Send there). Without
+  // this, focus is wherever it happened to land (often nowhere useful),
+  // so returning from WhatsApp would otherwise need a click before Enter
+  // does anything.
+  useEffect(() => {
+    if (!queue) return;
+    nextButtonRef.current?.focus();
+    function onVisible() {
+      if (document.visibilityState === 'visible') nextButtonRef.current?.focus();
+    }
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
+  }, [queue, queueIndex]);
+
   if (queue) {
     const recipient = queue[queueIndex];
     const personalized = personalize(recipient);
@@ -258,6 +294,13 @@ function BulkInvite({ registrationLink, communities, neighborhoodId, setNeighbor
             <button onClick={exitQueue} aria-label="Close" className="text-text-secondary hover:text-danger-600">
               <X className="h-4 w-4" />
             </button>
+          </div>
+
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-border">
+            <div
+              className="h-full rounded-full bg-primary-600 transition-all"
+              style={{ width: `${((queueIndex + (isSent ? 1 : 0)) / queue.length) * 100}%` }}
+            />
           </div>
 
           <div>
@@ -292,13 +335,16 @@ function BulkInvite({ registrationLink, communities, neighborhoodId, setNeighbor
             <Button variant="outline" disabled={queueIndex === 0} onClick={() => setQueueIndex((i) => i - 1)}>
               <ChevronLeft className="h-4 w-4" /> Back
             </Button>
-            <Button onClick={markSentAndNext} disabled={queueIndex === queue.length - 1 && isSent}>
+            <Button ref={nextButtonRef} onClick={markSentAndNext} disabled={queueIndex === queue.length - 1 && isSent}>
               {queueIndex === queue.length - 1 ? 'Mark sent — done' : 'Sent — next'} <ChevronRight className="h-4 w-4" />
             </Button>
             {queueIndex < queue.length - 1 && (
               <Button variant="outline" onClick={() => setQueueIndex((i) => i + 1)}>Skip</Button>
             )}
           </div>
+          <p className="text-xs text-text-secondary">
+            Press <span className="font-mono font-semibold">Enter</span> to advance — works as soon as you switch back to this tab.
+          </p>
         </CardContent>
       </Card>
     );
