@@ -2045,7 +2045,12 @@ model Order {
   elderUserId       String
   placedByUserId    String
   providerId        String
-  status            OrderStatus @default(pending)
+  status            OrderStatus   @default(pending)
+  // Mobile app orders are cash-on-delivery only (mobile has no in-app payment
+  // module, by design — see app/api/v1/orders/route.ts). Web orders stay
+  // Razorpay-only. Defaulting to razorpay keeps every existing/omitted caller
+  // (web) behaving exactly as before this field was added.
+  paymentMethod     PaymentMethod @default(razorpay)
   totalAmount       Decimal     @db.Decimal(10, 2)
   deliveryAddress   String      @db.Text
   razorpayOrderId   String?     @unique
@@ -2087,4 +2092,9 @@ enum OrderStatus {
   paid
   confirmed
   cancelled
+}
+
+enum PaymentMethod {
+  razorpay
+  cod
 }
