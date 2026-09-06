@@ -12,6 +12,9 @@ const schema = z.object({
     .array(z.object({ catalogItemId: z.string(), quantity: z.number().int().min(1).max(99) }))
     .min(1),
   deliveryAddress: z.string().min(1).max(2000),
+  // Omitted by web (stays Razorpay-only). The mobile app sends 'cod' — it has no
+  // in-app payment module by design.
+  paymentMethod: z.enum(['razorpay', 'cod']).optional().default('razorpay'),
 });
 
 const fail = (code: string, message: string, status: number) =>
@@ -50,7 +53,7 @@ export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(await req.json());
   if (!parsed.success) return fail('INVALID_INPUT', 'Please check your order and try again.', 400);
 
-  const { elderUserId, providerId, items, deliveryAddress } = parsed.data;
+  const { elderUserId, providerId, items, deliveryAddress, paymentMethod } = parsed.data;
 
   if (!(await canAccessElder(auth.userId, elderUserId))) {
     return fail('FORBIDDEN', "You don't have access to order for this elder.", 403);
@@ -72,11 +75,31 @@ export async function POST(req: NextRequest) {
     return { catalogItemId: catalogItem.id, name: catalogItem.name, price: catalogItem.price, quantity: i.quantity };
   });
 
+  // Cash on delivery skips the Razorpay round-trip entirely — there's nothing to
+  // verify, so the order is confirmed immediately, same as a paid order once
+  // verify-payment succeeds. Cash changes hands at delivery, outside the app.
+  if (paymentMethod === 'cod') {
+    const order = await prisma.order.create({
+      data: {
+        elderUserId,
+        placedByUserId: auth.userId,
+        providerId,
+        status: 'confirmed',
+        paymentMethod: 'cod',
+        totalAmount,
+        deliveryAddress,
+        items: { create: orderItemsData },
+      },
+    });
+    return NextResponse.json({ success: true, data: { orderId: order.id, paymentMethod: 'cod' } }, { status: 201 });
+  }
+
   const order = await prisma.order.create({
     data: {
       elderUserId,
       placedByUserId: auth.userId,
       providerId,
+      paymentMethod: 'razorpay',
       totalAmount,
       deliveryAddress,
       items: { create: orderItemsData },
