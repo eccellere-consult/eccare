@@ -53,6 +53,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
   const [elders, setElders] = useState<FamilyRelation[]>([]);
   const [elderUserId, setElderUserId] = useState('');
   const [address, setAddress] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'razorpay' | 'cod'>('razorpay');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -81,19 +82,59 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
     })();
   }, []);
 
-  async function handlePay() {
+  function validateBeforeCheckout(): boolean {
     if (!elderUserId) {
       setError('Please choose who this order is for.');
-      return;
+      return false;
     }
     if (!address.trim()) {
       setError('Please enter a delivery address.');
-      return;
+      return false;
     }
     if (!cart.providerId || cart.items.length === 0) {
       setError('Your cart is empty.');
-      return;
+      return false;
     }
+    return true;
+  }
+
+  async function handleCheckout() {
+    if (paymentMethod === 'cod') return handleCod();
+    return handlePay();
+  }
+
+  // Mirrors mobile's cash-on-delivery path exactly — POST /orders with
+  // paymentMethod: 'cod' confirms the order immediately, no Razorpay round-trip.
+  async function handleCod() {
+    if (!validateBeforeCheckout()) return;
+
+    setBusy(true);
+    setError('');
+    try {
+      const orderRes = await fetch('/api/v1/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          elderUserId,
+          providerId: cart.providerId,
+          items: cart.items.map((i) => ({ catalogItemId: i.catalogItemId, quantity: i.quantity })),
+          deliveryAddress: address,
+          paymentMethod: 'cod',
+        }),
+      }).then((r) => r.json());
+
+      if (!orderRes.success) throw new Error(orderRes.error?.message || 'Could not place order.');
+      cart.clearCart();
+      router.push(me?.role === 'elder' ? '/elder/orders' : '/family/orders');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not place your order. Please try again.');
+      setBusy(false);
+    }
+  }
+
+  async function handlePay() {
+    if (!validateBeforeCheckout()) return;
 
     setBusy(true);
     setError('');
@@ -239,9 +280,34 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                 <Label htmlFor="address">Delivery address</Label>
                 <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Flat, street, city, pincode" />
               </div>
+              <div className="flex flex-col gap-2">
+                <Label>Payment method</Label>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('razorpay')}
+                    className={`flex-1 rounded-xl border px-4 py-3 text-left text-sm font-semibold transition-colors ${
+                      paymentMethod === 'razorpay' ? 'border-primary-600 bg-primary-50 text-primary-700' : 'border-border text-text-secondary hover:border-primary-300'
+                    }`}
+                  >
+                    Pay online with Razorpay
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('cod')}
+                    className={`flex-1 rounded-xl border px-4 py-3 text-left text-sm font-semibold transition-colors ${
+                      paymentMethod === 'cod' ? 'border-primary-600 bg-primary-50 text-primary-700' : 'border-border text-text-secondary hover:border-primary-300'
+                    }`}
+                  >
+                    Cash on delivery
+                  </button>
+                </div>
+              </div>
               {error && <p className="text-sm text-danger-600">{error}</p>}
-              <Button size="lg" disabled={busy} onClick={handlePay} className="self-start">
-                {busy ? 'Opening payment…' : `Pay ₹${cart.total.toFixed(2)} with Razorpay`}
+              <Button size="lg" disabled={busy} onClick={handleCheckout} className="self-start">
+                {busy
+                  ? paymentMethod === 'cod' ? 'Placing order…' : 'Opening payment…'
+                  : paymentMethod === 'cod' ? `Place order · Pay ₹${cart.total.toFixed(2)} on delivery` : `Pay ₹${cart.total.toFixed(2)} with Razorpay`}
               </Button>
             </CardContent>
           </Card>
