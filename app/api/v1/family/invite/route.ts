@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { getAuthUser, toSafeUser } from '@/lib/auth';
 import { z } from 'zod';
 import { isValidEmail, isValidPhone, normalizePhone, EMAIL_FORMAT_MESSAGE, PHONE_FORMAT_MESSAGE } from '@/lib/validation';
+import { isSupportedLanguage } from '@/lib/i18n/languages';
 
 const schema = z
   .object({
@@ -10,6 +11,11 @@ const schema = z
     elderEmail: z.string().refine(isValidEmail, EMAIL_FORMAT_MESSAGE).optional(),
     elderName: z.string().min(1),
     relationship: z.string().min(1),
+    // The elder's preferred language, picked by the inviting caregiver — only
+    // applied when a brand-new placeholder account is created below; an
+    // already-existing elder account's language is never overwritten by an
+    // invite.
+    language: z.string().optional().refine((v) => v === undefined || isSupportedLanguage(v), 'Invalid language.'),
   })
   .refine((data) => !!(data.elderPhone || data.elderEmail), {
     message: "Please enter the elder's phone number or email address.",
@@ -39,7 +45,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { elderName, relationship } = parsed.data;
+  const { elderName, relationship, language } = parsed.data;
   const elderEmail = parsed.data.elderEmail;
   const elderPhone = parsed.data.elderPhone ? normalizePhone(parsed.data.elderPhone) : undefined;
 
@@ -52,7 +58,7 @@ export async function POST(req: NextRequest) {
 
   if (!elder) {
     elder = await prisma.user.create({
-      data: { phone: elderPhone, email: elderEmail, name: elderName, role: 'elder' },
+      data: { phone: elderPhone, email: elderEmail, name: elderName, role: 'elder', ...(language ? { language } : {}) },
     });
   }
 

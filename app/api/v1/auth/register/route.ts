@@ -4,6 +4,7 @@ import { createToken, hashPassword, setSessionCookie, toSafeUser } from '@/lib/a
 import { z } from 'zod';
 import { isValidEmail, isValidPhone, normalizePhone, EMAIL_FORMAT_MESSAGE, PHONE_FORMAT_MESSAGE } from '@/lib/validation';
 import { getPricingContent } from '@/lib/pricing-content';
+import { isSupportedLanguage } from '@/lib/i18n/languages';
 
 // Phone is the primary identifier — required, and the default way people sign in.
 // Email is optional: useful for password-recovery links and directory contact, but
@@ -32,6 +33,12 @@ const schema = z
     // brand-new caregiver signup (see the FamilySubscription creation below).
     // Defaults to monthly if omitted.
     billingCycle: z.enum(['monthly', 'annual']).optional(),
+    // The elder's chosen display language, picked on the login/register screen
+    // itself (see app/login/page.tsx) — only meaningful for role === 'elder'.
+    // Optional and validated leniently (bad/missing values just fall back to
+    // the column's own "en" default) since this is a nice-to-have, not
+    // something that should ever block account creation.
+    language: z.string().optional().refine((v) => v === undefined || isSupportedLanguage(v), 'Invalid language.'),
   })
   .superRefine((data, ctx) => {
     if (data.role === 'provider') {
@@ -65,7 +72,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { email, password, name, role, businessName, category, isVolunteer, volunteerAvailability, volunteerAssistanceTypes, billingCycle } = parsed.data;
+  const { email, password, name, role, businessName, category, isVolunteer, volunteerAvailability, volunteerAssistanceTypes, billingCycle, language } = parsed.data;
   const phone = normalizePhone(parsed.data.phone);
   const passwordHash = await hashPassword(password);
 
@@ -117,7 +124,13 @@ export async function POST(req: NextRequest) {
       }
       user = await prisma.user.update({
         where: { id: existing.id },
-        data: { passwordHash, name, phone, email: email ?? existing.email },
+        data: {
+          passwordHash,
+          name,
+          phone,
+          email: email ?? existing.email,
+          ...(role === 'elder' && language ? { language } : {}),
+        },
       });
     } else if (role === 'provider') {
       // A pending ServiceProvider profile is created in the same transaction so a
@@ -150,7 +163,9 @@ export async function POST(req: NextRequest) {
         return created;
       });
     } else {
-      user = await prisma.user.create({ data: { email, phone, passwordHash, name, role } });
+      user = await prisma.user.create({
+        data: { email, phone, passwordHash, name, role, ...(role === 'elder' && language ? { language } : {}) },
+      });
     }
   } catch (err) {
     // Prisma P2002 — unique constraint (phone or email already used by another account).

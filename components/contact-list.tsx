@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
 interface Contact {
   id: string;
@@ -25,15 +27,17 @@ interface EmergencyContact {
   relationship: string;
 }
 
-const CATEGORY_LABEL: Record<Contact['category'], string> = {
-  neighbor: 'Neighbor',
-  friend: 'Friend',
-  serviceProvider: 'Service Provider',
-  hospital: 'Hospital',
-  other: 'Other',
+const CATEGORY_LABEL_KEY: Record<Contact['category'], TranslationKey> = {
+  neighbor: 'shared.contactList.category.neighbor',
+  friend: 'shared.contactList.category.friend',
+  serviceProvider: 'shared.contactList.category.serviceProvider',
+  hospital: 'shared.contactList.category.hospital',
+  other: 'shared.contactList.category.other',
 };
 
 export function ContactList({ elderUserId, refreshKey }: { elderUserId: string; refreshKey: number }) {
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [emergencyContacts, setEmergencyContacts] = useState<EmergencyContact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,7 +88,7 @@ export function ContactList({ elderUserId, refreshKey }: { elderUserId: string; 
 
   async function saveEdit(id: string, category: Contact['category']) {
     if (!editName.trim() || !editPhone.trim()) {
-      setEditError('Please enter a name and phone number.');
+      setEditError(t('shared.contactList.enterNamePhone'));
       return;
     }
     setBusyId(id);
@@ -101,20 +105,20 @@ export function ContactList({ elderUserId, refreshKey }: { elderUserId: string; 
         }),
       });
       const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Could not save changes.');
+      if (!res.ok || !json.success) throw new Error(json?.error?.message || t('shared.contactList.couldNotSave'));
       setContacts((prev) => prev.map((c) => (c.id === id ? json.data : c)));
       setEditingId(null);
     } catch (err) {
-      setEditError(err instanceof Error ? err.message : 'Could not save changes.');
+      setEditError(err instanceof Error ? err.message : t('shared.contactList.couldNotSave'));
     } finally {
       setBusyId(null);
     }
   }
 
-  if (loading) return <p className="text-text-secondary">Loading…</p>;
+  if (loading) return <p className="text-text-secondary">{t('shared.contactList.loading')}</p>;
 
   const isEmpty = contacts.length === 0 && emergencyContacts.length === 0;
-  if (isEmpty) return <p className="text-text-secondary">No contacts added yet.</p>;
+  if (isEmpty) return <p className="text-text-secondary">{t('shared.contactList.noContacts')}</p>;
 
   return (
     <div className="flex flex-col gap-3">
@@ -123,11 +127,11 @@ export function ContactList({ elderUserId, refreshKey }: { elderUserId: string; 
           <Card key={c.id}>
             <CardContent className="flex flex-col gap-3 py-4">
               <div className="flex flex-col gap-2">
-                <Label htmlFor={`edit-name-${c.id}`}>Name</Label>
+                <Label htmlFor={`edit-name-${c.id}`}>{t('shared.contactList.name')}</Label>
                 <Input id={`edit-name-${c.id}`} value={editName} onChange={(e) => setEditName(e.target.value)} />
               </div>
               <div className="flex flex-col gap-2">
-                <Label htmlFor={`edit-phone-${c.id}`}>Phone number</Label>
+                <Label htmlFor={`edit-phone-${c.id}`}>{t('shared.contactList.phoneNumber')}</Label>
                 <Input id={`edit-phone-${c.id}`} value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
               </div>
               {c.category === 'neighbor' && (
@@ -138,16 +142,16 @@ export function ContactList({ elderUserId, refreshKey }: { elderUserId: string; 
                     onChange={(e) => setEditShare(e.target.checked)}
                     className="h-5 w-5 rounded border-border"
                   />
-                  Also show in your community&rsquo;s Neighbours directory
+                  {t('shared.contactList.shareNeighbor')}
                 </label>
               )}
               {editError && <p className="text-sm text-danger-600">{editError}</p>}
               <div className="flex gap-2">
                 <Button size="sm" disabled={busyId === c.id} onClick={() => saveEdit(c.id, c.category)}>
-                  {busyId === c.id ? 'Saving…' : 'Save'}
+                  {busyId === c.id ? t('shared.contactList.saving') : t('shared.contactList.save')}
                 </Button>
                 <Button size="sm" variant="outline" onClick={cancelEdit}>
-                  Cancel
+                  {t('shared.contactList.cancel')}
                 </Button>
               </div>
             </CardContent>
@@ -164,10 +168,10 @@ export function ContactList({ elderUserId, refreshKey }: { elderUserId: string; 
                 </p>
                 <div className="mt-0.5 flex items-center gap-2">
                   <Badge variant="muted">
-                    {c.category === 'serviceProvider' && c.providerType ? c.providerType : CATEGORY_LABEL[c.category]}
+                    {c.category === 'serviceProvider' && c.providerType ? c.providerType : t(CATEGORY_LABEL_KEY[c.category])}
                   </Badge>
-                  {c.sharedListingId && <span className="text-xs text-success-600">Shared with community</span>}
-                  {c.shareWithNeighbours && <span className="text-xs text-success-600">In Neighbours directory</span>}
+                  {c.sharedListingId && <span className="text-xs text-success-600">{t('shared.contactList.sharedWithCommunity')}</span>}
+                  {c.shareWithNeighbours && <span className="text-xs text-success-600">{t('shared.contactList.inNeighboursDirectory')}</span>}
                 </div>
                 <p className="mt-1 text-sm text-text-secondary">{c.phone}</p>
               </div>
@@ -207,10 +211,10 @@ export function ContactList({ elderUserId, refreshKey }: { elderUserId: string; 
             <div className="min-w-0 flex-1">
               <p className="font-bold text-text">{c.name}</p>
               <div className="mt-0.5">
-                <Badge variant="danger">Emergency Contact · {c.relationship}</Badge>
+                <Badge variant="danger">{t('shared.contactList.emergencyContactPrefix')} · {c.relationship}</Badge>
               </div>
               <p className="mt-1 text-sm text-text-secondary">{c.phone}</p>
-              <p className="mt-1 text-xs text-text-secondary">Manage this on the Emergency tab.</p>
+              <p className="mt-1 text-xs text-text-secondary">{t('shared.contactList.manageOnEmergencyTab')}</p>
             </div>
             <a
               href={`tel:${c.phone}`}

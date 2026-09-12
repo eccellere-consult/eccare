@@ -7,6 +7,8 @@ import { cn } from '@/lib/utils';
 import { ContactForm } from '@/components/contact-form';
 import { ContactList } from '@/components/contact-list';
 import { ElderContactsClient } from './contacts-client';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
 interface EmergencyContact {
   id: string;
@@ -24,6 +26,8 @@ export function ContactsTabs({
   initialEmergencyContacts: EmergencyContact[];
   inCommunity: boolean;
 }) {
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   const [tab, setTab] = useState<'emergency' | 'all'>('emergency');
   const [showForm, setShowForm] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -31,16 +35,16 @@ export function ContactsTabs({
   return (
     <div>
       <div className="flex gap-2 border-b border-border">
-        {(['emergency', 'all'] as const).map((t) => (
+        {(['emergency', 'all'] as const).map((tabId) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={tabId}
+            onClick={() => setTab(tabId)}
             className={cn(
               'px-4 py-3 text-sm font-semibold transition-colors',
-              tab === t ? 'border-b-2 border-primary-600 text-primary-900' : 'text-text-secondary',
+              tab === tabId ? 'border-b-2 border-primary-600 text-primary-900' : 'text-text-secondary',
             )}
           >
-            {t === 'emergency' ? 'Emergency' : 'All Contacts'}
+            {tabId === 'emergency' ? t('elder.contacts.emergencyTab') : t('elder.contacts.allContactsTab')}
           </button>
         ))}
       </div>
@@ -52,13 +56,13 @@ export function ContactsTabs({
           <div>
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-text">All Contacts</h1>
-                <p className="mt-1 text-text-secondary">Neighbors, friends, service providers and more.</p>
+                <h1 className="text-2xl font-bold text-text">{t('elder.contacts.allContactsTitle')}</h1>
+                <p className="mt-1 text-text-secondary">{t('elder.contacts.allContactsSubtitle')}</p>
               </div>
               {!showForm && (
                 <Button onClick={() => setShowForm(true)} size="lg">
                   <UserPlus className="h-5 w-5" />
-                  Add
+                  {t('elder.contacts.add')}
                 </Button>
               )}
             </div>
