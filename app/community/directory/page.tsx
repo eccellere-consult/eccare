@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Phone, Hand, Pencil, Trash2, ShieldX } from 'lucide-react';
+import { Phone, Hand, Pencil, Trash2, ShieldX, Star } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ interface Neighbour {
   role: 'member' | 'committee' | 'admin' | null;
   isSelf: boolean;
   source: 'member' | 'contact';
+  isFavorite: boolean;
   canManage: boolean;
   canModerate: boolean;
 }
@@ -34,6 +35,30 @@ export default function DirectoryPage() {
   const [editFlatNumber, setEditFlatNumber] = useState('');
   const [editError, setEditError] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  function withFavoriteSet(list: Neighbour[] | null, id: string, favorite: boolean): Neighbour[] | null {
+    if (!list) return list;
+    return list
+      .map((x) => (x.id === id ? { ...x, isFavorite: favorite } : x))
+      .sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite));
+  }
+
+  async function toggleFavorite(n: Neighbour) {
+    const next = !n.isFavorite;
+    // Optimistic — re-sort immediately rather than waiting on the round-trip,
+    // same favorites-first order the backend itself applies.
+    setData((prev) => withFavoriteSet(prev, n.id, next));
+    try {
+      if (next) {
+        await communityApi.post('/community/directory/favorites', { entryKey: n.id });
+      } else {
+        await communityApi.delete(`/community/directory/favorites/${encodeURIComponent(n.id)}`);
+      }
+    } catch {
+      // Revert on failure — the optimistic flip didn't actually stick server-side.
+      setData((prev) => withFavoriteSet(prev, n.id, !next));
+    }
+  }
 
   async function dropHello(n: Neighbour) {
     if (!n.userId) return;
@@ -128,8 +153,8 @@ export default function DirectoryPage() {
 
   return (
     <CommunityPageFrame
-      title="Your neighbours"
-      subtitle="Say hello, or call directly."
+      title="Local Directory"
+      subtitle="Say hello, call directly, or star a neighbour to keep them at the top."
       loading={loading}
       error={error}
       isEmpty={(data?.length ?? 0) === 0}
@@ -199,6 +224,17 @@ export default function DirectoryPage() {
                 </div>
 
                 <div className="flex shrink-0 gap-2">
+                  {!n.isSelf && (
+                    <button
+                      onClick={() => toggleFavorite(n)}
+                      title={n.isFavorite ? 'Remove from favourites' : 'Add to favourites'}
+                      aria-label={n.isFavorite ? `Remove ${n.name} from favourites` : `Add ${n.name} to favourites`}
+                      aria-pressed={n.isFavorite}
+                      className="flex h-11 w-11 items-center justify-center rounded-full bg-accent-50 text-accent-600"
+                    >
+                      <Star className="h-5 w-5" fill={n.isFavorite ? 'currentColor' : 'none'} />
+                    </button>
+                  )}
                   {n.source === 'member' && !n.isSelf && (
                     <button
                       onClick={() => dropHello(n)}
