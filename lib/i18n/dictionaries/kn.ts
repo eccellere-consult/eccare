@@ -10,6 +10,18 @@ const kn: Record<TranslationKey, string> = {
   'common.by': 'ಮೂಲಕ',
   'common.myPrescriptions': 'ನನ್ನ ಔಷಧಿ ಚೀಟಿಗಳು',
 
+  'nav.portalLabel.elder': 'ಗೋಲ್ಡನ್ ಜನರೇಷನ್',
+  'nav.home': 'ಮುಖಪುಟ',
+  'nav.contacts': 'ಸಂಪರ್ಕಗಳು',
+  'nav.health': 'ಆರೋಗ್ಯ',
+  'nav.community': 'ಕಮ್ಯುನಿಟಿ',
+  'nav.services': 'ಸೇವೆಗಳು',
+  'nav.orders': 'ಆರ್ಡರ್‌ಗಳು',
+  'nav.payments': 'ಪಾವತಿಗಳು',
+  'nav.memories': 'ನೆನಪುಗಳು',
+  'nav.profile': 'ಪ್ರೊಫೈಲ್',
+  'nav.logOut': 'ಲಾಗ್ ಔಟ್',
+
   'elder.home.hello': 'ನಮಸ್ಕಾರ,',
   'elder.home.subtitle': 'ನಿಮಗೆ ಏನು ಬೇಕು?',
   'elder.home.inviteConnectAs': 'ನಿಮ್ಮೊಂದಿಗೆ ಈ ರೀತಿ ಸಂಪರ್ಕ ಸಾಧಿಸಲು ಬಯಸುತ್ತಾರೆ:',
