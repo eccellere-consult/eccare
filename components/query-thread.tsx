@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { communityApi } from '@/lib/community-client';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
 interface QuerySummary {
   id: string;
@@ -37,6 +39,13 @@ const STATUS_VARIANT = {
   closed: 'muted',
 } as const;
 
+const STATUS_LABEL_KEY: Record<QuerySummary['status'], TranslationKey> = {
+  open: 'shared.queryThread.status.open',
+  in_progress: 'shared.queryThread.status.inProgress',
+  resolved: 'shared.queryThread.status.resolved',
+  closed: 'shared.queryThread.status.closed',
+};
+
 const NEXT_STATUS: Record<QuerySummary['status'], QuerySummary['status'][]> = {
   open: ['in_progress', 'resolved'],
   in_progress: ['resolved', 'closed'],
@@ -58,6 +67,8 @@ export function QueryThread({
   canManageStatus: boolean;
   onUpdated?: () => void;
 }) {
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   const [expanded, setExpanded] = useState(false);
   const [detail, setDetail] = useState<QueryDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -71,7 +82,7 @@ export function QueryThread({
     try {
       setDetail(await communityApi.get<QueryDetail>(`/community/queries/${query.id}`));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not load replies.');
+      setError(err instanceof Error ? err.message : t('shared.queryThread.couldNotLoadReplies'));
     } finally {
       setLoadingDetail(false);
     }
@@ -96,7 +107,7 @@ export function QueryThread({
       setReplyText('');
       onUpdated?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not send reply.');
+      setError(err instanceof Error ? err.message : t('shared.queryThread.couldNotSendReply'));
     } finally {
       setBusy(false);
     }
@@ -110,7 +121,7 @@ export function QueryThread({
       setDetail(updated);
       onUpdated?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not update status.');
+      setError(err instanceof Error ? err.message : t('shared.queryThread.couldNotUpdateStatus'));
     } finally {
       setBusy(false);
     }
@@ -128,20 +139,20 @@ export function QueryThread({
             <p className="mt-1 whitespace-pre-wrap text-text">{query.body}</p>
             <p className="mt-2 text-sm text-text-secondary">
               {query.user.name} · {new Date(query.createdAt).toLocaleDateString()}
-              {replyCount > 0 && ` · ${replyCount} repl${replyCount === 1 ? 'y' : 'ies'}`}
+              {replyCount > 0 && ` · ${replyCount} ${replyCount === 1 ? t('shared.queryThread.reply') : t('shared.queryThread.replies')}`}
             </p>
           </div>
           <div className="flex gap-2">
-            <Badge variant="muted">{query.type === 'committee' ? 'Committee' : 'Help desk'}</Badge>
+            <Badge variant="muted">{query.type === 'committee' ? t('shared.queryThread.type.committee') : t('shared.queryThread.type.helpdesk')}</Badge>
             {query.category && <Badge variant="accent">{query.category}</Badge>}
-            <Badge variant={STATUS_VARIANT[status]}>{status.replace('_', ' ')}</Badge>
+            <Badge variant={STATUS_VARIANT[status]}>{t(STATUS_LABEL_KEY[status])}</Badge>
           </div>
         </button>
 
         {expanded && (
           <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4">
             {loadingDetail ? (
-              <p className="text-sm text-text-secondary">Loading…</p>
+              <p className="text-sm text-text-secondary">{t('common.loading')}</p>
             ) : (
               <>
                 {detail?.replies.map((r) => (
@@ -166,7 +177,7 @@ export function QueryThread({
                           'bg-border text-text-secondary hover:bg-primary-50 hover:text-primary-900',
                         )}
                       >
-                        Mark {s.replace('_', ' ')}
+                        {t('shared.queryThread.markStatus').replace('{status}', t(STATUS_LABEL_KEY[s]))}
                       </button>
                     ))}
                   </div>
@@ -176,13 +187,13 @@ export function QueryThread({
                   <textarea
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
-                    placeholder="Write a reply…"
+                    placeholder={t('shared.queryThread.replyPlaceholder')}
                     rows={2}
                     className="rounded-xl border border-border bg-surface p-3 text-sm text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
                   />
                   {error && <p className="text-sm text-danger-600">{error}</p>}
                   <Button type="submit" size="sm" disabled={busy || !replyText.trim()} className="self-start">
-                    {busy ? 'Sending…' : 'Reply'}
+                    {busy ? t('shared.queryThread.sending') : t('shared.queryThread.replyButton')}
                   </Button>
                 </form>
               </>

@@ -4,6 +4,8 @@ import { MapPin, Clock } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
 export interface CommunityEventData {
   id: string;
@@ -17,6 +19,9 @@ export interface CommunityEventData {
   createdBy: { name: string };
 }
 
+// English labels stay the source of truth for callers that need a plain
+// string (e.g. building the category filter chips before a language is
+// known); EVENT_CATEGORY_LABEL_KEY is what the card itself renders with.
 export const EVENT_CATEGORY_LABEL: Record<CommunityEventData['category'], string> = {
   cultural: 'Cultural',
   local_tour: 'Local tour',
@@ -24,24 +29,34 @@ export const EVENT_CATEGORY_LABEL: Record<CommunityEventData['category'], string
   social: 'Social',
   other: 'Other',
 };
+export const EVENT_CATEGORY_LABEL_KEY: Record<CommunityEventData['category'], TranslationKey> = {
+  cultural: 'shared.eventCard.category.cultural',
+  local_tour: 'shared.eventCard.category.localTour',
+  movie: 'shared.eventCard.category.movie',
+  social: 'shared.eventCard.category.social',
+  other: 'shared.eventCard.category.other',
+};
 
 const RSVPS = [
-  { value: 'going', label: 'Going' },
-  { value: 'maybe', label: 'Maybe' },
-  { value: 'not_going', label: "Can't" },
-] as const;
+  { value: 'going', labelKey: 'shared.eventCard.rsvp.going' },
+  { value: 'maybe', labelKey: 'shared.eventCard.rsvp.maybe' },
+  { value: 'not_going', labelKey: 'shared.eventCard.rsvp.notGoing' },
+] as const satisfies readonly { value: string; labelKey: TranslationKey }[];
 
 /** One event card with RSVP controls, rendered by /community/events — the single
  *  merged "Entertainment & Social Events" page (previously split across a separate
  *  /community/events and /community/entertainment; the category filter chips on
  *  that page now do what the second page used to). */
 export function EventCard({ event, onRsvp, showCategory }: { event: CommunityEventData; onRsvp: (eventId: string, status: string) => void; showCategory?: boolean }) {
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
+
   return (
     <Card>
       <CardContent className="pt-6">
         <div className="flex items-start justify-between gap-2">
           <h2 className="text-lg font-bold text-text">{event.title}</h2>
-          {showCategory && <Badge variant="accent">{EVENT_CATEGORY_LABEL[event.category]}</Badge>}
+          {showCategory && <Badge variant="accent">{t(EVENT_CATEGORY_LABEL_KEY[event.category])}</Badge>}
         </div>
         <p className="mt-1 flex items-center gap-1.5 text-sm text-text-secondary">
           <Clock className="h-3.5 w-3.5" />
@@ -67,10 +82,10 @@ export function EventCard({ event, onRsvp, showCategory }: { event: CommunityEve
                   : 'border-border bg-surface text-text hover:bg-primary-50',
               )}
             >
-              {r.label}
+              {t(r.labelKey)}
             </button>
           ))}
-          <span className="ml-auto text-sm text-text-secondary">{event.goingCount} going</span>
+          <span className="ml-auto text-sm text-text-secondary">{event.goingCount} {t('shared.eventCard.goingSuffix')}</span>
         </div>
       </CardContent>
     </Card>

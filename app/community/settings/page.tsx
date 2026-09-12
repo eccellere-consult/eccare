@@ -5,6 +5,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { CommunityPageFrame } from '@/components/community/page-frame';
 import { communityApi, useCommunityData } from '@/lib/community-client';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
 interface Preference {
   key: string;
@@ -50,6 +52,8 @@ function Toggle({
 }
 
 function DirectoryVisibilitySection() {
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   const { data, loading, setData } = useCommunityData<Me>('/community/me');
   const [saving, setSaving] = useState<string | null>(null);
 
@@ -79,18 +83,20 @@ function DirectoryVisibilitySection() {
   return (
     <div className="mb-6 flex flex-col gap-3">
       <h2 className="text-sm font-bold uppercase tracking-wide text-text-secondary">
-        Neighbours directory
+        {t('community.settings.neighboursDirectory')}
       </h2>
       {data?.memberships.map((m) => (
         <Card key={m.neighborhoodId}>
           <CardContent className="flex items-center gap-4 py-4">
             <div className="min-w-0 flex-1">
               <p className="font-bold text-text">
-                Show my name and phone in {data.memberships.length > 1 ? m.neighborhood.name : "your neighbours' directory"}
+                {t('community.settings.showMeIn').replace(
+                  '{name}',
+                  data.memberships.length > 1 ? m.neighborhood.name : t('community.settings.yourNeighboursDirectory'),
+                )}
               </p>
               <p className="text-sm text-text-secondary">
-                Fellow members can see and call you directly. Turn this off to stay a
-                member without appearing in the list.
+                {t('community.settings.directoryHelper')}
               </p>
             </div>
             <Toggle
@@ -99,7 +105,7 @@ function DirectoryVisibilitySection() {
               label={`Show me in ${m.neighborhood.name}'s directory`}
             />
           </CardContent>
-          {saving === m.neighborhoodId && <p className="px-6 pb-2 text-xs text-text-secondary">Saving…</p>}
+          {saving === m.neighborhoodId && <p className="px-6 pb-2 text-xs text-text-secondary">{t('community.settings.saving')}</p>}
         </Card>
       ))}
     </div>
@@ -107,6 +113,8 @@ function DirectoryVisibilitySection() {
 }
 
 export default function NotificationSettingsPage() {
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   const { data, loading, error, setData } = useCommunityData<Preference[]>(
     '/notifications/preferences',
   );
@@ -130,15 +138,15 @@ export default function NotificationSettingsPage() {
 
   return (
     <CommunityPageFrame
-      title="Notification settings"
-      subtitle="Choose what you want to hear about. Emergency alerts are always on."
+      title={t('community.settings.title')}
+      subtitle={t('community.settings.subtitle')}
       loading={loading}
       error={error}
     >
       <DirectoryVisibilitySection />
 
       <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-text-secondary">
-        Notifications
+        {t('community.settings.notifications')}
       </h2>
       <div className="flex flex-col gap-3">
         {data?.map((p) => (

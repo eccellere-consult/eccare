@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { CommunityPageFrame } from '@/components/community/page-frame';
 import { communityApi, useCommunityData } from '@/lib/community-client';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
 interface Notice {
   id: string;
@@ -21,6 +23,8 @@ interface Notice {
 interface Me { memberships: { role: string }[] }
 
 export default function AnnouncementsPage() {
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   const { data: me } = useCommunityData<Me>('/community/me');
   const { data, loading, error, reload } = useCommunityData<Notice[]>('/community/notices');
   const [showForm, setShowForm] = useState(false);
@@ -42,7 +46,7 @@ export default function AnnouncementsPage() {
       setShowForm(false);
       reload();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Could not post.');
+      setFormError(err instanceof Error ? err.message : t('community.announcements.couldNotPost'));
     } finally {
       setBusy(false);
     }
@@ -50,19 +54,19 @@ export default function AnnouncementsPage() {
 
   return (
     <CommunityPageFrame
-      title="Announcements"
-      subtitle="Notices from your management committee."
+      title={t('community.announcements.title')}
+      subtitle={t('community.announcements.subtitle')}
       action={
         canPost ? (
           <Button onClick={() => setShowForm((s) => !s)}>
-            {showForm ? 'Cancel' : 'Post announcement'}
+            {showForm ? t('common.cancel') : t('community.announcements.postAnnouncement')}
           </Button>
         ) : undefined
       }
       loading={loading}
       error={error}
       isEmpty={!showForm && (data?.length ?? 0) === 0}
-      emptyMessage="No announcements yet."
+      emptyMessage={t('community.announcements.noAnnouncements')}
     >
       <div className="flex flex-col gap-4">
         {showForm && (
@@ -70,11 +74,11 @@ export default function AnnouncementsPage() {
             <CardContent className="pt-6">
               <form onSubmit={submit} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="title">Title</Label>
+                  <Label htmlFor="title">{t('community.announcements.titleLabel')}</Label>
                   <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="body">Message</Label>
+                  <Label htmlFor="body">{t('community.announcements.message')}</Label>
                   <textarea
                     id="body"
                     value={body}
@@ -85,7 +89,7 @@ export default function AnnouncementsPage() {
                 </div>
                 {formError && <p className="text-sm text-danger-600">{formError}</p>}
                 <Button type="submit" disabled={busy || !title.trim() || !body.trim()}>
-                  {busy ? 'Posting…' : 'Post'}
+                  {busy ? t('community.announcements.posting') : t('community.announcements.post')}
                 </Button>
               </form>
             </CardContent>
@@ -99,7 +103,7 @@ export default function AnnouncementsPage() {
                 <h2 className="text-lg font-bold text-text">{n.title}</h2>
                 {n.pinned && (
                   <Badge variant="accent">
-                    <Pin className="mr-1 h-3 w-3" /> Pinned
+                    <Pin className="mr-1 h-3 w-3" /> {t('community.announcements.pinned')}
                   </Badge>
                 )}
               </div>

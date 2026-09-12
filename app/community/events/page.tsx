@@ -6,15 +6,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CommunityPageFrame } from '@/components/community/page-frame';
-import { EventCard, EVENT_CATEGORY_LABEL, type CommunityEventData } from '@/components/community/event-card';
+import { EventCard, EVENT_CATEGORY_LABEL_KEY, type CommunityEventData } from '@/components/community/event-card';
 import { communityApi, useCommunityData } from '@/lib/community-client';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
-const CATEGORY_OPTIONS = (Object.keys(EVENT_CATEGORY_LABEL) as CommunityEventData['category'][]).map((key) => ({
+const CATEGORY_OPTIONS = (Object.keys(EVENT_CATEGORY_LABEL_KEY) as CommunityEventData['category'][]).map((key) => ({
   key,
-  label: EVENT_CATEGORY_LABEL[key],
+  labelKey: EVENT_CATEGORY_LABEL_KEY[key],
 }));
 
 export default function EventsPage() {
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   const { data, loading, error, reload } = useCommunityData<CommunityEventData[]>('/community/events');
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState('');
@@ -45,7 +49,7 @@ export default function EventsPage() {
       setShowForm(false);
       reload();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Could not create event.');
+      setFormError(err instanceof Error ? err.message : t('community.events.couldNotCreate'));
     } finally {
       setBusy(false);
     }
@@ -58,18 +62,18 @@ export default function EventsPage() {
 
   return (
     <CommunityPageFrame
-      title="Entertainment & Social Events"
-      subtitle="Cultural activities, local tours, movies, and everything else happening nearby."
-      action={<Button onClick={() => setShowForm((s) => !s)}>{showForm ? 'Cancel' : 'Add event'}</Button>}
+      title={t('community.events.title')}
+      subtitle={t('community.events.subtitle')}
+      action={<Button onClick={() => setShowForm((s) => !s)}>{showForm ? t('common.cancel') : t('community.events.addEvent')}</Button>}
       loading={loading}
       error={error}
       isEmpty={!showForm && filtered.length === 0}
-      emptyMessage="No events planned yet."
+      emptyMessage={t('community.events.noEvents')}
     >
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant={activeCategory === null ? 'primary' : 'outline'} onClick={() => setActiveCategory(null)}>
-            All
+            {t('common.all')}
           </Button>
           {CATEGORY_OPTIONS.map((c) => (
             <Button
@@ -78,7 +82,7 @@ export default function EventsPage() {
               variant={activeCategory === c.key ? 'primary' : 'outline'}
               onClick={() => setActiveCategory(activeCategory === c.key ? null : c.key)}
             >
-              {c.label}
+              {t(c.labelKey)}
             </Button>
           ))}
         </div>
@@ -88,11 +92,11 @@ export default function EventsPage() {
             <CardContent className="pt-6">
               <form onSubmit={create} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="title">Event name</Label>
-                  <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Diwali celebration" />
+                  <Label htmlFor="title">{t('community.events.eventName')}</Label>
+                  <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('community.events.eventNamePlaceholder')} />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="ev-category">Category</Label>
+                  <Label htmlFor="ev-category">{t('community.events.category')}</Label>
                   <select
                     id="ev-category"
                     value={category}
@@ -100,21 +104,21 @@ export default function EventsPage() {
                     className="flex h-11 w-full rounded-xl border border-border bg-surface px-4 py-2 text-base text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
                   >
                     {CATEGORY_OPTIONS.map((c) => (
-                      <option key={c.key} value={c.key}>{c.label}</option>
+                      <option key={c.key} value={c.key}>{t(c.labelKey)}</option>
                     ))}
                   </select>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="startsAt">Date and time</Label>
+                  <Label htmlFor="startsAt">{t('community.events.dateAndTime')}</Label>
                   <Input id="startsAt" type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="location">Where</Label>
-                  <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Community hall" />
+                  <Label htmlFor="location">{t('community.events.where')}</Label>
+                  <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} placeholder={t('community.events.wherePlaceholder')} />
                 </div>
                 {formError && <p className="text-sm text-danger-600">{formError}</p>}
                 <Button type="submit" disabled={busy || !title.trim() || !startsAt}>
-                  {busy ? 'Adding…' : 'Add event'}
+                  {busy ? t('community.events.adding') : t('community.events.addEvent')}
                 </Button>
               </form>
             </CardContent>
