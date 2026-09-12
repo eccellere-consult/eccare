@@ -101,6 +101,9 @@ model User {
   serviceProvider          ServiceProvider?  @relation("ServiceProviderUser")
   verifiedServiceProviders ServiceProvider[] @relation("ServiceProviderVerifier")
 
+  // Community registration
+  reviewedCommunityApplications CommunityApplication[] @relation("CommunityApplicationReviewer")
+
   // Personal contact book
   contactsOwned Contact[] @relation("ContactElder")
   contactsAdded Contact[] @relation("ContactAdder")
@@ -1116,8 +1119,76 @@ model Neighborhood {
   autoRateCard   AutoRateCard?
   doctors        LocalDoctor[]
   rentalListings RentalListing[]
+  application    CommunityApplication?
 
   @@index([pincode])
+}
+
+/// A residents' association, panchayat office, or other local authority applying
+/// to have a new locality registered on EC — submitted publicly, with no EC
+/// account required (the applicant may never have used EC before). EC admin
+/// reviews the submitted proof/details and approves or rejects; approval creates
+/// the real Neighborhood (with its own resident-facing joinCode, unrelated to
+/// this application's own localityCode) plus a claimable admin account for the
+/// applicant, mirroring the family-invite "unclaimed placeholder" pattern —
+/// prisma.user.create with phone/email/name/role but no passwordHash, claimed
+/// the first time they register with the same phone or email.
+model CommunityApplication {
+  id                   String                     @id @default(cuid())
+  placeName            String
+  applicantType        String?
+  city                 String?
+  pincode              String
+  lat                  Decimal?                   @db.Decimal(10, 7)
+  lng                  Decimal?                   @db.Decimal(10, 7)
+  numberOfFamilies     Int?
+  applicantName        String
+  applicantPhone       String
+  applicantEmail       String?
+  applicantDesignation String?
+  status               CommunityApplicationStatus @default(pending)
+  rejectionReason      String?
+  // Assigned on approval — a distinct, more formal identifier for the locality
+  // itself (not the short resident-facing Neighborhood.joinCode generated at
+  // the same time).
+  localityCode         String?                    @unique
+  neighborhoodId       String?                    @unique
+  reviewedById         String?
+  reviewedAt           DateTime?
+  createdAt            DateTime                   @default(now())
+  updatedAt            DateTime                   @updatedAt
+
+  neighborhood Neighborhood? @relation(fields: [neighborhoodId], references: [id])
+  reviewedBy   User?         @relation("CommunityApplicationReviewer", fields: [reviewedById], references: [id])
+  documents    CommunityApplicationDocument[]
+
+  @@index([status])
+  @@index([pincode])
+}
+
+enum CommunityApplicationStatus {
+  pending
+  approved
+  rejected
+}
+
+/// Proof-of-authority and any supporting documents attached to a
+/// CommunityApplication — one row per file, so "additional documents" can be
+/// any number, not just one. Mirrors CommunityDocument's own shape.
+model CommunityApplicationDocument {
+  id            String   @id @default(cuid())
+  applicationId String
+  // 'proof_of_authority' or 'additional' — distinguishes the one required
+  // authority document from everything else supplied alongside it.
+  kind          String
+  fileName      String
+  filePath      String
+  fileType      String
+  createdAt     DateTime @default(now())
+
+  application CommunityApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
 }
 
 enum NeighborhoodRole {
