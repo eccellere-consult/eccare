@@ -5,6 +5,8 @@ import { IndianRupee, Check, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
 interface FeeCharge {
   id: string;
@@ -45,6 +47,8 @@ function loadRazorpayScript(): Promise<boolean> {
  *  view and pay. Mirrors the vendor checkout flow (app/community/vendors/[id]/
  *  checkout/page.tsx) for the actual Razorpay integration. */
 export function PaymentsDue({ elderUserId }: { elderUserId: string }) {
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   const [charges, setCharges] = useState<FeeCharge[]>([]);
   const [me, setMe] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
@@ -57,10 +61,10 @@ export function PaymentsDue({ elderUserId }: { elderUserId: string }) {
     try {
       const res = await fetch(`/api/v1/community/fee-charges?elderUserId=${elderUserId}`, { credentials: 'include' });
       const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Could not load payments.');
+      if (!res.ok || !json.success) throw new Error(json?.error?.message || t('shared.paymentsDue.couldNotLoad'));
       setCharges(json.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not load payments.');
+      setError(err instanceof Error ? err.message : t('shared.paymentsDue.couldNotLoad'));
     } finally {
       setLoading(false);
     }
@@ -82,11 +86,11 @@ export function PaymentsDue({ elderUserId }: { elderUserId: string }) {
         method: 'POST',
         credentials: 'include',
       }).then((r) => r.json());
-      if (!payRes.success) throw new Error(payRes.error?.message || 'Could not start payment.');
+      if (!payRes.success) throw new Error(payRes.error?.message || t('shared.paymentsDue.couldNotStart'));
       const { razorpayOrderId, amount, keyId } = payRes.data;
 
       const scriptLoaded = await loadRazorpayScript();
-      if (!scriptLoaded) throw new Error('Could not load the payment page. Please check your connection and try again.');
+      if (!scriptLoaded) throw new Error(t('shared.paymentsDue.couldNotLoadScript'));
 
       const razorpay = new window.Razorpay({
         key: keyId,
@@ -112,7 +116,7 @@ export function PaymentsDue({ elderUserId }: { elderUserId: string }) {
           if (verifyRes.success) {
             load();
           } else {
-            setError('Payment could not be verified. Please contact support before trying again.');
+            setError(t('shared.paymentsDue.couldNotVerify'));
           }
           setPayingId(null);
         },
@@ -120,12 +124,12 @@ export function PaymentsDue({ elderUserId }: { elderUserId: string }) {
       });
       razorpay.open();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not start payment. Please try again.');
+      setError(err instanceof Error ? err.message : t('shared.paymentsDue.couldNotStartRetry'));
       setPayingId(null);
     }
   }
 
-  if (loading) return <p className="text-text-secondary">Loading…</p>;
+  if (loading) return <p className="text-text-secondary">{t('common.loading')}</p>;
   if (error && charges.length === 0) return <p className="text-danger-600">{error}</p>;
 
   const due = charges.filter((c) => c.status === 'due');
@@ -136,12 +140,12 @@ export function PaymentsDue({ elderUserId }: { elderUserId: string }) {
       {error && <p className="text-sm text-danger-600">{error}</p>}
 
       <section>
-        <h2 className="text-lg font-bold text-text">Due</h2>
+        <h2 className="text-lg font-bold text-text">{t('shared.paymentsDue.due')}</h2>
         {due.length === 0 ? (
           <Card className="mt-3">
             <CardContent className="flex flex-col items-center gap-2 py-8 text-center text-text-secondary">
               <Check className="h-8 w-8 text-success-600" />
-              Nothing due right now.
+              {t('shared.paymentsDue.nothingDue')}
             </CardContent>
           </Card>
         ) : (
@@ -158,14 +162,14 @@ export function PaymentsDue({ elderUserId }: { elderUserId: string }) {
                       </p>
                       <p className={`mt-1 flex items-center gap-1 text-sm ${overdue ? 'font-semibold text-danger-600' : 'text-text-secondary'}`}>
                         {overdue && <AlertCircle className="h-4 w-4" />}
-                        {overdue ? 'Overdue — ' : 'Due '}
+                        {overdue ? t('shared.paymentsDue.overdue') : t('shared.paymentsDue.dueOn')}
                         {new Date(c.dueDate).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}
                       </p>
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-lg font-bold text-text">₹{c.amount}</span>
                       <Button size="sm" disabled={payingId === c.id} onClick={() => pay(c)}>
-                        {payingId === c.id ? 'Opening…' : 'Pay now'}
+                        {payingId === c.id ? t('shared.paymentsDue.opening') : t('shared.paymentsDue.payNow')}
                       </Button>
                     </div>
                   </CardContent>
@@ -178,7 +182,7 @@ export function PaymentsDue({ elderUserId }: { elderUserId: string }) {
 
       {settled.length > 0 && (
         <section>
-          <h2 className="text-lg font-bold text-text">History</h2>
+          <h2 className="text-lg font-bold text-text">{t('shared.paymentsDue.history')}</h2>
           <div className="mt-3 flex flex-col gap-2">
             {settled.map((c) => (
               <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border px-4 py-3">
@@ -186,7 +190,7 @@ export function PaymentsDue({ elderUserId }: { elderUserId: string }) {
                   <p className="font-semibold text-text">{c.communityFee.label}</p>
                   <p className="text-sm text-text-secondary">
                     {c.period}
-                    {c.paidAt && ` · Paid ${new Date(c.paidAt).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}`}
+                    {c.paidAt && ` · ${t('shared.paymentsDue.paidOn')} ${new Date(c.paidAt).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}`}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -203,7 +207,7 @@ export function PaymentsDue({ elderUserId }: { elderUserId: string }) {
         <Card>
           <CardContent className="flex flex-col items-center gap-2 py-12 text-center text-text-secondary">
             <IndianRupee className="h-8 w-8 text-primary-600" />
-            No community fees yet.
+            {t('shared.paymentsDue.noFeesYet')}
           </CardContent>
         </Card>
       )}

@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ChangePasswordCard } from '@/components/change-password-card';
 import { isValidEmail, isValidPhone, EMAIL_FORMAT_MESSAGE, PHONE_FORMAT_MESSAGE } from '@/lib/validation';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
 interface Profile {
   name: string;
@@ -20,6 +22,8 @@ interface Profile {
 }
 
 export function ProfileClient({ profile }: { profile: Profile }) {
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   const [form, setForm] = useState(profile);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -47,10 +51,10 @@ export function ProfileClient({ profile }: { profile: Profile }) {
         body: JSON.stringify(form),
       });
       const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Could not save changes.');
-      setMessage('Saved.');
+      if (!res.ok || !json.success) throw new Error(json?.error?.message || t('elder.profile.couldNotSave'));
+      setMessage(t('elder.profile.saved'));
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : 'Could not save changes.');
+      setMessage(err instanceof Error ? err.message : t('elder.profile.couldNotSave'));
     } finally {
       setSaving(false);
     }
@@ -58,48 +62,48 @@ export function ProfileClient({ profile }: { profile: Profile }) {
 
   return (
     <div className="mx-auto max-w-lg">
-      <h1 className="text-2xl font-bold text-text">Your profile</h1>
-      <p className="mt-1 text-text-secondary">Kept up to date so family and services can reach you.</p>
+      <h1 className="text-2xl font-bold text-text">{t('elder.profile.title')}</h1>
+      <p className="mt-1 text-text-secondary">{t('elder.profile.subtitle')}</p>
 
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle>Details</CardTitle>
+          <CardTitle>{t('elder.profile.detailsCardTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSave} className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="p-name">Name</Label>
+              <Label htmlFor="p-name">{t('elder.profile.name')}</Label>
               <Input id="p-name" value={form.name} onChange={(e) => update('name', e.target.value)} />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="p-phone">Phone number</Label>
+              <Label htmlFor="p-phone">{t('elder.profile.phoneNumber')}</Label>
               <Input id="p-phone" type="tel" value={form.phone ?? ''} onChange={(e) => update('phone', e.target.value)} />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="p-email">Email</Label>
+              <Label htmlFor="p-email">{t('elder.profile.email')}</Label>
               <Input id="p-email" type="email" value={form.email ?? ''} onChange={(e) => update('email', e.target.value)} />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="p-blood">Blood group</Label>
+              <Label htmlFor="p-blood">{t('elder.profile.bloodGroup')}</Label>
               <Input id="p-blood" value={form.bloodGroup ?? ''} onChange={(e) => update('bloodGroup', e.target.value)} placeholder="O+" />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="p-address">Address</Label>
+              <Label htmlFor="p-address">{t('elder.profile.address')}</Label>
               <Input id="p-address" value={form.address ?? ''} onChange={(e) => update('address', e.target.value)} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-2">
-                <Label htmlFor="p-city">City</Label>
+                <Label htmlFor="p-city">{t('elder.profile.city')}</Label>
                 <Input id="p-city" value={form.city ?? ''} onChange={(e) => update('city', e.target.value)} />
               </div>
               <div className="flex flex-col gap-2">
-                <Label htmlFor="p-pincode">Pincode</Label>
+                <Label htmlFor="p-pincode">{t('elder.profile.pincode')}</Label>
                 <Input id="p-pincode" value={form.pincode ?? ''} onChange={(e) => update('pincode', e.target.value)} />
               </div>
             </div>
             {message && <p className="text-sm text-text-secondary">{message}</p>}
             <Button type="submit" disabled={saving} size="lg">
-              {saving ? 'Saving...' : 'Save changes'}
+              {saving ? t('elder.profile.saving') : t('elder.profile.saveChanges')}
             </Button>
           </form>
         </CardContent>

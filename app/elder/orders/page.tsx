@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { PackageCheck } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
 interface OrderItem {
   id: string;
@@ -22,8 +24,16 @@ interface Order {
 }
 
 const STATUS_VARIANT = { pending: 'muted', paid: 'accent', confirmed: 'success', cancelled: 'danger' } as const;
+const STATUS_LABEL_KEY: Record<Order['status'], TranslationKey> = {
+  pending: 'elder.orders.status.pending',
+  paid: 'elder.orders.status.paid',
+  confirmed: 'elder.orders.status.confirmed',
+  cancelled: 'elder.orders.status.cancelled',
+};
 
 export default function ElderOrdersPage() {
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -36,17 +46,17 @@ export default function ElderOrdersPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-text">My orders</h1>
-      <p className="mt-1 text-text-secondary">Purchases from community vendors.</p>
+      <h1 className="text-2xl font-bold text-text">{t('elder.orders.title')}</h1>
+      <p className="mt-1 text-text-secondary">{t('elder.orders.subtitle')}</p>
 
       <div className="mt-6">
         {loading ? (
-          <p className="text-text-secondary">Loading…</p>
+          <p className="text-text-secondary">{t('common.loading')}</p>
         ) : orders.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center gap-2 py-12 text-center text-text-secondary">
               <PackageCheck className="h-8 w-8 text-primary-600" />
-              No orders yet.
+              {t('elder.orders.noOrders')}
             </CardContent>
           </Card>
         ) : (
@@ -56,7 +66,7 @@ export default function ElderOrdersPage() {
                 <CardContent className="pt-6">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <p className="font-bold text-text">{o.provider.businessName}</p>
-                    <Badge variant={STATUS_VARIANT[o.status]}>{o.status}</Badge>
+                    <Badge variant={STATUS_VARIANT[o.status]}>{t(STATUS_LABEL_KEY[o.status])}</Badge>
                   </div>
                   <div className="mt-2 flex flex-col gap-1 text-sm text-text-secondary">
                     {o.items.map((i) => (
