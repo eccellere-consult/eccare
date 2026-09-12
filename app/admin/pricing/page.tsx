@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Eye, EyeOff, Heart, Users, Building2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { communityApi, useCommunityData } from '@/lib/community-client';
 
@@ -15,6 +16,11 @@ interface PricingContent {
   familyFeatures: string[];
   communityIntro: string;
   communityFeatures: string[];
+  elderPrice: number;
+  familyMonthlyPrice: number;
+  familyAnnualPrice: number;
+  communityPrice: number;
+  trialDays: number;
 }
 
 const PLANS: { key: 'elder' | 'family' | 'community'; title: string; icon: typeof Heart }[] = [
@@ -28,6 +34,11 @@ export default function AdminPricingPage() {
   const [visible, setVisible] = useState(true);
   const [intros, setIntros] = useState<Record<string, string>>({});
   const [features, setFeatures] = useState<Record<string, string>>({});
+  const [elderPrice, setElderPrice] = useState('0');
+  const [familyMonthlyPrice, setFamilyMonthlyPrice] = useState('199');
+  const [familyAnnualPrice, setFamilyAnnualPrice] = useState('2000');
+  const [communityPrice, setCommunityPrice] = useState('0');
+  const [trialDays, setTrialDays] = useState('14');
   const [visBusy, setVisBusy] = useState(false);
   const [saveBusy, setSaveBusy] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<Record<string, string>>({});
@@ -42,6 +53,11 @@ export default function AdminPricingPage() {
       family: data.familyFeatures.join('\n'),
       community: data.communityFeatures.join('\n'),
     });
+    setElderPrice(String(data.elderPrice));
+    setFamilyMonthlyPrice(String(data.familyMonthlyPrice));
+    setFamilyAnnualPrice(String(data.familyAnnualPrice));
+    setCommunityPrice(String(data.communityPrice));
+    setTrialDays(String(data.trialDays));
   }, [data]);
 
   async function toggleVisible() {
@@ -68,10 +84,19 @@ export default function AdminPricingPage() {
       .split('\n')
       .map((l) => l.trim())
       .filter(Boolean);
+
+    const priceFields: Record<string, number> =
+      key === 'elder'
+        ? { elderPrice: Number(elderPrice) || 0 }
+        : key === 'community'
+          ? { communityPrice: Number(communityPrice) || 0 }
+          : { familyMonthlyPrice: Number(familyMonthlyPrice) || 0, familyAnnualPrice: Number(familyAnnualPrice) || 0, trialDays: Number(trialDays) || 0 };
+
     try {
       await communityApi.patch('/admin/pricing', {
         [introField]: intros[key] ?? '',
         [featuresField]: featureList,
+        ...priceFields,
       });
       setSaved((s) => ({ ...s, [key]: true }));
       reload();
@@ -86,8 +111,8 @@ export default function AdminPricingPage() {
     <div>
       <h1 className="text-2xl font-bold text-text">Pricing page</h1>
       <p className="mt-1 text-text-secondary">
-        Content shown at <code className="text-sm">eccare.in/pricing</code> — only list features that
-        actually work in the app today.
+        Content and prices shown at <code className="text-sm">eccare.in/pricing</code> and at
+        registration — only list features that actually work in the app today.
       </p>
 
       <Card className="mt-6 max-w-2xl">
@@ -119,6 +144,38 @@ export default function AdminPricingPage() {
                 <Icon className="h-5 w-5 text-primary-600" />
                 {title}
               </h2>
+
+              {key === 'family' ? (
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="family-monthly">Monthly price (₹)</Label>
+                    <Input id="family-monthly" type="number" min={0} value={familyMonthlyPrice} onChange={(e) => setFamilyMonthlyPrice(e.target.value)} />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="family-annual">Annual price (₹)</Label>
+                    <Input id="family-annual" type="number" min={0} value={familyAnnualPrice} onChange={(e) => setFamilyAnnualPrice(e.target.value)} />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="trial-days">Free trial (days)</Label>
+                    <Input id="trial-days" type="number" min={0} value={trialDays} onChange={(e) => setTrialDays(e.target.value)} />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor={`${key}-price`}>Price (₹/month)</Label>
+                  <Input
+                    id={`${key}-price`}
+                    type="number"
+                    min={0}
+                    value={key === 'elder' ? elderPrice : communityPrice}
+                    onChange={(e) => (key === 'elder' ? setElderPrice(e.target.value) : setCommunityPrice(e.target.value))}
+                    className="w-32"
+                  />
+                  <p className="text-xs text-text-secondary">
+                    {key === 'elder' ? 'Kept at 0 by design — the elder never pays.' : "Kept at 0 — community pricing isn't live yet."}
+                  </p>
+                </div>
+              )}
 
               <div className="flex flex-col gap-2">
                 <Label htmlFor={`${key}-intro`}>Intro line</Label>
