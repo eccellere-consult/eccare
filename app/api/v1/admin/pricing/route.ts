@@ -26,6 +26,11 @@ const patchSchema = z.object({
   familyFeatures: z.array(z.string().max(300)).max(30).optional(),
   communityIntro: z.string().max(2000).optional(),
   communityFeatures: z.array(z.string().max(300)).max(30).optional(),
+  elderPrice: z.number().min(0).optional(),
+  familyMonthlyPrice: z.number().min(0).optional(),
+  familyAnnualPrice: z.number().min(0).optional(),
+  communityPrice: z.number().min(0).optional(),
+  trialDays: z.number().int().min(0).max(365).optional(),
 });
 
 export async function PATCH(req: NextRequest) {

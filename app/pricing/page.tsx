@@ -12,6 +12,11 @@ interface PricingContent {
   familyFeatures: string[];
   communityIntro: string;
   communityFeatures: string[];
+  elderPrice: number;
+  familyMonthlyPrice: number;
+  familyAnnualPrice: number;
+  communityPrice: number;
+  trialDays: number;
 }
 
 type Tab = 'elder' | 'family' | 'community';
@@ -89,9 +94,23 @@ export default function PricingPage() {
             </div>
 
             <div className="mt-6 rounded-xl border border-border bg-surface p-6">
-              {tab === 'elder' && <PlanPanel intro={content.elderIntro} features={content.elderFeatures} />}
-              {tab === 'family' && <PlanPanel intro={content.familyIntro} features={content.familyFeatures} />}
-              {tab === 'community' && <PlanPanel intro={content.communityIntro} features={content.communityFeatures} />}
+              {tab === 'elder' && (
+                <PlanPanel price="Free, always" intro={content.elderIntro} features={content.elderFeatures} />
+              )}
+              {tab === 'family' && (
+                <PlanPanel
+                  price={
+                    content.familyMonthlyPrice > 0
+                      ? `₹${content.familyMonthlyPrice}/month or ₹${content.familyAnnualPrice}/year — ${content.trialDays}-day free trial`
+                      : 'Free'
+                  }
+                  intro={content.familyIntro}
+                  features={content.familyFeatures}
+                />
+              )}
+              {tab === 'community' && (
+                <PlanPanel price={content.communityPrice > 0 ? `₹${content.communityPrice}` : 'Free'} intro={content.communityIntro} features={content.communityFeatures} />
+              )}
             </div>
           </>
         )}
@@ -100,10 +119,11 @@ export default function PricingPage() {
   );
 }
 
-function PlanPanel({ intro, features }: { intro: string; features: string[] }) {
+function PlanPanel({ price, intro, features }: { price: string; intro: string; features: string[] }) {
   return (
     <div>
-      <p className="text-text-secondary">{intro}</p>
+      <p className="text-lg font-bold text-primary-700">{price}</p>
+      <p className="mt-1 text-text-secondary">{intro}</p>
       <ul className="mt-4 list-disc space-y-2 pl-5 leading-relaxed text-text-secondary">
         {features.map((f, i) => (
           <li key={i}>{f}</li>

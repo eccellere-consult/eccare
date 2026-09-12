@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -135,8 +135,17 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
   const [isVolunteer, setIsVolunteer] = useState(false);
   const [availability, setAvailability] = useState<VolunteerAvailability | ''>('');
   const [assistanceTypes, setAssistanceTypes] = useState<AssistanceType[]>([]);
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
+  const [prices, setPrices] = useState<{ familyMonthlyPrice: number; familyAnnualPrice: number; trialDays: number } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetch('/api/v1/pricing')
+      .then((r) => r.json())
+      .then((j) => { if (j.success) setPrices(j.data); })
+      .catch(() => {});
+  }, []);
 
   function toggleAssistanceType(type: AssistanceType) {
     setAssistanceTypes((prev) => (prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]));
@@ -182,6 +191,7 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
         ...(role === 'caregiver' && isVolunteer
           ? { isVolunteer: true, volunteerAvailability: availability, volunteerAssistanceTypes: assistanceTypes }
           : {}),
+        ...(role === 'caregiver' ? { billingCycle } : {}),
       });
       onSuccess(data.user.role);
     } catch (err) {
@@ -262,6 +272,37 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
           placeholder="At least 8 characters"
         />
       </div>
+      {role === 'caregiver' && prices && (
+        <div className="flex flex-col gap-2 rounded-xl border border-border p-3">
+          <Label>Family plan</Label>
+          <p className="text-xs text-text-secondary">
+            Your elder&rsquo;s own account is always free. This covers your own family access, with a
+            {prices.trialDays}-day free trial to start.
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setBillingCycle('monthly')}
+              className={cn(
+                'flex-1 rounded-xl border px-3 py-2 text-sm font-semibold',
+                billingCycle === 'monthly' ? 'border-primary-600 bg-primary-50 text-primary-900' : 'border-border text-text-secondary',
+              )}
+            >
+              ₹{prices.familyMonthlyPrice}/month
+            </button>
+            <button
+              type="button"
+              onClick={() => setBillingCycle('annual')}
+              className={cn(
+                'flex-1 rounded-xl border px-3 py-2 text-sm font-semibold',
+                billingCycle === 'annual' ? 'border-primary-600 bg-primary-50 text-primary-900' : 'border-border text-text-secondary',
+              )}
+            >
+              ₹{prices.familyAnnualPrice}/year
+            </button>
+          </div>
+        </div>
+      )}
       {role === 'caregiver' && (
         <div className="flex flex-col gap-2 rounded-xl border border-border p-3">
           <label className="flex items-center gap-2 text-sm font-semibold text-text">

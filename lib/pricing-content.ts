@@ -10,6 +10,11 @@ export interface PricingContent {
   familyFeatures: string[];
   communityIntro: string;
   communityFeatures: string[];
+  elderPrice: number;
+  familyMonthlyPrice: number;
+  familyAnnualPrice: number;
+  communityPrice: number;
+  trialDays: number;
 }
 
 // Seeded once, on first read, from what's actually shipped in the app today — not the full
@@ -36,7 +41,7 @@ const DEFAULTS = {
     'Newsletter archive',
   ],
   familyIntro:
-    "Everything below is included today at no charge for every family member linked to an elder — there's currently one plan, not a paid tier structure.",
+    "₹199/month or ₹2,000/year, with a free trial to start — the elder's own account is always free, this covers the family member's own access.",
   familyFeatures: [
     "Family Dashboard — activity, bookings, and SOS log for each linked elder",
     "Health access to view and manage medicines, appointments, and health notes, permissioned per elder",
@@ -56,6 +61,11 @@ const DEFAULTS = {
     'Panic and emergency alerts',
     'Committee/admin tools: member management and fee/dues collection with Razorpay payment',
   ],
+  elderPrice: 0,
+  familyMonthlyPrice: 199,
+  familyAnnualPrice: 2000,
+  communityPrice: 0,
+  trialDays: 14,
 } as const satisfies PricingContent;
 
 function toContent(row: {
@@ -66,7 +76,13 @@ function toContent(row: {
   familyFeatures: unknown;
   communityIntro: string;
   communityFeatures: unknown;
+  elderPrice: { toNumber?: () => number } | number;
+  familyMonthlyPrice: { toNumber?: () => number } | number;
+  familyAnnualPrice: { toNumber?: () => number } | number;
+  communityPrice: { toNumber?: () => number } | number;
+  trialDays: number;
 }): PricingContent {
+  const num = (v: { toNumber?: () => number } | number) => (typeof v === 'number' ? v : Number(v));
   return {
     isVisible: row.isVisible,
     elderIntro: row.elderIntro,
@@ -75,6 +91,11 @@ function toContent(row: {
     familyFeatures: row.familyFeatures as string[],
     communityIntro: row.communityIntro,
     communityFeatures: row.communityFeatures as string[],
+    elderPrice: num(row.elderPrice),
+    familyMonthlyPrice: num(row.familyMonthlyPrice),
+    familyAnnualPrice: num(row.familyAnnualPrice),
+    communityPrice: num(row.communityPrice),
+    trialDays: row.trialDays,
   };
 }
 
