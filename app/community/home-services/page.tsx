@@ -10,19 +10,21 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { CommunityPageFrame } from '@/components/community/page-frame';
 import { communityApi, useCommunityData } from '@/lib/community-client';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
 type HomeCategory = 'leakage' | 'cleaning' | 'maid' | 'cook' | 'painting' | 'gardening' | 'electrical' | 'carpentry' | 'other';
 
-const CATEGORIES: { key: HomeCategory; label: string }[] = [
-  { key: 'leakage', label: 'Leakage & plumbing' },
-  { key: 'cleaning', label: 'Cleaning' },
-  { key: 'maid', label: 'Maid' },
-  { key: 'cook', label: 'Cook' },
-  { key: 'painting', label: 'Painting' },
-  { key: 'gardening', label: 'Gardening' },
-  { key: 'electrical', label: 'Electrical' },
-  { key: 'carpentry', label: 'Carpentry' },
-  { key: 'other', label: 'Other' },
+const CATEGORIES: { key: HomeCategory; labelKey: TranslationKey }[] = [
+  { key: 'leakage', labelKey: 'community.homeServices.categoryLeakage' },
+  { key: 'cleaning', labelKey: 'community.homeServices.categoryCleaning' },
+  { key: 'maid', labelKey: 'community.homeServices.categoryMaid' },
+  { key: 'cook', labelKey: 'community.homeServices.categoryCook' },
+  { key: 'painting', labelKey: 'community.homeServices.categoryPainting' },
+  { key: 'gardening', labelKey: 'community.homeServices.categoryGardening' },
+  { key: 'electrical', labelKey: 'community.homeServices.categoryElectrical' },
+  { key: 'carpentry', labelKey: 'community.homeServices.categoryCarpentry' },
+  { key: 'other', labelKey: 'community.homeServices.categoryOther' },
 ];
 
 interface Vendor {
@@ -36,6 +38,8 @@ interface Vendor {
 interface Me { memberships: { role: 'member' | 'committee' | 'admin' }[] }
 
 export default function HomeServicesPage() {
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   // Explicit param (even empty) is what the server now uses to disambiguate this
   // view from the plain Vendors list — see app/api/v1/community/vendors/route.ts.
   const { data, loading, error, reload } = useCommunityData<Vendor[]>('/community/vendors?homeMaintenanceCategory=');
@@ -73,7 +77,10 @@ export default function HomeServicesPage() {
     try {
       await communityApi.post('/community/vendors', {
         name: form.name,
-        category: CATEGORIES.find((c) => c.key === form.category)?.label ?? form.category,
+        // Stored as the canonical English label regardless of the committee
+        // member's own display language right now — this becomes the vendor's
+        // permanent category text shown to every future viewer.
+        category: translate(CATEGORIES.find((c) => c.key === form.category)?.labelKey ?? 'community.homeServices.categoryOther', 'en'),
         homeMaintenanceCategory: form.category,
         phone: form.phone,
         address: form.address || undefined,
@@ -82,7 +89,7 @@ export default function HomeServicesPage() {
       setShowForm(false);
       reload();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Could not add.');
+      setFormError(err instanceof Error ? err.message : t('community.homeServices.couldNotAdd'));
     } finally {
       setBusy(false);
     }
@@ -90,16 +97,16 @@ export default function HomeServicesPage() {
 
   return (
     <CommunityPageFrame
-      title="Home services"
-      subtitle="Find help for leakage, cleaning, cooking, painting, gardening and more."
-      action={canManage ? <Button onClick={() => setShowForm((s) => !s)}>{showForm ? 'Cancel' : 'Add a provider'}</Button> : undefined}
+      title={t('community.homeServices.title')}
+      subtitle={t('community.homeServices.subtitle')}
+      action={canManage ? <Button onClick={() => setShowForm((s) => !s)}>{showForm ? t('common.cancel') : t('community.homeServices.addProvider')}</Button> : undefined}
       loading={loading}
       error={error}
     >
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant={activeCategory === null ? 'primary' : 'outline'} onClick={() => setActiveCategory(null)}>
-            All
+            {t('common.all')}
           </Button>
           {CATEGORIES.map((c) => (
             <Button
@@ -108,7 +115,7 @@ export default function HomeServicesPage() {
               variant={activeCategory === c.key ? 'primary' : 'outline'}
               onClick={() => setActiveCategory(activeCategory === c.key ? null : c.key)}
             >
-              {c.label}
+              {t(c.labelKey)}
             </Button>
           ))}
         </div>
@@ -121,8 +128,8 @@ export default function HomeServicesPage() {
                   <UserPlus className="h-5 w-5 text-accent-600" />
                 </span>
                 <div className="flex-1">
-                  <p className="font-bold text-text">Know a great local provider?</p>
-                  <p className="text-sm text-text-secondary">Add them to your Contacts and share with the community</p>
+                  <p className="font-bold text-text">{t('community.homeServices.knowProvider')}</p>
+                  <p className="text-sm text-text-secondary">{t('community.homeServices.addToContacts')}</p>
                 </div>
                 <ChevronRight className="h-5 w-5 shrink-0 text-text-secondary" />
               </CardContent>
@@ -135,7 +142,7 @@ export default function HomeServicesPage() {
             <CardContent className="pt-6">
               <form onSubmit={create} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="hs-category">Category</Label>
+                  <Label htmlFor="hs-category">{t('community.homeServices.category')}</Label>
                   <select
                     id="hs-category"
                     value={form.category}
@@ -143,25 +150,25 @@ export default function HomeServicesPage() {
                     className="flex h-11 w-full rounded-xl border border-border bg-surface px-4 py-2 text-base text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
                   >
                     {CATEGORIES.map((c) => (
-                      <option key={c.key} value={c.key}>{c.label}</option>
+                      <option key={c.key} value={c.key}>{t(c.labelKey)}</option>
                     ))}
                   </select>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="hs-name">Name</Label>
-                  <Input id="hs-name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Ramesh — plumber" />
+                  <Label htmlFor="hs-name">{t('community.homeServices.name')}</Label>
+                  <Input id="hs-name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder={t('community.homeServices.namePlaceholder')} />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="hs-phone">Phone number</Label>
-                  <Input id="hs-phone" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder="9876543210" />
+                  <Label htmlFor="hs-phone">{t('community.homeServices.phoneNumber')}</Label>
+                  <Input id="hs-phone" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder={t('community.homeServices.phonePlaceholder')} />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="hs-address">Address (optional)</Label>
-                  <Input id="hs-address" value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} placeholder="Shop 4, Main Road" />
+                  <Label htmlFor="hs-address">{t('community.homeServices.addressOptional')}</Label>
+                  <Input id="hs-address" value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} placeholder={t('community.homeServices.addressPlaceholder')} />
                 </div>
                 {formError && <p className="text-sm text-danger-600">{formError}</p>}
                 <Button type="submit" disabled={busy || !form.name || !form.phone} className="self-start">
-                  {busy ? 'Adding…' : 'Add'}
+                  {busy ? t('community.homeServices.adding') : t('community.homeServices.add')}
                 </Button>
               </form>
             </CardContent>
@@ -171,7 +178,7 @@ export default function HomeServicesPage() {
         {filtered.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center text-text-secondary">
-              No providers listed here yet.
+              {t('community.homeServices.noProviders')}
             </CardContent>
           </Card>
         ) : (
@@ -179,11 +186,11 @@ export default function HomeServicesPage() {
             {verifiedListings.length > 0 && (
               <div>
                 <h2 className="flex items-center gap-1.5 text-sm font-bold text-text-secondary">
-                  <BadgeCheck className="h-4 w-4 text-success-600" /> Registered by your community
+                  <BadgeCheck className="h-4 w-4 text-success-600" /> {t('community.homeServices.registeredByCommunity')}
                 </h2>
                 <div className="mt-2 grid gap-3 sm:grid-cols-2">
                   {verifiedListings.map((v) => (
-                    <VendorCard key={v.id} vendor={v} />
+                    <VendorCard key={v.id} vendor={v} t={t} />
                   ))}
                 </div>
               </div>
@@ -191,11 +198,11 @@ export default function HomeServicesPage() {
 
             {suggestedListings.length > 0 && (
               <div>
-                <h2 className="text-sm font-bold text-text-secondary">Suggested by residents</h2>
-                <p className="text-xs text-text-secondary">Not yet verified by the committee — ask around before booking.</p>
+                <h2 className="text-sm font-bold text-text-secondary">{t('community.homeServices.suggestedByResidents')}</h2>
+                <p className="text-xs text-text-secondary">{t('community.homeServices.notYetVerified')}</p>
                 <div className="mt-2 grid gap-3 sm:grid-cols-2">
                   {suggestedListings.map((v) => (
-                    <VendorCard key={v.id} vendor={v} />
+                    <VendorCard key={v.id} vendor={v} t={t} />
                   ))}
                 </div>
               </div>
@@ -207,7 +214,7 @@ export default function HomeServicesPage() {
   );
 }
 
-function VendorCard({ vendor: v }: { vendor: Vendor }) {
+function VendorCard({ vendor: v, t }: { vendor: Vendor; t: (key: TranslationKey) => string }) {
   return (
     <Card>
       <CardContent className="flex items-center gap-4 py-4">
@@ -220,11 +227,11 @@ function VendorCard({ vendor: v }: { vendor: Vendor }) {
             {v.verified && <BadgeCheck className="h-4 w-4 shrink-0 text-success-600" />}
           </Link>
           <div className="mt-0.5">
-            <Badge variant="muted">{CATEGORIES.find((c) => c.key === v.homeMaintenanceCategory)?.label}</Badge>
+            <Badge variant="muted">{t(CATEGORIES.find((c) => c.key === v.homeMaintenanceCategory)?.labelKey ?? 'community.homeServices.categoryOther')}</Badge>
           </div>
           {v.address && <p className="mt-1 truncate text-sm text-text-secondary">{v.address}</p>}
           <Link href={`/community/vendors/${v.id}`} className="mt-1 inline-block text-xs font-semibold text-primary-600 hover:underline">
-            Raise a request or order
+            {t('community.homeServices.raiseRequest')}
           </Link>
         </div>
         <a

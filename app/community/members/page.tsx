@@ -3,25 +3,29 @@
 import { CommunityPageFrame } from '@/components/community/page-frame';
 import { CommunityMembers } from '@/components/community-members';
 import { useCommunityData } from '@/lib/community-client';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
 interface Me {
   memberships: { role: 'member' | 'committee' | 'admin'; neighborhood: { id: string } }[];
 }
 
 export default function CommunityMembersPage() {
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   const { data, loading, error } = useCommunityData<Me>('/community/me');
   const membership = data?.memberships?.[0];
 
   const accessError = !membership
-    ? "You haven't joined a community yet."
+    ? t('community.members.notJoined')
     : membership.role === 'member'
-      ? 'Only the management committee can manage members.'
+      ? t('community.members.onlyCommittee')
       : null;
 
   return (
     <CommunityPageFrame
-      title="Manage members"
-      subtitle="Promote a resident to committee, or grant admin."
+      title={t('community.members.title')}
+      subtitle={t('community.members.subtitle')}
       loading={loading}
       error={error ?? accessError}
     >

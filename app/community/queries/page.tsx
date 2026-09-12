@@ -9,6 +9,8 @@ import { CommunityPageFrame } from '@/components/community/page-frame';
 import { QueryThread } from '@/components/query-thread';
 import { communityApi, useCommunityData } from '@/lib/community-client';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
 interface Query {
   id: string;
@@ -24,17 +26,19 @@ interface Query {
 interface Me { memberships: { role: string }[] }
 
 type HelpdeskCategory = 'water' | 'electricity' | 'cleaning' | 'safety' | 'cultural' | 'driver' | 'other';
-const HELPDESK_CATEGORIES: { key: HelpdeskCategory; label: string }[] = [
-  { key: 'water', label: 'Water' },
-  { key: 'electricity', label: 'Electricity' },
-  { key: 'cleaning', label: 'Cleaning' },
-  { key: 'safety', label: 'Safety' },
-  { key: 'cultural', label: 'Cultural' },
-  { key: 'driver', label: 'Driver' },
-  { key: 'other', label: 'Other' },
+const HELPDESK_CATEGORIES: { key: HelpdeskCategory; labelKey: TranslationKey }[] = [
+  { key: 'water', labelKey: 'community.queries.categoryWater' },
+  { key: 'electricity', labelKey: 'community.queries.categoryElectricity' },
+  { key: 'cleaning', labelKey: 'community.queries.categoryCleaning' },
+  { key: 'safety', labelKey: 'community.queries.categorySafety' },
+  { key: 'cultural', labelKey: 'community.queries.categoryCultural' },
+  { key: 'driver', labelKey: 'community.queries.categoryDriver' },
+  { key: 'other', labelKey: 'community.queries.categoryOther' },
 ];
 
 export default function QueriesPage() {
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   const { data: me } = useCommunityData<Me>('/community/me');
   const { data, loading, error, reload } = useCommunityData<Query[]>('/community/queries');
   const canManageStatus = me?.memberships?.[0]?.role !== 'member';
@@ -64,7 +68,7 @@ export default function QueriesPage() {
       setShowForm(false);
       reload();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Could not submit.');
+      setFormError(err instanceof Error ? err.message : t('community.queries.couldNotSubmit'));
     } finally {
       setBusy(false);
     }
@@ -76,19 +80,19 @@ export default function QueriesPage() {
 
   return (
     <CommunityPageFrame
-      title="Committee & Help desk"
-      subtitle="Raise a query with your management committee, or ask for general help."
-      action={<Button onClick={() => setShowForm((s) => !s)}>{showForm ? 'Cancel' : 'Raise a query'}</Button>}
+      title={t('community.queries.title')}
+      subtitle={t('community.queries.subtitle')}
+      action={<Button onClick={() => setShowForm((s) => !s)}>{showForm ? t('common.cancel') : t('community.queries.raiseQuery')}</Button>}
       loading={loading}
       error={error}
       isEmpty={!showForm && visibleQueries.length === 0}
-      emptyMessage="No queries raised yet."
+      emptyMessage={t('community.queries.noQueries')}
     >
       <div className="flex flex-col gap-4">
         {canManageStatus && (data ?? []).some((q) => q.type === 'helpdesk') && (
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant={categoryFilter === '' ? 'primary' : 'outline'} onClick={() => setCategoryFilter('')}>
-              All
+              {t('common.all')}
             </Button>
             {HELPDESK_CATEGORIES.map((c) => (
               <Button
@@ -97,7 +101,7 @@ export default function QueriesPage() {
                 variant={categoryFilter === c.key ? 'primary' : 'outline'}
                 onClick={() => setCategoryFilter(categoryFilter === c.key ? '' : c.key)}
               >
-                {c.label}
+                {t(c.labelKey)}
               </Button>
             ))}
           </div>
@@ -108,11 +112,11 @@ export default function QueriesPage() {
             <CardContent className="pt-6">
               <form onSubmit={create} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2">
-                  <Label>Who is this for?</Label>
+                  <Label>{t('community.queries.whoFor')}</Label>
                   <div className="flex h-12 items-center rounded-xl bg-primary-50 p-1">
                     {([
-                      ['committee', 'Management committee'],
-                      ['helpdesk', 'Help desk'],
+                      ['committee', t('community.queries.managementCommittee')],
+                      ['helpdesk', t('community.queries.helpDesk')],
                     ] as const).map(([value, label]) => (
                       <button
                         key={value}
@@ -130,26 +134,26 @@ export default function QueriesPage() {
                 </div>
                 {type === 'helpdesk' && (
                   <div className="flex flex-col gap-2">
-                    <Label htmlFor="hd-category">Category (optional)</Label>
+                    <Label htmlFor="hd-category">{t('community.queries.categoryOptional')}</Label>
                     <select
                       id="hd-category"
                       value={category}
                       onChange={(e) => setCategory(e.target.value as HelpdeskCategory | '')}
                       className="flex h-11 w-full rounded-xl border border-border bg-surface px-4 py-2 text-base text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
                     >
-                      <option value="">Choose a category</option>
+                      <option value="">{t('community.queries.chooseCategory')}</option>
                       {HELPDESK_CATEGORIES.map((c) => (
-                        <option key={c.key} value={c.key}>{c.label}</option>
+                        <option key={c.key} value={c.key}>{t(c.labelKey)}</option>
                       ))}
                     </select>
                   </div>
                 )}
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="subject">Subject</Label>
+                  <Label htmlFor="subject">{t('community.queries.subject')}</Label>
                   <Input id="subject" value={subject} onChange={(e) => setSubject(e.target.value)} />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="body">Details</Label>
+                  <Label htmlFor="body">{t('community.queries.details')}</Label>
                   <textarea
                     id="body"
                     value={body}
@@ -160,7 +164,7 @@ export default function QueriesPage() {
                 </div>
                 {formError && <p className="text-sm text-danger-600">{formError}</p>}
                 <Button type="submit" disabled={busy || !subject.trim() || !body.trim()}>
-                  {busy ? 'Submitting…' : 'Submit'}
+                  {busy ? t('community.queries.submitting') : t('community.queries.submit')}
                 </Button>
               </form>
             </CardContent>

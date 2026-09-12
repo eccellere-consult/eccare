@@ -5,6 +5,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { communityApi, useCommunityData } from '@/lib/community-client';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
 interface Member {
   id: string;
@@ -15,6 +17,11 @@ interface Member {
 }
 
 const ROLE_BADGE = { member: 'muted', committee: 'accent', admin: 'success' } as const;
+const ROLE_LABEL_KEY: Record<Member['role'], TranslationKey> = {
+  member: 'shared.communityMembers.role.member',
+  committee: 'shared.communityMembers.role.committee',
+  admin: 'shared.communityMembers.role.admin',
+};
 
 /**
  * Member list with role-change controls, shared between the resident-facing
@@ -30,6 +37,8 @@ export function CommunityMembers({
   neighborhoodId: string;
   viewerRole: 'committee' | 'admin';
 }) {
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   const { data, loading, error, reload } = useCommunityData<Member[]>(
     `/community/members?neighborhoodId=${neighborhoodId}`,
   );
@@ -43,27 +52,27 @@ export function CommunityMembers({
       await communityApi.patch(`/community/members/${memberId}`, { role });
       reload();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Could not update role.');
+      setActionError(err instanceof Error ? err.message : t('shared.communityMembers.couldNotUpdateRole'));
     } finally {
       setBusyId(null);
     }
   }
 
   async function removeMember(member: Member) {
-    if (!confirm(`Remove ${member.user.name} from this community? They'd need to rejoin with the join code.`)) return;
+    if (!confirm(t('shared.communityMembers.confirmRemove').replace('{name}', member.user.name))) return;
     setBusyId(member.id);
     setActionError('');
     try {
       await communityApi.delete(`/community/members/${member.id}`);
       reload();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Could not remove member.');
+      setActionError(err instanceof Error ? err.message : t('shared.communityMembers.couldNotRemove'));
     } finally {
       setBusyId(null);
     }
   }
 
-  if (loading) return <p className="text-text-secondary">Loading…</p>;
+  if (loading) return <p className="text-text-secondary">{t('common.loading')}</p>;
   if (error) {
     return (
       <Card>
@@ -74,7 +83,7 @@ export function CommunityMembers({
   if ((data?.length ?? 0) === 0) {
     return (
       <Card>
-        <CardContent className="py-12 text-center text-text-secondary">No members yet.</CardContent>
+        <CardContent className="py-12 text-center text-text-secondary">{t('shared.communityMembers.noMembersYet')}</CardContent>
       </Card>
     );
   }
@@ -93,7 +102,7 @@ export function CommunityMembers({
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant={ROLE_BADGE[m.role]}>{m.role}</Badge>
+              <Badge variant={ROLE_BADGE[m.role]}>{t(ROLE_LABEL_KEY[m.role])}</Badge>
               {m.role === 'member' && (
                 <Button
                   size="sm"
@@ -101,7 +110,7 @@ export function CommunityMembers({
                   disabled={busyId === m.id}
                   onClick={() => setRole(m.id, 'committee')}
                 >
-                  Make committee
+                  {t('shared.communityMembers.makeCommittee')}
                 </Button>
               )}
               {m.role === 'committee' && (
@@ -112,11 +121,11 @@ export function CommunityMembers({
                     disabled={busyId === m.id}
                     onClick={() => setRole(m.id, 'member')}
                   >
-                    Remove from committee
+                    {t('shared.communityMembers.removeFromCommittee')}
                   </Button>
                   {viewerRole === 'admin' && (
                     <Button size="sm" disabled={busyId === m.id} onClick={() => setRole(m.id, 'admin')}>
-                      Make admin
+                      {t('shared.communityMembers.makeAdmin')}
                     </Button>
                   )}
                 </>
@@ -128,7 +137,7 @@ export function CommunityMembers({
                   disabled={busyId === m.id}
                   onClick={() => setRole(m.id, 'committee')}
                 >
-                  Remove admin
+                  {t('shared.communityMembers.removeAdmin')}
                 </Button>
               )}
               {/* Removing an admin outright (not just demoting) needs an admin-tier
@@ -141,7 +150,7 @@ export function CommunityMembers({
                   onClick={() => removeMember(m)}
                   className="text-danger-600 hover:bg-danger-50"
                 >
-                  Remove member
+                  {t('shared.communityMembers.removeMember')}
                 </Button>
               )}
             </div>

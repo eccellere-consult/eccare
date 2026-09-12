@@ -6,6 +6,8 @@ import { Card } from '@/components/ui/card';
 import { CommunityPageFrame } from '@/components/community/page-frame';
 import { communityApi, useCommunityData } from '@/lib/community-client';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
 interface Message {
   id: string;
@@ -17,6 +19,8 @@ interface Message {
 interface Me { memberships: { role: string }[] }
 
 export default function CommunityChatPage() {
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   const { data, loading, error, reload, setData } = useCommunityData<Message[]>('/community/chat');
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -51,8 +55,8 @@ export default function CommunityChatPage() {
 
   return (
     <CommunityPageFrame
-      title="Community Buzz"
-      subtitle="Chat with your neighbours."
+      title={t('community.chat.title')}
+      subtitle={t('community.chat.subtitle')}
       loading={loading}
       error={error}
     >
@@ -60,7 +64,7 @@ export default function CommunityChatPage() {
         <div className="flex-1 space-y-3 overflow-y-auto p-5">
           {(data?.length ?? 0) === 0 && (
             <p className="py-8 text-center text-text-secondary">
-              No messages yet — say hello to your neighbours.
+              {t('community.chat.noMessages')}
             </p>
           )}
           {data?.map((m) => {
@@ -88,13 +92,13 @@ export default function CommunityChatPage() {
           <input
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Type a message…"
+            placeholder={t('community.chat.typeMessage')}
             className="min-h-tap flex-1 rounded-full border border-border bg-bg px-4 py-2.5 text-base text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
           />
           <button
             type="submit"
             disabled={busy || !text.trim()}
-            aria-label="Send message"
+            aria-label={t('community.chat.sendMessage')}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-600 text-white disabled:opacity-50"
           >
             <Send className="h-4 w-4" />

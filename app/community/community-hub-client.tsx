@@ -31,6 +31,8 @@ import {
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { communityApi, useCommunityData } from '@/lib/community-client';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
 interface Membership {
   role: 'member' | 'committee' | 'admin';
@@ -42,44 +44,46 @@ interface MeResponse {
   primaryNeighborhoodId: string | null;
 }
 
-const BASE_TILES: { href: string; label: string; sub: string; icon: LucideIcon }[] = [
-  { href: '/community/announcements', label: 'Announcements', sub: 'Notices from the committee', icon: Megaphone },
-  { href: '/newsletter', label: 'Newsletter', sub: 'The latest from EC', icon: Mail },
-  { href: '/community/events', label: 'Entertainment & Social Events', sub: 'Cultural activities, tours, movies & more', icon: Calendar },
-  { href: '/community/directory', label: 'Local Directory', sub: 'Say hello, call, or star a favourite', icon: Users },
-  { href: '/community/volunteers', label: 'Volunteers', sub: 'Verified neighbours ready to help', icon: HeartHandshake },
-  { href: '/community/helplines', label: 'Helplines', sub: 'Emergency numbers', icon: Phone },
-  { href: '/community/vendors', label: 'Vendors', sub: 'Trusted local services', icon: Store },
-  { href: '/community/home-services', label: 'Home services', sub: 'Leakage, cleaning, maid, cook & more', icon: Wrench },
-  { href: '/community/auto-booking', label: 'Auto Booking', sub: 'Trusted drivers, drop or wait & return', icon: Car },
-  { href: '/community/doctors', label: 'Local Doctors', sub: 'Find a doctor and book a slot', icon: Stethoscope },
-  { href: '/community/queries', label: 'Committee & Help', sub: 'Raise a query', icon: MessageSquareWarning },
-  { href: '/community/chat', label: 'Community Buzz', sub: 'Chat with neighbours', icon: MessagesSquare },
-  { href: '/community/groups', label: 'WhatsApp groups', sub: 'Join the conversation', icon: LifeBuoy },
-  { href: '/community/marketplace', label: 'Buy, sell & lend', sub: 'Old items, rentals, and things to borrow', icon: Tag },
-  { href: '/community/jobs', label: 'Jobs & resources', sub: 'Offer or find local work and help', icon: Briefcase },
-  { href: '/community/documents', label: 'Documents', sub: 'Bylaws, AGM minutes, notices', icon: FileText },
-  { href: '/community/accounts', label: 'Accounts', sub: "What's collected and spent", icon: Wallet },
-  { href: '/community/hobbies', label: 'Hobbies & interests', sub: 'Art, music, dance, books & more', icon: Palette },
-  { href: '/community/settings', label: 'Notifications', sub: 'Choose what you hear about', icon: Settings },
+const BASE_TILES: { href: string; labelKey: TranslationKey; subKey: TranslationKey; icon: LucideIcon }[] = [
+  { href: '/community/announcements', labelKey: 'community.hub.tile.announcements.label', subKey: 'community.hub.tile.announcements.sub', icon: Megaphone },
+  { href: '/newsletter', labelKey: 'community.hub.tile.newsletter.label', subKey: 'community.hub.tile.newsletter.sub', icon: Mail },
+  { href: '/community/events', labelKey: 'community.hub.tile.events.label', subKey: 'community.hub.tile.events.sub', icon: Calendar },
+  { href: '/community/directory', labelKey: 'community.hub.tile.directory.label', subKey: 'community.hub.tile.directory.sub', icon: Users },
+  { href: '/community/volunteers', labelKey: 'community.hub.tile.volunteers.label', subKey: 'community.hub.tile.volunteers.sub', icon: HeartHandshake },
+  { href: '/community/helplines', labelKey: 'community.hub.tile.helplines.label', subKey: 'community.hub.tile.helplines.sub', icon: Phone },
+  { href: '/community/vendors', labelKey: 'community.hub.tile.vendors.label', subKey: 'community.hub.tile.vendors.sub', icon: Store },
+  { href: '/community/home-services', labelKey: 'community.hub.tile.homeServices.label', subKey: 'community.hub.tile.homeServices.sub', icon: Wrench },
+  { href: '/community/auto-booking', labelKey: 'community.hub.tile.autoBooking.label', subKey: 'community.hub.tile.autoBooking.sub', icon: Car },
+  { href: '/community/doctors', labelKey: 'community.hub.tile.doctors.label', subKey: 'community.hub.tile.doctors.sub', icon: Stethoscope },
+  { href: '/community/queries', labelKey: 'community.hub.tile.queries.label', subKey: 'community.hub.tile.queries.sub', icon: MessageSquareWarning },
+  { href: '/community/chat', labelKey: 'community.hub.tile.chat.label', subKey: 'community.hub.tile.chat.sub', icon: MessagesSquare },
+  { href: '/community/groups', labelKey: 'community.hub.tile.groups.label', subKey: 'community.hub.tile.groups.sub', icon: LifeBuoy },
+  { href: '/community/marketplace', labelKey: 'community.hub.tile.marketplace.label', subKey: 'community.hub.tile.marketplace.sub', icon: Tag },
+  { href: '/community/jobs', labelKey: 'community.hub.tile.jobs.label', subKey: 'community.hub.tile.jobs.sub', icon: Briefcase },
+  { href: '/community/documents', labelKey: 'community.hub.tile.documents.label', subKey: 'community.hub.tile.documents.sub', icon: FileText },
+  { href: '/community/accounts', labelKey: 'community.hub.tile.accounts.label', subKey: 'community.hub.tile.accounts.sub', icon: Wallet },
+  { href: '/community/hobbies', labelKey: 'community.hub.tile.hobbies.label', subKey: 'community.hub.tile.hobbies.sub', icon: Palette },
+  { href: '/community/settings', labelKey: 'community.hub.tile.settings.label', subKey: 'community.hub.tile.settings.sub', icon: Settings },
 ];
 
 const MEMBERS_TILE = {
   href: '/community/members',
-  label: 'Members',
-  sub: 'Promote to committee or admin',
+  labelKey: 'community.hub.tile.members.label' as TranslationKey,
+  subKey: 'community.hub.tile.members.sub' as TranslationKey,
   icon: UserCog,
 };
 
 const FEES_TILE = {
   href: '/community/fees',
-  label: 'Association fees',
-  sub: 'Set up dues, see who’s paid',
+  labelKey: 'community.hub.tile.fees.label' as TranslationKey,
+  subKey: 'community.hub.tile.fees.sub' as TranslationKey,
   icon: IndianRupee,
 };
 
 export function CommunityHubClient() {
   const router = useRouter();
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   const { data, loading } = useCommunityData<MeResponse>('/community/me');
   const [panicBusy, setPanicBusy] = useState(false);
   const [panicMsg, setPanicMsg] = useState('');
@@ -96,7 +100,7 @@ export function CommunityHubClient() {
   }, []);
 
   if (loading) {
-    return <p className="text-text-secondary">Loading your community…</p>;
+    return <p className="text-text-secondary">{t('community.hub.loadingYourCommunity')}</p>;
   }
 
   const membership = data?.memberships?.[0];
@@ -104,29 +108,28 @@ export function CommunityHubClient() {
   if (!membership) {
     return (
       <div className="mx-auto max-w-lg text-center">
-        <h1 className="text-2xl font-bold text-text">Join your community</h1>
+        <h1 className="text-2xl font-bold text-text">{t('community.hub.joinYourCommunity')}</h1>
         <p className="mt-2 text-text-secondary">
-          Your neighbourhood shares announcements, events, trusted vendors and helpline numbers here.
-          Ask your management committee for the community code.
+          {t('community.hub.joinIntro')}
         </p>
         <Button asChild size="lg" className="mt-6">
-          <Link href="/community/join">Enter community code</Link>
+          <Link href="/community/join">{t('community.hub.enterCommunityCode')}</Link>
         </Button>
       </div>
     );
   }
 
   async function raisePanicAlert() {
-    if (!confirm('Send a panic alert to your family and community committee?')) return;
+    if (!confirm(t('community.hub.confirmPanic'))) return;
     setPanicBusy(true);
     setPanicMsg('');
 
     const send = async (lat?: number, lng?: number) => {
       try {
         await communityApi.post('/community/panic', { lat, lng });
-        setPanicMsg('Alert sent. Help has been notified.');
+        setPanicMsg(t('community.hub.alertSent'));
       } catch (err) {
-        setPanicMsg(err instanceof Error ? err.message : 'Could not send alert.');
+        setPanicMsg(err instanceof Error ? err.message : t('community.hub.couldNotSendAlert'));
       } finally {
         setPanicBusy(false);
       }
@@ -149,12 +152,12 @@ export function CommunityHubClient() {
           <h1 className="text-2xl font-bold text-text">{membership.neighborhood.name}</h1>
           <p className="mt-1 text-text-secondary">
             {membership.neighborhood.city ? `${membership.neighborhood.city} · ` : ''}
-            {membership.role === 'member' ? 'Resident' : 'Management committee'}
+            {membership.role === 'member' ? t('community.hub.resident') : t('community.hub.managementCommittee')}
             {membership.flatNumber ? ` · ${membership.flatNumber}` : ''}
           </p>
         </div>
         <span className="rounded-full bg-primary-50 px-3 py-1 text-sm font-semibold text-primary-900">
-          Code: {membership.neighborhood.joinCode}
+          {t('community.hub.codePrefix').replace('{code}', membership.neighborhood.joinCode)}
         </span>
       </div>
 
@@ -163,14 +166,14 @@ export function CommunityHubClient() {
           <div className="flex items-center gap-3">
             <ShieldAlert className="h-8 w-8 shrink-0 text-danger-600" />
             <div>
-              <p className="text-lg font-bold text-text">Panic alert</p>
+              <p className="text-lg font-bold text-text">{t('community.hub.panicAlertTitle')}</p>
               <p className="text-sm text-text-secondary">
-                One tap tells your family and the committee you need help now.
+                {t('community.hub.panicAlertSub')}
               </p>
             </div>
           </div>
           <Button variant="danger" size="lg" onClick={raisePanicAlert} disabled={panicBusy}>
-            {panicBusy ? 'Sending…' : 'Get help now'}
+            {panicBusy ? t('community.hub.sending') : t('community.hub.getHelpNow')}
           </Button>
         </div>
         {panicMsg && <p className="mt-3 font-semibold text-danger-900">{panicMsg}</p>}
@@ -179,15 +182,15 @@ export function CommunityHubClient() {
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {(membership.role === 'member' ? BASE_TILES : [...BASE_TILES, MEMBERS_TILE, FEES_TILE])
           .filter((tile) => myRole !== 'elder' || tile.href !== '/community/accounts')
-          .map(({ href, label, sub, icon: Icon }) => (
+          .map(({ href, labelKey, subKey, icon: Icon }) => (
           <Link key={href} href={href}>
             <Card className="flex h-full items-center gap-4 p-5 transition-shadow hover:shadow-md">
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-50">
                 <Icon className="h-6 w-6 text-primary-600" />
               </span>
               <span>
-                <span className="block font-bold text-text">{label}</span>
-                <span className="block text-sm text-text-secondary">{sub}</span>
+                <span className="block font-bold text-text">{t(labelKey)}</span>
+                <span className="block text-sm text-text-secondary">{t(subKey)}</span>
               </span>
             </Card>
           </Link>
