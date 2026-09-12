@@ -5,6 +5,8 @@ import { Camera, Trash2, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
 interface Memory {
   id: string;
@@ -18,6 +20,8 @@ interface Memory {
  *  family per-elder page — same underlying /api/v1/memories, both directions of
  *  canAccessElder allow either side to view, upload, and delete. */
 export function MemoriesGallery({ elderUserId }: { elderUserId: string }) {
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   const [memories, setMemories] = useState<Memory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -32,10 +36,10 @@ export function MemoriesGallery({ elderUserId }: { elderUserId: string }) {
     try {
       const res = await fetch(`/api/v1/memories?elderUserId=${elderUserId}`, { credentials: 'include' });
       const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Could not load memories.');
+      if (!res.ok || !json.success) throw new Error(json?.error?.message || t('shared.memoriesGallery.couldNotLoad'));
       setMemories(json.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not load memories.');
+      setError(err instanceof Error ? err.message : t('shared.memoriesGallery.couldNotLoad'));
     } finally {
       setLoading(false);
     }
@@ -56,11 +60,11 @@ export function MemoriesGallery({ elderUserId }: { elderUserId: string }) {
 
       const res = await fetch('/api/v1/memories', { method: 'POST', credentials: 'include', body: formData });
       const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Upload failed.');
+      if (!res.ok || !json.success) throw new Error(json?.error?.message || t('shared.memoriesGallery.uploadFailed'));
       setCaption('');
       load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed.');
+      setError(err instanceof Error ? err.message : t('shared.memoriesGallery.uploadFailed'));
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';
@@ -68,7 +72,7 @@ export function MemoriesGallery({ elderUserId }: { elderUserId: string }) {
   }
 
   async function remove(id: string) {
-    if (!confirm('Delete this photo? This cannot be undone.')) return;
+    if (!confirm(t('shared.memoriesGallery.confirmDelete'))) return;
     setBusyId(id);
     try {
       await fetch(`/api/v1/memories/${id}`, { method: 'DELETE', credentials: 'include' });
@@ -86,7 +90,7 @@ export function MemoriesGallery({ elderUserId }: { elderUserId: string }) {
             <Input
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
-              placeholder="Add a caption (optional)"
+              placeholder={t('shared.memoriesGallery.addCaption')}
               disabled={uploading}
             />
           </div>
@@ -103,11 +107,11 @@ export function MemoriesGallery({ elderUserId }: { elderUserId: string }) {
           <Button variant="outline" disabled={uploading} onClick={() => fileRef.current?.click()} className="self-start gap-2">
             {uploading ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Uploading…
+                <Loader2 className="h-4 w-4 animate-spin" /> {t('shared.memoriesGallery.uploading')}
               </>
             ) : (
               <>
-                <Camera className="h-4 w-4" /> Add a photo
+                <Camera className="h-4 w-4" /> {t('shared.memoriesGallery.addPhoto')}
               </>
             )}
           </Button>
@@ -117,9 +121,9 @@ export function MemoriesGallery({ elderUserId }: { elderUserId: string }) {
 
       <div className="mt-4">
         {loading ? (
-          <p className="text-text-secondary">Loading…</p>
+          <p className="text-text-secondary">{t('shared.memoriesGallery.loading')}</p>
         ) : memories.length === 0 ? (
-          <Card><CardContent className="py-12 text-center text-text-secondary">No photos yet. Add the first one above.</CardContent></Card>
+          <Card><CardContent className="py-12 text-center text-text-secondary">{t('shared.memoriesGallery.noPhotos')}</CardContent></Card>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {memories.map((m) => (
@@ -135,7 +139,7 @@ export function MemoriesGallery({ elderUserId }: { elderUserId: string }) {
                   <button
                     onClick={() => remove(m.id)}
                     disabled={busyId === m.id}
-                    aria-label="Delete photo"
+                    aria-label={t('shared.memoriesGallery.deletePhoto')}
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-text-secondary hover:bg-danger-50 hover:text-danger-600"
                   >
                     <Trash2 className="h-4 w-4" />

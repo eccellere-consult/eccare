@@ -6,6 +6,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
 interface Contact {
   id: string;
@@ -15,6 +17,8 @@ interface Contact {
 }
 
 export function ElderContactsClient({ initialContacts }: { initialContacts: Contact[] }) {
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   const [contacts, setContacts] = useState(initialContacts);
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
@@ -27,7 +31,7 @@ export function ElderContactsClient({ initialContacts }: { initialContacts: Cont
     e.preventDefault();
     setError('');
     if (!name.trim() || phone.trim().length < 10 || !relationship.trim()) {
-      setError('Please fill in all fields with a valid phone number.');
+      setError(t('elder.contacts.fillAllFields'));
       return;
     }
     setSaving(true);
@@ -38,21 +42,21 @@ export function ElderContactsClient({ initialContacts }: { initialContacts: Cont
         body: JSON.stringify({ name, phone, relationship }),
       });
       const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Could not add contact.');
+      if (!res.ok || !json.success) throw new Error(json?.error?.message || t('elder.contacts.couldNotAdd'));
       setContacts((prev) => [...prev, json.data]);
       setName('');
       setPhone('');
       setRelationship('');
       setShowForm(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not add contact.');
+      setError(err instanceof Error ? err.message : t('elder.contacts.couldNotAdd'));
     } finally {
       setSaving(false);
     }
   }
 
   async function handleRemove(id: string) {
-    if (!confirm('Remove this contact?')) return;
+    if (!confirm(t('elder.contacts.confirmRemove'))) return;
     await fetch(`/api/v1/emergency/contacts/${id}`, { method: 'DELETE' });
     setContacts((prev) => prev.filter((c) => c.id !== id));
   }
@@ -61,12 +65,12 @@ export function ElderContactsClient({ initialContacts }: { initialContacts: Cont
     <div>
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-text">Your family</h1>
-          <p className="mt-1 text-text-secondary">Tap a name to call them.</p>
+          <h1 className="text-2xl font-bold text-text">{t('elder.contacts.yourFamily')}</h1>
+          <p className="mt-1 text-text-secondary">{t('elder.contacts.tapToCall')}</p>
         </div>
         <Button onClick={() => setShowForm((s) => !s)} size="lg">
           <UserPlus className="h-5 w-5" />
-          Add
+          {t('elder.contacts.add')}
         </Button>
       </div>
 
@@ -75,19 +79,19 @@ export function ElderContactsClient({ initialContacts }: { initialContacts: Cont
           <CardContent className="pt-6">
             <form onSubmit={handleAdd} className="flex flex-col gap-4 sm:flex-row sm:items-end sm:flex-wrap">
               <div className="flex flex-col gap-2">
-                <Label htmlFor="e-name">Name</Label>
-                <Input id="e-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Priya Sharma" />
+                <Label htmlFor="e-name">{t('elder.contacts.name')}</Label>
+                <Input id="e-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('elder.contacts.namePlaceholder')} />
               </div>
               <div className="flex flex-col gap-2">
-                <Label htmlFor="e-phone">Phone</Label>
-                <Input id="e-phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="9876543210" />
+                <Label htmlFor="e-phone">{t('elder.contacts.phone')}</Label>
+                <Input id="e-phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t('elder.contacts.phonePlaceholder')} />
               </div>
               <div className="flex flex-col gap-2">
-                <Label htmlFor="e-rel">Relationship</Label>
-                <Input id="e-rel" value={relationship} onChange={(e) => setRelationship(e.target.value)} placeholder="Daughter" />
+                <Label htmlFor="e-rel">{t('elder.contacts.relationship')}</Label>
+                <Input id="e-rel" value={relationship} onChange={(e) => setRelationship(e.target.value)} placeholder={t('elder.contacts.relationshipPlaceholder')} />
               </div>
               <Button type="submit" disabled={saving}>
-                {saving ? 'Saving...' : 'Save'}
+                {saving ? t('elder.contacts.saving') : t('elder.contacts.save')}
               </Button>
             </form>
             {error && <p className="mt-2 text-sm text-danger-600">{error}</p>}
@@ -99,7 +103,7 @@ export function ElderContactsClient({ initialContacts }: { initialContacts: Cont
         {contacts.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center text-text-secondary">
-              No family contacts added yet.
+              {t('elder.contacts.noContacts')}
             </CardContent>
           </Card>
         ) : (

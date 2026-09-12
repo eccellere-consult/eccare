@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { TourButton } from '@/components/tour/TourButton';
 import { isValidEmail, isValidPhone, EMAIL_FORMAT_MESSAGE, PHONE_FORMAT_MESSAGE } from '@/lib/validation';
+import { SUPPORTED_LANGUAGES } from '@/lib/i18n/languages';
 
 export default function InviteElderPage() {
   const router = useRouter();
@@ -15,6 +16,7 @@ export default function InviteElderPage() {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [relationship, setRelationship] = useState('');
+  const [language, setLanguage] = useState('en');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -51,6 +53,7 @@ export default function InviteElderPage() {
           ...(email.trim() ? { elderEmail: email.trim() } : {}),
           elderName: name,
           relationship,
+          language,
         }),
       });
       const json = await res.json();
@@ -119,6 +122,24 @@ export default function InviteElderPage() {
                 onChange={(e) => setRelationship(e.target.value)}
                 placeholder="Daughter"
               />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="language">Preferred language</Label>
+              <select
+                id="language"
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="flex h-11 w-full rounded-xl border border-border bg-surface px-4 py-2 text-base text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 pointer-coarse:min-h-tap-coarse"
+              >
+                {SUPPORTED_LANGUAGES.map((l) => (
+                  <option key={l.code} value={l.code}>
+                    {l.native} ({l.label})
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-text-secondary">
+                Their app will already be set to this language from their very first login.
+              </p>
             </div>
 
             {error && <p className="text-sm text-danger-600">{error}</p>}

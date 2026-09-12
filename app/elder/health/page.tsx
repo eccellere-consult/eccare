@@ -342,7 +342,7 @@ export default function ElderHealthPage() {
           {t('common.myPrescriptions')}
         </h2>
         <p className="mt-1 text-sm text-text-secondary">
-          Upload a prescription photo yourself — AI will read it and set up the medicine calendar automatically.
+          {t('elder.health.uploadPrescriptionHelper')}
         </p>
         <PrescriptionUploadSection
           onSaved={() => {
@@ -400,7 +400,7 @@ export default function ElderHealthPage() {
         <section className="mt-8">
           <h2 className="flex items-center gap-2 text-lg font-bold text-text">
             <Bell className="h-5 w-5 text-primary-600" />
-            Reminders
+            {t('elder.health.remindersTitle')}
           </h2>
           <div className="mt-3 flex flex-col gap-2">
             {voiceReminders.data?.map((r) => (
@@ -536,7 +536,7 @@ export default function ElderHealthPage() {
       <section className="mt-8">
         <h2 className="flex items-center gap-2 text-lg font-bold text-text">
           <Video className="h-5 w-5 text-primary-600" />
-          Live Sessions
+          {t('elder.health.liveSessionsTitle')}
         </h2>
         <Card className="mt-3">
           <CardContent className="flex items-start gap-4 pt-6">
@@ -545,12 +545,11 @@ export default function ElderHealthPage() {
             </span>
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <p className="font-bold text-text">Join live sessions</p>
-                <Badge variant="muted">Coming soon</Badge>
+                <p className="font-bold text-text">{t('elder.health.joinLiveSessions')}</p>
+                <Badge variant="muted">{t('elder.health.comingSoon')}</Badge>
               </div>
               <p className="mt-1 text-sm text-text-secondary">
-                Live yoga, exercise, and meditation sessions with instructors and other members — we&rsquo;re
-                working on making it possible to join in real time, right from here.
+                {t('elder.health.liveSessionsDescription')}
               </p>
             </div>
           </CardContent>
@@ -562,7 +561,7 @@ export default function ElderHealthPage() {
         <section className="mt-8">
           <h2 className="flex items-center gap-2 text-lg font-bold text-text">
             <Flower2 className="h-5 w-5 text-primary-600" />
-            Yoga, exercise & meditation
+            {t('elder.health.yogaExerciseMeditation')}
           </h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {wellness.data?.map((v) => {
@@ -604,7 +603,7 @@ export default function ElderHealthPage() {
         <section className="mt-8">
           <h2 className="flex items-center gap-2 text-lg font-bold text-text">
             <Video className="h-5 w-5 text-primary-600" />
-            From Your Family
+            {t('elder.health.fromYourFamily')}
           </h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {mediaLinks.data?.map((link) => (

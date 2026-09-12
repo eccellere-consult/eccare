@@ -13,6 +13,39 @@ import { HelpGuidesSection } from '@/components/help-guides-section';
 import { TourButton } from '@/components/tour/TourButton';
 import { DedicationFooter } from '@/components/dedication-footer';
 import { PROVIDER_CATEGORIES } from '@/lib/provider-categories';
+import { SUPPORTED_LANGUAGES } from '@/lib/i18n/languages';
+import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
+
+const LOGIN_LANGUAGE_STORAGE_KEY = 'ec-login-language';
+
+/** No account (and thus no stored `language`) exists yet on this screen, so it
+ *  can't use the elder LanguageProvider (lib/i18n/language-context.tsx), which
+ *  is seeded from a server-loaded user. This is a standalone, localStorage-
+ *  backed pick instead — best-effort, same defensive try/catch-and-ignore
+ *  style already used elsewhere in this app for browser-only reads. */
+function useLoginLanguage() {
+  const [uiLanguage, setUiLanguageState] = useState('en');
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(LOGIN_LANGUAGE_STORAGE_KEY);
+      if (stored) setUiLanguageState(stored);
+    } catch {
+      // Private browsing / blocked storage — just stay on English.
+    }
+  }, []);
+
+  function setUiLanguage(lang: string) {
+    setUiLanguageState(lang);
+    try {
+      localStorage.setItem(LOGIN_LANGUAGE_STORAGE_KEY, lang);
+    } catch {
+      // Best-effort — the pick still applies for this page view either way.
+    }
+  }
+
+  return [uiLanguage, setUiLanguage] as const;
+}
 
 const ROLE_HOME: Record<string, string> = {
   elder: '/elder',
@@ -21,7 +54,7 @@ const ROLE_HOME: Record<string, string> = {
   provider: '/provider',
 };
 
-async function api(path: string, body: unknown) {
+async function api(path: string, body: unknown, t: (k: TranslationKey) => string) {
   const res = await fetch(`/api/v1${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -30,12 +63,12 @@ async function api(path: string, body: unknown) {
   });
   const json = await res.json();
   if (!res.ok || !json.success) {
-    throw new Error(json?.error?.message || 'Something went wrong. Please try again.');
+    throw new Error(json?.error?.message || t('login.errors.genericError'));
   }
   return json.data;
 }
 
-function SignInForm({ onSuccess }: { onSuccess: (role: string) => void }) {
+function SignInForm({ onSuccess, t }: { onSuccess: (role: string) => void; t: (k: TranslationKey) => string }) {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
@@ -47,10 +80,10 @@ function SignInForm({ onSuccess }: { onSuccess: (role: string) => void }) {
     setError('');
     setLoading(true);
     try {
-      const data = await api('/auth/login', { identifier, password, rememberMe });
+      const data = await api('/auth/login', { identifier, password, rememberMe }, t);
       onSuccess(data.user.role);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed.');
+      setError(err instanceof Error ? err.message : t('login.signIn.failed'));
     } finally {
       setLoading(false);
     }
@@ -61,21 +94,21 @@ function SignInForm({ onSuccess }: { onSuccess: (role: string) => void }) {
     // native password managers detect this as a login and offer to save it.
     <form onSubmit={login} className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
-        <Label htmlFor="identifier">Phone number or email</Label>
+        <Label htmlFor="identifier">{t('login.signIn.identifier')}</Label>
         <Input
           id="identifier"
           type="text"
           autoComplete="username"
           value={identifier}
           onChange={(e) => setIdentifier(e.target.value)}
-          placeholder="9876543210"
+          placeholder={t('login.signIn.identifierPlaceholder')}
         />
       </div>
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">{t('login.signIn.password')}</Label>
           <Link href="/forgot-password" className="text-sm font-semibold text-primary-600 hover:underline">
-            Forgot password?
+            {t('login.signIn.forgotPassword')}
           </Link>
         </div>
         <Input
@@ -93,37 +126,45 @@ function SignInForm({ onSuccess }: { onSuccess: (role: string) => void }) {
           onChange={(e) => setRememberMe(e.target.checked)}
           className="h-5 w-5 rounded border-border pointer-coarse:h-6 pointer-coarse:w-6"
         />
-        Remember me on this device
+        {t('login.signIn.rememberMe')}
       </label>
       {error && <p className="text-sm text-danger-600">{error}</p>}
       <Button type="submit" disabled={loading} size="lg">
-        {loading ? 'Signing in...' : 'Sign in'}
+        {loading ? t('login.signIn.signingIn') : t('login.signIn.signIn')}
       </Button>
     </form>
   );
 }
 
 const ROLE_TOGGLE_OPTIONS = [
-  { value: 'elder', label: 'An elder' },
-  { value: 'caregiver', label: 'A family member' },
-  { value: 'provider', label: 'A service provider' },
-] as const;
+  { value: 'elder', labelKey: 'login.role.elder' },
+  { value: 'caregiver', labelKey: 'login.role.caregiver' },
+  { value: 'provider', labelKey: 'login.role.provider' },
+] as const satisfies readonly { value: string; labelKey: TranslationKey }[];
 
 const VOLUNTEER_AVAILABILITY_OPTIONS = [
-  { value: 'weekdays', label: 'Weekdays' },
-  { value: 'weekends', label: 'Weekends' },
-  { value: 'always', label: '24/7' },
-] as const;
+  { value: 'weekdays', labelKey: 'login.availability.weekdays' },
+  { value: 'weekends', labelKey: 'login.availability.weekends' },
+  { value: 'always', labelKey: 'login.availability.always' },
+] as const satisfies readonly { value: string; labelKey: TranslationKey }[];
 const VOLUNTEER_ASSISTANCE_OPTIONS = [
-  { value: 'medical_runs', label: 'Medical Runs' },
-  { value: 'companionship', label: 'Companionship' },
-  { value: 'errands', label: 'Errands' },
-  { value: 'tech_support', label: 'Tech Support' },
-] as const;
+  { value: 'medical_runs', labelKey: 'login.assistance.medicalRuns' },
+  { value: 'companionship', labelKey: 'login.assistance.companionship' },
+  { value: 'errands', labelKey: 'login.assistance.errands' },
+  { value: 'tech_support', labelKey: 'login.assistance.techSupport' },
+] as const satisfies readonly { value: string; labelKey: TranslationKey }[];
 type VolunteerAvailability = (typeof VOLUNTEER_AVAILABILITY_OPTIONS)[number]['value'];
 type AssistanceType = (typeof VOLUNTEER_ASSISTANCE_OPTIONS)[number]['value'];
 
-function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void }) {
+function CreateAccountForm({
+  onSuccess,
+  t,
+  uiLanguage,
+}: {
+  onSuccess: (role: string) => void;
+  t: (k: TranslationKey) => string;
+  uiLanguage: string;
+}) {
   const [role, setRole] = useState<'elder' | 'caregiver' | 'provider'>('elder');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -155,7 +196,7 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
     e.preventDefault();
     setError('');
     if (!phone.trim()) {
-      setError('Please enter your phone number.');
+      setError(t('login.errors.enterPhone'));
       return;
     }
     if (!isValidPhone(phone)) {
@@ -167,35 +208,43 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
       return;
     }
     if (password.length < 8) {
-      setError('Password must be at least 8 characters.');
+      setError(t('login.errors.passwordTooShort'));
       return;
     }
     const resolvedCategory = category === 'other' ? otherCategory.trim() : category;
     if (role === 'provider' && (!businessName.trim() || !resolvedCategory)) {
-      setError('Please enter your business name and category.');
+      setError(t('login.errors.businessNameCategoryRequired'));
       return;
     }
     if (role === 'caregiver' && isVolunteer && (!availability || assistanceTypes.length === 0)) {
-      setError('Please select your availability and at least one way you can help.');
+      setError(t('login.errors.selectAvailabilityAndHelp'));
       return;
     }
     setLoading(true);
     try {
-      const data = await api('/auth/register', {
-        name,
-        phone: phone.trim(),
-        ...(email.trim() ? { email: email.trim() } : {}),
-        password,
-        role,
-        ...(role === 'provider' ? { businessName, category: resolvedCategory } : {}),
-        ...(role === 'caregiver' && isVolunteer
-          ? { isVolunteer: true, volunteerAvailability: availability, volunteerAssistanceTypes: assistanceTypes }
-          : {}),
-        ...(role === 'caregiver' ? { billingCycle } : {}),
-      });
+      const data = await api(
+        '/auth/register',
+        {
+          name,
+          phone: phone.trim(),
+          ...(email.trim() ? { email: email.trim() } : {}),
+          password,
+          role,
+          ...(role === 'provider' ? { businessName, category: resolvedCategory } : {}),
+          ...(role === 'caregiver' && isVolunteer
+            ? { isVolunteer: true, volunteerAvailability: availability, volunteerAssistanceTypes: assistanceTypes }
+            : {}),
+          ...(role === 'caregiver' ? { billingCycle } : {}),
+          // The page-level language switcher doubles as the elder's language
+          // picker — no separate control needed. Meaningless for other roles
+          // (their portals aren't translated), so only sent for elder.
+          ...(role === 'elder' ? { language: uiLanguage } : {}),
+        },
+        t,
+      );
       onSuccess(data.user.role);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not create account.');
+      setError(err instanceof Error ? err.message : t('login.errors.couldNotCreateAccount'));
     } finally {
       setLoading(false);
     }
@@ -204,9 +253,9 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
   return (
     <form onSubmit={register} className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
-        <Label>I am</Label>
+        <Label>{t('login.role.iAm')}</Label>
         <div className="flex h-12 items-center rounded-xl bg-primary-50 p-1">
-          {ROLE_TOGGLE_OPTIONS.map(({ value, label }) => (
+          {ROLE_TOGGLE_OPTIONS.map(({ value, labelKey }) => (
             <button
               key={value}
               type="button"
@@ -216,68 +265,61 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
                 role === value ? 'bg-surface text-primary-900 shadow-sm' : 'text-primary-900/70',
               )}
             >
-              {label}
+              {t(labelKey)}
             </button>
           ))}
         </div>
       </div>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="reg-name">Full name</Label>
+        <Label htmlFor="reg-name">{t('login.register.fullName')}</Label>
         <Input
           id="reg-name"
           autoComplete="name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Your name"
+          placeholder={t('login.register.fullNamePlaceholder')}
         />
       </div>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="reg-phone">Phone number</Label>
+        <Label htmlFor="reg-phone">{t('login.register.phoneNumber')}</Label>
         <Input
           id="reg-phone"
           type="tel"
           autoComplete="tel"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
-          placeholder="9876543210"
+          placeholder={t('login.register.phoneNumberPlaceholder')}
         />
-        <p className="text-xs text-text-secondary">
-          This is how you'll sign in, and lets neighbours and family reach you directly.
-          Whether it's shown in your community's neighbours directory is a separate,
-          optional choice you make later.
-        </p>
+        <p className="text-xs text-text-secondary">{t('login.register.phoneHelper')}</p>
       </div>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="reg-email">Email (optional)</Label>
+        <Label htmlFor="reg-email">{t('login.register.emailOptional')}</Label>
         <Input
           id="reg-email"
           type="email"
           autoComplete="username"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
+          placeholder={t('login.register.emailPlaceholder')}
         />
-        <p className="text-xs text-text-secondary">
-          Not required, but handy for password-recovery links and if you'd rather sign in with email.
-        </p>
+        <p className="text-xs text-text-secondary">{t('login.register.emailHelper')}</p>
       </div>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="reg-password">Password</Label>
+        <Label htmlFor="reg-password">{t('login.register.password')}</Label>
         <Input
           id="reg-password"
           type="password"
           autoComplete="new-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="At least 8 characters"
+          placeholder={t('login.register.passwordPlaceholder')}
         />
       </div>
       {role === 'caregiver' && prices && (
         <div className="flex flex-col gap-2 rounded-xl border border-border p-3">
-          <Label>Family plan</Label>
+          <Label>{t('login.familyPlan.title')}</Label>
           <p className="text-xs text-text-secondary">
-            Your elder&rsquo;s own account is always free. This covers your own family access, with a
-            {prices.trialDays}-day free trial to start.
+            {t('login.familyPlan.helper').replace('{trialDays}', String(prices.trialDays))}
           </p>
           <div className="flex gap-2">
             <button
@@ -288,7 +330,7 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
                 billingCycle === 'monthly' ? 'border-primary-600 bg-primary-50 text-primary-900' : 'border-border text-text-secondary',
               )}
             >
-              ₹{prices.familyMonthlyPrice}/month
+              {t('login.familyPlan.perMonth').replace('{amount}', String(prices.familyMonthlyPrice))}
             </button>
             <button
               type="button"
@@ -298,7 +340,7 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
                 billingCycle === 'annual' ? 'border-primary-600 bg-primary-50 text-primary-900' : 'border-border text-text-secondary',
               )}
             >
-              ₹{prices.familyAnnualPrice}/year
+              {t('login.familyPlan.perYear').replace('{amount}', String(prices.familyAnnualPrice))}
             </button>
           </div>
         </div>
@@ -312,17 +354,14 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
               onChange={(e) => setIsVolunteer(e.target.checked)}
               className="h-5 w-5 rounded border-border pointer-coarse:h-6 pointer-coarse:w-6"
             />
-            Register as a Community Volunteer
+            {t('login.volunteer.registerAs')}
           </label>
-          <p className="text-xs text-text-secondary">
-            Offer to help elders near you — a committee/admin reviews and verifies volunteers before
-            they're shown in the community directory.
-          </p>
+          <p className="text-xs text-text-secondary">{t('login.volunteer.helper')}</p>
 
           {isVolunteer && (
             <div className="mt-2 flex flex-col gap-3">
               <div className="flex flex-col gap-2">
-                <Label>Availability</Label>
+                <Label>{t('login.volunteer.availability')}</Label>
                 <div className="flex flex-wrap gap-2">
                   {VOLUNTEER_AVAILABILITY_OPTIONS.map((opt) => (
                     <button
@@ -334,13 +373,13 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
                         availability === opt.value ? 'border-primary-600 bg-primary-50 text-primary-900' : 'border-border text-text-secondary',
                       )}
                     >
-                      {opt.label}
+                      {t(opt.labelKey)}
                     </button>
                   ))}
                 </div>
               </div>
               <div className="flex flex-col gap-2">
-                <Label>How can you help? (select all that apply)</Label>
+                <Label>{t('login.volunteer.howCanYouHelp')}</Label>
                 <div className="flex flex-wrap gap-2">
                   {VOLUNTEER_ASSISTANCE_OPTIONS.map((opt) => (
                     <button
@@ -352,7 +391,7 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
                         assistanceTypes.includes(opt.value) ? 'border-primary-600 bg-primary-50 text-primary-900' : 'border-border text-text-secondary',
                       )}
                     >
-                      {opt.label}
+                      {t(opt.labelKey)}
                     </button>
                   ))}
                 </div>
@@ -364,23 +403,23 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
       {role === 'provider' && (
         <>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="reg-business-name">Business name</Label>
+            <Label htmlFor="reg-business-name">{t('login.provider.businessName')}</Label>
             <Input
               id="reg-business-name"
               value={businessName}
               onChange={(e) => setBusinessName(e.target.value)}
-              placeholder="City Care Clinic"
+              placeholder={t('login.provider.businessNamePlaceholder')}
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="reg-category">Category</Label>
+            <Label htmlFor="reg-category">{t('login.provider.category')}</Label>
             <select
               id="reg-category"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               className="flex h-11 w-full rounded-xl border border-border bg-surface px-4 py-2 text-base text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
             >
-              <option value="">Select a category…</option>
+              <option value="">{t('login.provider.selectCategory')}</option>
               {PROVIDER_CATEGORIES.map((c) => (
                 <option key={c.value} value={c.value}>{c.label}</option>
               ))}
@@ -388,12 +427,12 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
           </div>
           {category === 'other' && (
             <div className="flex flex-col gap-2">
-              <Label htmlFor="reg-category-other">Tell us your category</Label>
+              <Label htmlFor="reg-category-other">{t('login.provider.tellUsCategory')}</Label>
               <Input
                 id="reg-category-other"
                 value={otherCategory}
                 onChange={(e) => setOtherCategory(e.target.value)}
-                placeholder="e.g. Home care, catering, tutoring…"
+                placeholder={t('login.provider.categoryPlaceholder')}
               />
             </div>
           )}
@@ -401,7 +440,7 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
       )}
       {error && <p className="text-sm text-danger-600">{error}</p>}
       <Button type="submit" disabled={loading} size="lg">
-        {loading ? 'Creating account...' : 'Create account'}
+        {loading ? t('login.register.creatingAccount') : t('login.register.createAccount')}
       </Button>
     </form>
   );
@@ -410,6 +449,8 @@ function CreateAccountForm({ onSuccess }: { onSuccess: (role: string) => void })
 function LoginPageContent() {
   const router = useRouter();
   const params = useSearchParams();
+  const [uiLanguage, setUiLanguage] = useLoginLanguage();
+  const t = (key: TranslationKey) => translate(key, uiLanguage);
 
   const [view, setView] = useState<'signin' | 'register'>('signin');
 
@@ -424,14 +465,32 @@ function LoginPageContent() {
       <div className="w-full max-w-md">
         <div className="mb-6 text-center">
           <h1 className="text-4xl font-black text-primary-600">EC</h1>
-          <p className="mt-1 text-text-secondary">Just Easy.</p>
+          <p className="mt-1 text-text-secondary">{t('login.tagline')}</p>
+        </div>
+
+        <div className="mb-4 flex justify-center gap-1.5" role="group" aria-label={t('login.chooseLanguage')}>
+          {SUPPORTED_LANGUAGES.map((l) => (
+            <button
+              key={l.code}
+              type="button"
+              onClick={() => setUiLanguage(l.code)}
+              className={cn(
+                'rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors pointer-coarse:py-2',
+                uiLanguage === l.code
+                  ? 'border-primary-600 bg-primary-50 text-primary-900'
+                  : 'border-border text-text-secondary hover:border-primary-300',
+              )}
+            >
+              {l.native}
+            </button>
+          ))}
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>{view === 'signin' ? 'Sign in' : 'Create your account'}</CardTitle>
+            <CardTitle>{view === 'signin' ? t('login.card.signInTitle') : t('login.card.createAccountTitle')}</CardTitle>
             <CardDescription>
-              {view === 'signin' ? 'Welcome back.' : 'For elders and family members. Takes a minute.'}
+              {view === 'signin' ? t('login.card.welcomeBack') : t('login.card.forElders')}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -440,14 +499,18 @@ function LoginPageContent() {
                 <TourButton tourId="register" />
               </div>
             )}
-            {view === 'signin' ? <SignInForm onSuccess={handleSuccess} /> : <CreateAccountForm onSuccess={handleSuccess} />}
+            {view === 'signin' ? (
+              <SignInForm onSuccess={handleSuccess} t={t} />
+            ) : (
+              <CreateAccountForm onSuccess={handleSuccess} t={t} uiLanguage={uiLanguage} />
+            )}
 
             <button
               type="button"
               onClick={() => setView(view === 'signin' ? 'register' : 'signin')}
               className="mt-6 w-full text-center text-sm font-semibold text-primary-600 hover:underline"
             >
-              {view === 'signin' ? "New here? Create an account" : 'Already have an account? Sign in'}
+              {view === 'signin' ? t('login.newHere') : t('login.alreadyHaveAccount')}
             </button>
           </CardContent>
         </Card>

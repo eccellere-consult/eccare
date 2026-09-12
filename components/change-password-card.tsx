@@ -6,9 +6,15 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
-/** Self-contained change-password form, reused across every role's profile page. */
+/** Self-contained change-password form, reused across every role's profile page.
+ *  Translated (via a defensive useLanguage() fallback to English) only shows up
+ *  on the elder side, since only /elder/* wraps in LanguageProvider. */
 export function ChangePasswordCard() {
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -22,11 +28,11 @@ export function ChangePasswordCard() {
     setSaved(false);
 
     if (newPassword.length < 8) {
-      setError('New password must be at least 8 characters.');
+      setError(t('shared.changePassword.tooShort'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError('New passwords do not match.');
+      setError(t('shared.changePassword.mismatch'));
       return;
     }
 
@@ -39,13 +45,13 @@ export function ChangePasswordCard() {
         body: JSON.stringify({ currentPassword, newPassword }),
       });
       const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Could not change password.');
+      if (!res.ok || !json.success) throw new Error(json?.error?.message || t('shared.changePassword.couldNotChange'));
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
       setSaved(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not change password.');
+      setError(err instanceof Error ? err.message : t('shared.changePassword.couldNotChange'));
     } finally {
       setBusy(false);
     }
@@ -56,14 +62,14 @@ export function ChangePasswordCard() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <KeyRound className="h-5 w-5 text-primary-600" />
-          Change password
+          {t('shared.changePassword.title')}
         </CardTitle>
-        <CardDescription>Use at least 8 characters.</CardDescription>
+        <CardDescription>{t('shared.changePassword.description')}</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="current-password">Current password</Label>
+            <Label htmlFor="current-password">{t('shared.changePassword.current')}</Label>
             <Input
               id="current-password"
               type="password"
@@ -73,7 +79,7 @@ export function ChangePasswordCard() {
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="new-password">New password</Label>
+            <Label htmlFor="new-password">{t('shared.changePassword.new')}</Label>
             <Input
               id="new-password"
               type="password"
@@ -83,7 +89,7 @@ export function ChangePasswordCard() {
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="confirm-password">Confirm new password</Label>
+            <Label htmlFor="confirm-password">{t('shared.changePassword.confirm')}</Label>
             <Input
               id="confirm-password"
               type="password"
@@ -93,9 +99,9 @@ export function ChangePasswordCard() {
             />
           </div>
           {error && <p className="text-sm text-danger-600">{error}</p>}
-          {saved && !error && <p className="text-sm text-success-600">Password changed.</p>}
+          {saved && !error && <p className="text-sm text-success-600">{t('shared.changePassword.changed')}</p>}
           <Button type="submit" disabled={busy || !currentPassword || !newPassword} className="self-start">
-            {busy ? 'Saving…' : 'Change password'}
+            {busy ? t('shared.changePassword.saving') : t('shared.changePassword.submit')}
           </Button>
         </form>
       </CardContent>

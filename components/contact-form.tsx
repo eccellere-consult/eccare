@@ -7,31 +7,33 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { isContactPickerSupported, pickContact } from '@/lib/contact-picker';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
 type FormCategory = 'neighbor' | 'friend' | 'serviceProvider' | 'emergencyContact' | 'hospital' | 'other';
 
-const CATEGORY_OPTIONS: { value: FormCategory; label: string }[] = [
-  { value: 'neighbor', label: 'Neighbor' },
-  { value: 'friend', label: 'Friend' },
-  { value: 'serviceProvider', label: 'Service Provider' },
-  { value: 'emergencyContact', label: 'Emergency Contact' },
-  { value: 'hospital', label: 'Hospital' },
-  { value: 'other', label: 'Other' },
+const CATEGORY_OPTIONS: { value: FormCategory; labelKey: TranslationKey }[] = [
+  { value: 'neighbor', labelKey: 'shared.contactForm.category.neighbor' },
+  { value: 'friend', labelKey: 'shared.contactForm.category.friend' },
+  { value: 'serviceProvider', labelKey: 'shared.contactForm.category.serviceProvider' },
+  { value: 'emergencyContact', labelKey: 'shared.contactForm.category.emergencyContact' },
+  { value: 'hospital', labelKey: 'shared.contactForm.category.hospital' },
+  { value: 'other', labelKey: 'shared.contactForm.category.other' },
 ];
 
 type HomeMaintenanceCategory =
   | 'leakage' | 'cleaning' | 'maid' | 'cook' | 'painting' | 'gardening' | 'electrical' | 'carpentry' | 'other';
 
-const HOME_MAINTENANCE_OPTIONS: { value: HomeMaintenanceCategory; label: string }[] = [
-  { value: 'leakage', label: 'Leakage & plumbing' },
-  { value: 'cleaning', label: 'Cleaning' },
-  { value: 'maid', label: 'Maid' },
-  { value: 'cook', label: 'Cook' },
-  { value: 'painting', label: 'Painting' },
-  { value: 'gardening', label: 'Gardening' },
-  { value: 'electrical', label: 'Electrical' },
-  { value: 'carpentry', label: 'Carpentry' },
-  { value: 'other', label: 'Other home service' },
+const HOME_MAINTENANCE_OPTIONS: { value: HomeMaintenanceCategory; labelKey: TranslationKey }[] = [
+  { value: 'leakage', labelKey: 'shared.contactForm.home.leakage' },
+  { value: 'cleaning', labelKey: 'shared.contactForm.home.cleaning' },
+  { value: 'maid', labelKey: 'shared.contactForm.home.maid' },
+  { value: 'cook', labelKey: 'shared.contactForm.home.cook' },
+  { value: 'painting', labelKey: 'shared.contactForm.home.painting' },
+  { value: 'gardening', labelKey: 'shared.contactForm.home.gardening' },
+  { value: 'electrical', labelKey: 'shared.contactForm.home.electrical' },
+  { value: 'carpentry', labelKey: 'shared.contactForm.home.carpentry' },
+  { value: 'other', labelKey: 'shared.contactForm.home.other' },
 ];
 
 export function ContactForm({
@@ -45,6 +47,8 @@ export function ContactForm({
   onAdded: () => void;
   onCancel: () => void;
 }) {
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [category, setCategory] = useState<FormCategory>('neighbor');
@@ -70,11 +74,11 @@ export function ContactForm({
     setError('');
 
     if (!name.trim() || !phone.trim()) {
-      setError('Please enter a name and phone number.');
+      setError(t('shared.contactForm.enterNamePhone'));
       return;
     }
     if (category === 'emergencyContact' && !relationship.trim()) {
-      setError('Please enter the relationship (e.g. Son, Neighbor, Doctor).');
+      setError(t('shared.contactForm.enterRelationship'));
       return;
     }
 
@@ -104,21 +108,18 @@ export function ContactForm({
         body: JSON.stringify(body),
       });
       const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Could not add contact.');
+      if (!res.ok || !json.success) throw new Error(json?.error?.message || t('shared.contactForm.couldNotAdd'));
 
       onAdded();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not add contact.');
+      setError(err instanceof Error ? err.message : t('shared.contactForm.couldNotAdd'));
     } finally {
       setBusy(false);
     }
   }
 
   const canShare = inCommunity && (category === 'serviceProvider' || category === 'hospital' || category === 'neighbor');
-  const shareLabel =
-    category === 'neighbor'
-      ? "Also show in your community's Neighbours directory"
-      : "Also share with your community's Vendors directory";
+  const shareLabel = category === 'neighbor' ? t('shared.contactForm.shareNeighbor') : t('shared.contactForm.shareVendor');
 
   return (
     <Card>
@@ -126,23 +127,23 @@ export function ContactForm({
         {pickerSupported && (
           <Button type="button" variant="outline" onClick={handlePick} className="self-start">
             <ContactIcon className="h-4 w-4" />
-            Pick from phone contacts
+            {t('shared.contactForm.pickFromContacts')}
           </Button>
         )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="contact-name">Name</Label>
-            <Input id="contact-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ramesh" />
+            <Label htmlFor="contact-name">{t('shared.contactForm.name')}</Label>
+            <Input id="contact-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('shared.contactForm.namePlaceholder')} />
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="contact-phone">Phone number</Label>
-            <Input id="contact-phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="9876543210" />
+            <Label htmlFor="contact-phone">{t('shared.contactForm.phoneNumber')}</Label>
+            <Input id="contact-phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t('shared.contactForm.phonePlaceholder')} />
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="contact-category">Category</Label>
+            <Label htmlFor="contact-category">{t('shared.contactForm.category')}</Label>
             <select
               id="contact-category"
               value={category}
@@ -151,7 +152,7 @@ export function ContactForm({
             >
               {CATEGORY_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
-                  {opt.label}
+                  {t(opt.labelKey)}
                 </option>
               ))}
             </select>
@@ -159,27 +160,27 @@ export function ContactForm({
 
           {category === 'serviceProvider' && (
             <div className="flex flex-col gap-2">
-              <Label htmlFor="contact-provider-type">What kind of service?</Label>
+              <Label htmlFor="contact-provider-type">{t('shared.contactForm.whatKindOfService')}</Label>
               <Input
                 id="contact-provider-type"
                 value={providerType}
                 onChange={(e) => setProviderType(e.target.value)}
-                placeholder="Plumber, Electrician, Nurse…"
+                placeholder={t('shared.contactForm.serviceTypePlaceholder')}
               />
             </div>
           )}
 
           {category === 'emergencyContact' && (
             <div className="flex flex-col gap-2">
-              <Label htmlFor="contact-relationship">Relationship</Label>
+              <Label htmlFor="contact-relationship">{t('shared.contactForm.relationship')}</Label>
               <Input
                 id="contact-relationship"
                 value={relationship}
                 onChange={(e) => setRelationship(e.target.value)}
-                placeholder="Son, Neighbor, Doctor…"
+                placeholder={t('shared.contactForm.relationshipPlaceholder')}
               />
               <p className="text-xs text-text-secondary">
-                This goes into your Emergency Contacts list and can be notified during an SOS.
+                {t('shared.contactForm.emergencyHelper')}
               </p>
             </div>
           )}
@@ -198,20 +199,20 @@ export function ContactForm({
 
           {category === 'serviceProvider' && shareWithCommunity && (
             <div className="flex flex-col gap-2">
-              <Label htmlFor="contact-home-category">Is this a home service? (optional)</Label>
+              <Label htmlFor="contact-home-category">{t('shared.contactForm.homeServiceOptional')}</Label>
               <select
                 id="contact-home-category"
                 value={homeMaintenanceCategory}
                 onChange={(e) => setHomeMaintenanceCategory(e.target.value as HomeMaintenanceCategory | '')}
                 className="flex h-11 w-full rounded-xl border border-border bg-surface px-4 py-2 text-base text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 pointer-coarse:min-h-tap-coarse"
               >
-                <option value="">Not a home service</option>
+                <option value="">{t('shared.contactForm.notHomeService')}</option>
                 {HOME_MAINTENANCE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  <option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>
                 ))}
               </select>
               <p className="text-xs text-text-secondary">
-                Picking one also shows this in Home services under &ldquo;Suggested by residents.&rdquo;
+                {t('shared.contactForm.homeServiceHelper')}
               </p>
             </div>
           )}
@@ -220,10 +221,10 @@ export function ContactForm({
 
           <div className="flex gap-2">
             <Button type="submit" disabled={busy}>
-              {busy ? 'Adding…' : 'Add contact'}
+              {busy ? t('shared.contactForm.adding') : t('shared.contactForm.addContact')}
             </Button>
             <Button type="button" variant="outline" onClick={onCancel}>
-              Cancel
+              {t('shared.contactForm.cancel')}
             </Button>
           </div>
         </form>
