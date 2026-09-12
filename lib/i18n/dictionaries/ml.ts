@@ -10,6 +10,18 @@ const ml: Record<TranslationKey, string> = {
   'common.by': 'വഴി',
   'common.myPrescriptions': 'എന്റെ കുറിപ്പടികൾ',
 
+  'nav.portalLabel.elder': 'ഗോൾഡൻ ജനറേഷൻ',
+  'nav.home': 'ഹോം',
+  'nav.contacts': 'കോൺടാക്റ്റുകൾ',
+  'nav.health': 'ആരോഗ്യം',
+  'nav.community': 'കമ്മ്യൂണിറ്റി',
+  'nav.services': 'സേവനങ്ങൾ',
+  'nav.orders': 'ഓർഡറുകൾ',
+  'nav.payments': 'പേയ്‌മെന്റുകൾ',
+  'nav.memories': 'ഓർമ്മകൾ',
+  'nav.profile': 'പ്രൊഫൈൽ',
+  'nav.logOut': 'ലോഗ് ഔട്ട്',
+
   'elder.home.hello': 'നമസ്കാരം,',
   'elder.home.subtitle': 'നിങ്ങൾക്ക് എന്താണ് വേണ്ടത്?',
   'elder.home.inviteConnectAs': 'നിങ്ങളുമായി ഇങ്ങനെ ബന്ധപ്പെടാൻ ആഗ്രഹിക്കുന്നു:',

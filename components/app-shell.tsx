@@ -39,6 +39,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { languageLabel } from '@/lib/i18n/languages';
+import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 import { VoiceAssistant } from '@/components/voice-assistant';
 import { ReminderAlerts } from '@/components/reminder-alerts';
 
@@ -46,6 +47,10 @@ export type PortalRole = 'elder' | 'family' | 'admin' | 'provider';
 
 interface NavItem {
   label: string;
+  /** Only ever set on the elder role's own items — see NAV_CONFIG.elder below.
+   *  Family/admin/provider items have no translated chrome (their portals
+   *  aren't wrapped in LanguageProvider), so this stays undefined for them. */
+  labelKey?: TranslationKey;
   href: string;
   icon: LucideIcon;
 }
@@ -54,15 +59,15 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
   elder: {
     label: 'Golden Generation',
     items: [
-      { label: 'Home', href: '/elder', icon: Home },
-      { label: 'Contacts', href: '/elder/contacts', icon: Users },
-      { label: 'Health', href: '/elder/health', icon: HeartPulse },
-      { label: 'Community', href: '/community', icon: Building2 },
-      { label: 'Services', href: '/services', icon: Sparkles },
-      { label: 'Orders', href: '/elder/orders', icon: PackageCheck },
-      { label: 'Payments', href: '/elder/payments', icon: IndianRupee },
-      { label: 'Memories', href: '/elder/memories', icon: Camera },
-      { label: 'Profile', href: '/elder/profile', icon: User },
+      { label: 'Home', labelKey: 'nav.home', href: '/elder', icon: Home },
+      { label: 'Contacts', labelKey: 'nav.contacts', href: '/elder/contacts', icon: Users },
+      { label: 'Health', labelKey: 'nav.health', href: '/elder/health', icon: HeartPulse },
+      { label: 'Community', labelKey: 'nav.community', href: '/community', icon: Building2 },
+      { label: 'Services', labelKey: 'nav.services', href: '/services', icon: Sparkles },
+      { label: 'Orders', labelKey: 'nav.orders', href: '/elder/orders', icon: PackageCheck },
+      { label: 'Payments', labelKey: 'nav.payments', href: '/elder/payments', icon: IndianRupee },
+      { label: 'Memories', labelKey: 'nav.memories', href: '/elder/memories', icon: Camera },
+      { label: 'Profile', labelKey: 'nav.profile', href: '/elder/profile', icon: User },
     ],
   },
   family: {
@@ -180,8 +185,15 @@ export function AppShell({ role, userName, providerCategory, children }: AppShel
   const pathname = usePathname();
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   const { label: portalLabel } = NAV_CONFIG[role];
+  // lang is only non-null on the elder portal (the only one wrapped in
+  // LanguageProvider), so this naturally leaves family/admin/provider chrome
+  // in English while translating the elder's.
+  const displayPortalLabel = lang ? t('nav.portalLabel.elder') : portalLabel;
   const navItems = role === 'provider' ? getProviderNavItems(providerCategory) : NAV_CONFIG[role].items;
+  const logOutLabel = lang ? t('nav.logOut') : 'Log out';
 
   async function handleLogout() {
     await fetch('/api/v1/auth/logout', { method: 'POST' });
@@ -195,7 +207,7 @@ export function AppShell({ role, userName, providerCategory, children }: AppShel
       <aside className="hidden shrink-0 border-r border-border bg-surface md:flex md:w-20 md:flex-col lg:w-64">
         <div className="flex h-16 items-center gap-2 border-b border-border px-4 lg:px-6">
           <span className="text-2xl font-black text-primary-600">EC</span>
-          <span className="hidden text-sm font-semibold text-text-secondary lg:inline">{portalLabel}</span>
+          <span className="hidden text-sm font-semibold text-text-secondary lg:inline">{displayPortalLabel}</span>
         </div>
         <nav className="flex flex-1 flex-col gap-1 p-3">
           {navItems.map((item) => {
@@ -212,7 +224,7 @@ export function AppShell({ role, userName, providerCategory, children }: AppShel
                 )}
               >
                 <item.icon className="h-5 w-5 shrink-0" />
-                <span className="hidden lg:inline">{item.label}</span>
+                <span className="hidden lg:inline">{item.labelKey && lang ? t(item.labelKey) : item.label}</span>
               </Link>
             );
           })}
@@ -226,7 +238,7 @@ export function AppShell({ role, userName, providerCategory, children }: AppShel
             className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-text-secondary hover:bg-danger-50 hover:text-danger-900"
           >
             <LogOut className="h-5 w-5 shrink-0" />
-            <span className="hidden lg:inline">Log out</span>
+            <span className="hidden lg:inline">{logOutLabel}</span>
           </button>
         </div>
       </aside>
@@ -235,7 +247,7 @@ export function AppShell({ role, userName, providerCategory, children }: AppShel
       <header className="flex h-16 items-center justify-between border-b border-border bg-surface px-4 md:hidden">
         <div className="flex items-center gap-2">
           <span className="text-xl font-black text-primary-600">EC</span>
-          <span className="text-sm font-semibold text-text-secondary">{portalLabel}</span>
+          <span className="text-sm font-semibold text-text-secondary">{displayPortalLabel}</span>
         </div>
         <div className="flex items-center gap-2">
           <LanguageToggle compact />
@@ -255,7 +267,7 @@ export function AppShell({ role, userName, providerCategory, children }: AppShel
           <div className="absolute inset-0 bg-black/40" onClick={() => setDrawerOpen(false)} />
           <div className="absolute right-0 top-0 h-full w-72 bg-surface p-4 shadow-lg">
             <div className="mb-4 flex items-center justify-between">
-              <span className="text-sm font-semibold text-text-secondary">{userName ?? portalLabel}</span>
+              <span className="text-sm font-semibold text-text-secondary">{userName ?? displayPortalLabel}</span>
               <button
                 onClick={() => setDrawerOpen(false)}
                 aria-label="Close menu"
@@ -278,7 +290,7 @@ export function AppShell({ role, userName, providerCategory, children }: AppShel
                     )}
                   >
                     <item.icon className="h-5 w-5" />
-                    {item.label}
+                    {item.labelKey && lang ? t(item.labelKey) : item.label}
                   </Link>
                 );
               })}
@@ -287,7 +299,7 @@ export function AppShell({ role, userName, providerCategory, children }: AppShel
                 className="mt-2 flex items-center gap-3 rounded-xl px-3 py-3 text-base font-semibold text-danger-600 hover:bg-danger-50"
               >
                 <LogOut className="h-5 w-5" />
-                Log out
+                {logOutLabel}
               </button>
             </nav>
           </div>
@@ -320,7 +332,7 @@ export function AppShell({ role, userName, providerCategory, children }: AppShel
               )}
             >
               <item.icon className="h-6 w-6" />
-              {item.label}
+              {item.labelKey && lang ? t(item.labelKey) : item.label}
             </Link>
           );
         })}
