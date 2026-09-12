@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { createToken, hashPassword, setSessionCookie, toSafeUser } from '@/lib/auth';
 import { z } from 'zod';
 import { isValidEmail, isValidPhone, normalizePhone, EMAIL_FORMAT_MESSAGE, PHONE_FORMAT_MESSAGE } from '@/lib/validation';
+import { getPricingContent } from '@/lib/pricing-content';
 
 // Phone is the primary identifier — required, and the default way people sign in.
 // Email is optional: useful for password-recovery links and directory contact, but
@@ -27,6 +28,10 @@ const schema = z
     isVolunteer: z.boolean().optional(),
     volunteerAvailability: z.enum(['weekdays', 'weekends', 'always']).optional(),
     volunteerAssistanceTypes: z.array(z.enum(['medical_runs', 'companionship', 'errands', 'tech_support'])).optional(),
+    // The family member's chosen billing preference — only meaningful for a
+    // brand-new caregiver signup (see the FamilySubscription creation below).
+    // Defaults to monthly if omitted.
+    billingCycle: z.enum(['monthly', 'annual']).optional(),
   })
   .superRefine((data, ctx) => {
     if (data.role === 'provider') {
@@ -60,7 +65,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { email, password, name, role, businessName, category, isVolunteer, volunteerAvailability, volunteerAssistanceTypes } = parsed.data;
+  const { email, password, name, role, businessName, category, isVolunteer, volunteerAvailability, volunteerAssistanceTypes, billingCycle } = parsed.data;
   const phone = normalizePhone(parsed.data.phone);
   const passwordHash = await hashPassword(password);
 
@@ -126,6 +131,21 @@ export async function POST(req: NextRequest) {
             category: category!,
             verificationStatus: 'pending',
           },
+        });
+        return created;
+      });
+    } else if (role === 'caregiver') {
+      // Brand-new family member — starts a free trial of the family
+      // subscription immediately. Only this fresh-create path gets one: the
+      // "existing" claim branch above covers a community-application's
+      // placeholder account (see CommunityApplication), which is a community
+      // admin, not a paying family member, and never gets billed.
+      const { trialDays } = await getPricingContent();
+      const trialEndsAt = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000);
+      user = await prisma.$transaction(async (tx) => {
+        const created = await tx.user.create({ data: { email, phone, passwordHash, name, role } });
+        await tx.familySubscription.create({
+          data: { caregiverUserId: created.id, billingCycle: billingCycle ?? 'monthly', trialEndsAt },
         });
         return created;
       });

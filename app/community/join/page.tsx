@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -74,6 +75,13 @@ export default function JoinCommunityPage() {
           </form>
         </CardContent>
       </Card>
+
+      <p className="mt-4 max-w-lg text-sm text-text-secondary">
+        Don&rsquo;t have a code yet?{' '}
+        <Link href="/community-registration" className="font-semibold text-primary-600 hover:underline">
+          Register your community
+        </Link>
+      </p>
     </CommunityPageFrame>
   );
 }

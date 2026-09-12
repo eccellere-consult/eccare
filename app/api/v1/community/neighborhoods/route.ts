@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { getAuthUser } from '@/lib/auth';
+import { generateJoinCode } from '@/lib/neighborhood-codes';
 
 const schema = z.object({
   name: z.string().min(1).max(160),
@@ -9,13 +10,6 @@ const schema = z.object({
   pincode: z.string().max(12).optional(),
   description: z.string().max(2000).optional(),
 });
-
-/** Human-friendly, unambiguous join code — no 0/O or 1/I, since residents read these
- *  aloud and type them by hand. */
-function generateJoinCode(): string {
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  return Array.from({ length: 6 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('');
-}
 
 const forbidden = () =>
   NextResponse.json(
