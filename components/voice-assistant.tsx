@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mic, Loader2, Check, X } from 'lucide-react';
+import { Loader2, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isSpeechRecognitionSupported, createRecognizer, speak, type Recognizer } from '@/lib/speech';
 import { isConfirmRequiredAction, type ConfirmRequiredAction } from '@/lib/voice-shared';
+import { AryaAvatar } from '@/components/arya-avatar';
 
 type Status = 'idle' | 'listening' | 'thinking' | 'confirming' | 'executing' | 'speaking' | 'error';
 
@@ -294,15 +295,15 @@ export function VoiceAssistant() {
         aria-label={status === 'listening' ? 'Stop listening' : 'Speak to Arya'}
         disabled={status === 'thinking' || status === 'executing'}
         className={cn(
-          'flex h-16 w-16 items-center justify-center rounded-full text-white shadow-lg shadow-accent-100 transition-transform',
-          status === 'listening' ? 'scale-110 animate-pulse bg-danger-600' : 'bg-accent-600 hover:bg-accent-900',
-          (status === 'thinking' || status === 'executing') && 'opacity-70',
+          'flex h-16 w-16 items-center justify-center rounded-full shadow-lg shadow-accent-100 transition-transform',
+          status === 'listening' && 'scale-110',
+          (status === 'thinking' || status === 'executing') && 'bg-accent-600 text-white opacity-70',
         )}
       >
         {status === 'thinking' || status === 'executing' ? (
           <Loader2 className="h-7 w-7 animate-spin" />
         ) : (
-          <Mic className="h-7 w-7" />
+          <AryaAvatar active={status === 'listening' || status === 'speaking'} size={64} />
         )}
       </button>
     </div>
