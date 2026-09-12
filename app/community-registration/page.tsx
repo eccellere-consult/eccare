@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, MapPin } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -34,6 +34,14 @@ export default function CommunityRegistrationPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [loggedIn, setLoggedIn] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/v1/auth/me', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((j) => setLoggedIn(Boolean(j.success)))
+      .catch(() => {});
+  }, []);
 
   function shareLocation() {
     if (!navigator.geolocation) {
@@ -97,20 +105,25 @@ export default function CommunityRegistrationPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-surface">
-        <div className="mx-auto flex max-w-2xl items-center justify-between px-6 py-5">
-          <Link href="/" className="text-xl font-bold text-primary-600">
-            EC <span className="font-normal text-text-secondary">— Just Easy.</span>
-          </Link>
-          <Link href="/login" className="text-sm font-semibold text-text-secondary hover:text-primary-600">
-            Sign in
-          </Link>
-        </div>
-      </header>
+      {!loggedIn && (
+        <header className="border-b border-border bg-surface">
+          <div className="mx-auto flex max-w-2xl items-center justify-between px-6 py-5">
+            <Link href="/" className="text-xl font-bold text-primary-600">
+              EC <span className="font-normal text-text-secondary">— Just Easy.</span>
+            </Link>
+            <Link href="/login" className="text-sm font-semibold text-text-secondary hover:text-primary-600">
+              Sign in
+            </Link>
+          </div>
+        </header>
+      )}
 
       <main className="mx-auto max-w-2xl px-6 py-12">
-        <Link href="/" className="flex w-fit items-center gap-1.5 text-sm font-semibold text-text-secondary hover:text-primary-600">
-          <ArrowLeft className="h-4 w-4" /> Back to EC
+        <Link
+          href={loggedIn ? '/community' : '/'}
+          className="flex w-fit items-center gap-1.5 text-sm font-semibold text-text-secondary hover:text-primary-600"
+        >
+          <ArrowLeft className="h-4 w-4" /> {loggedIn ? 'Back to Community' : 'Back to EC'}
         </Link>
         <h1 className="mt-3 text-3xl font-bold text-text">Register your community</h1>
         <p className="mt-2 text-text-secondary">
