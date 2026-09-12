@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   // shared contacts, via the canAccessElder check below.
   const isManager = guard.membership.role === 'committee' || guard.membership.role === 'admin';
 
-  const [membersUnsorted, sharedContacts] = await Promise.all([
+  const [membersUnsorted, sharedContacts, favorites] = await Promise.all([
     prisma.neighborhoodMember.findMany({
       where: { neighborhoodId: guard.neighborhoodId, showInDirectory: true },
       include: {
@@ -35,7 +35,14 @@ export async function GET(req: NextRequest) {
       },
       orderBy: { createdAt: 'asc' },
     }),
+    // The current viewer's own pins — personal, never visible to anyone else
+    // looking at the same directory. See NeighborFavorite in schema.prisma.
+    prisma.neighborFavorite.findMany({
+      where: { userId: guard.auth.userId, neighborhoodId: guard.neighborhoodId },
+      select: { entryKey: true },
+    }),
   ]);
+  const favoriteKeys = new Set(favorites.map((f) => f.entryKey));
 
   // MySQL can't natural-sort "2" before "10" for an arbitrary alphanumeric column,
   // so registered members are re-sorted here by house/flat number ascending.
@@ -55,6 +62,7 @@ export async function GET(req: NextRequest) {
     role: m.role,
     isSelf: m.user.id === guard.auth.userId,
     source: 'member' as const,
+    isFavorite: favoriteKeys.has(`member:${m.user.id}`),
     // Editing here means the flat/house number (via PATCH /community/members/[id]);
     // role changes stay on the dedicated member-management page. Deleting removes
     // the membership entirely — they'd need to rejoin by join code.
@@ -75,6 +83,7 @@ export async function GET(req: NextRequest) {
       role: null,
       isSelf: false,
       source: 'contact' as const,
+      isFavorite: favoriteKeys.has(`contact:${c.id}`),
       // Full edit/delete of the actual contact record — same authorization as the
       // Contacts page itself (canAccessElder). Never true for a manager who isn't
       // also family — a moderator shouldn't be able to rename or delete someone
@@ -88,5 +97,11 @@ export async function GET(req: NextRequest) {
     })),
   );
 
-  return ok([...memberEntries, ...contactEntries]);
+  // Stable sort (Node's Array#sort has been stable since ES2019) — favorites float
+  // to the top, everything else keeps its existing relative order underneath.
+  const entries = [...memberEntries, ...contactEntries].sort(
+    (a, b) => Number(b.isFavorite) - Number(a.isFavorite),
+  );
+
+  return ok(entries);
 }

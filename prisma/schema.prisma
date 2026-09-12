@@ -67,6 +67,7 @@ model User {
 
   // Community
   memberships         NeighborhoodMember[]
+  neighborFavorites   NeighborFavorite[]
   eventsCreated       CommunityEvent[]     @relation("EventCreator")
   eventRsvps          CommunityEventRsvp[]
   greetingsSent       Greeting[]           @relation("GreetingSender")
@@ -1123,6 +1124,24 @@ model NeighborhoodMember {
 
   @@unique([neighborhoodId, userId])
   @@index([neighborhoodId, role])
+}
+
+/// A resident's own pin on an entry in the Local Directory (GET
+/// /community/directory) — personal, not shared with anyone else viewing the same
+/// directory. `entryKey` reuses that route's own composite id ("member:<userId>" or
+/// "contact:<contactId>") rather than a real FK to either table, since a directory
+/// entry can be either kind and a favorite shouldn't care which.
+model NeighborFavorite {
+  id             String   @id @default(cuid())
+  userId         String
+  neighborhoodId String
+  entryKey       String
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, entryKey])
+  @@index([userId, neighborhoodId])
 }
 
 /// A recurring or one-time fee the management committee/admin defines for their
