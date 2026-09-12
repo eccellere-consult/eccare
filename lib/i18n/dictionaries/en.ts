@@ -9,6 +9,22 @@ const en = {
   'common.by': 'By',
   'common.myPrescriptions': 'My prescriptions',
 
+  // Sidebar / mobile nav chrome (components/app-shell.tsx) — this wraps every
+  // single /elder/* page, so leaving it untranslated made every page feel
+  // "out of sync" even once its own content was translated: the nav around it
+  // never changed language.
+  'nav.portalLabel.elder': 'Golden Generation',
+  'nav.home': 'Home',
+  'nav.contacts': 'Contacts',
+  'nav.health': 'Health',
+  'nav.community': 'Community',
+  'nav.services': 'Services',
+  'nav.orders': 'Orders',
+  'nav.payments': 'Payments',
+  'nav.memories': 'Memories',
+  'nav.profile': 'Profile',
+  'nav.logOut': 'Log out',
+
   'elder.home.hello': 'Hello,',
   'elder.home.subtitle': 'What do you need?',
   'elder.home.inviteConnectAs': 'wants to connect as your',

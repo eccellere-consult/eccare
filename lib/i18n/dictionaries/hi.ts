@@ -10,6 +10,18 @@ const hi: Record<TranslationKey, string> = {
   'common.by': 'द्वारा',
   'common.myPrescriptions': 'मेरे नुस्खे',
 
+  'nav.portalLabel.elder': 'गोल्डन जनरेशन',
+  'nav.home': 'होम',
+  'nav.contacts': 'संपर्क',
+  'nav.health': 'स्वास्थ्य',
+  'nav.community': 'कम्युनिटी',
+  'nav.services': 'सेवाएं',
+  'nav.orders': 'ऑर्डर',
+  'nav.payments': 'भुगतान',
+  'nav.memories': 'यादें',
+  'nav.profile': 'प्रोफ़ाइल',
+  'nav.logOut': 'लॉग आउट',
+
   'elder.home.hello': 'नमस्ते,',
   'elder.home.subtitle': 'आपको क्या चाहिए?',
   'elder.home.inviteConnectAs': 'आपसे इस रूप में जुड़ना चाहते हैं:',
