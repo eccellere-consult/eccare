@@ -97,6 +97,7 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
       { label: 'Advisory', href: '/admin/advisory', icon: Scale },
       { label: 'Property Management', href: '/admin/property', icon: Wrench },
       { label: 'WhatsApp Invite', href: '/admin/invite', icon: MessageCircle },
+      { label: 'Pricing', href: '/admin/pricing', icon: IndianRupee },
       { label: 'Settings', href: '/admin/settings', icon: Settings },
       { label: 'Profile', href: '/admin/profile', icon: User },
     ],

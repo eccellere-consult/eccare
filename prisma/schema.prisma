@@ -197,6 +197,25 @@ model PlatformSettings {
   updatedById       String?
 }
 
+/// Admin-editable content for the public /pricing page, plus a single show/hide switch for the
+/// whole page — same "soft-off" pattern as WellnessVideo.isActive: hiding never deletes the
+/// content, it just stops it from being shown. Each plan's feature list is a JSON string array
+/// (not typed columns) since admin needs to freely add/remove/reorder bullets without a schema
+/// change for every edit — this is content, not configuration. Singleton, same convention as
+/// PlatformSettings.
+model PricingPageContent {
+  id                String   @id @default("singleton")
+  isVisible         Boolean  @default(true)
+  elderIntro        String   @db.Text
+  elderFeatures     Json
+  familyIntro       String   @db.Text
+  familyFeatures    Json
+  communityIntro    String   @db.Text
+  communityFeatures Json
+  updatedAt         DateTime @updatedAt
+  updatedById       String?
+}
+
 /** A single-use, short-lived token emailed to a user to let them reset their
  *  password without knowing the old one. Only the SHA-256 hash of the raw token is
  *  stored — same reasoning as `User.pinHash`: a DB leak alone should never be enough
