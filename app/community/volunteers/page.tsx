@@ -6,6 +6,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { CommunityPageFrame } from '@/components/community/page-frame';
 import { buildWaLink as waLink } from '@/lib/whatsapp';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
 interface Volunteer {
   id: string;
@@ -15,22 +17,24 @@ interface Volunteer {
 }
 
 const AVAILABILITY_OPTIONS = [
-  { value: '', label: 'Any time' },
-  { value: 'weekdays', label: 'Weekdays' },
-  { value: 'weekends', label: 'Weekends' },
-  { value: 'always', label: '24/7' },
-] as const;
+  { value: '', labelKey: 'community.volunteers.availabilityAny' },
+  { value: 'weekdays', labelKey: 'community.volunteers.weekdays' },
+  { value: 'weekends', labelKey: 'community.volunteers.weekends' },
+  { value: 'always', labelKey: 'community.volunteers.always' },
+] as const satisfies readonly { value: string; labelKey: TranslationKey }[];
 const ASSISTANCE_OPTIONS = [
-  { value: '', label: 'Any' },
-  { value: 'medical_runs', label: 'Medical Runs' },
-  { value: 'companionship', label: 'Companionship' },
-  { value: 'errands', label: 'Errands' },
-  { value: 'tech_support', label: 'Tech Support' },
-] as const;
-const ASSISTANCE_LABEL: Record<string, string> = Object.fromEntries(ASSISTANCE_OPTIONS.map((o) => [o.value, o.label]));
-const AVAILABILITY_LABEL: Record<string, string> = Object.fromEntries(AVAILABILITY_OPTIONS.map((o) => [o.value, o.label]));
+  { value: '', labelKey: 'community.volunteers.assistanceAny' },
+  { value: 'medical_runs', labelKey: 'community.volunteers.medicalRuns' },
+  { value: 'companionship', labelKey: 'community.volunteers.companionship' },
+  { value: 'errands', labelKey: 'community.volunteers.errands' },
+  { value: 'tech_support', labelKey: 'community.volunteers.techSupport' },
+] as const satisfies readonly { value: string; labelKey: TranslationKey }[];
+const ASSISTANCE_LABEL_KEY: Record<string, TranslationKey> = Object.fromEntries(ASSISTANCE_OPTIONS.map((o) => [o.value, o.labelKey]));
+const AVAILABILITY_LABEL_KEY: Record<string, TranslationKey> = Object.fromEntries(AVAILABILITY_OPTIONS.map((o) => [o.value, o.labelKey]));
 
 export default function VolunteersDirectoryPage() {
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   const [volunteers, setVolunteers] = useState<Volunteer[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -48,7 +52,7 @@ export default function VolunteersDirectoryPage() {
     fetch(`/api/v1/community/volunteers?${params}`, { credentials: 'include' })
       .then((r) => r.json())
       .then((j) => { if (j.success) setVolunteers(j.data); else throw new Error(j.error?.message); })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Could not load volunteers.'))
+      .catch((err) => setError(err instanceof Error ? err.message : t('community.volunteers.couldNotLoad')))
       .finally(() => setLoading(false));
   }, [search, availability, assistanceType]);
 
@@ -59,13 +63,13 @@ export default function VolunteersDirectoryPage() {
 
   return (
     <CommunityPageFrame
-      title="Community Volunteers"
-      subtitle="Neighbours who've offered to help, verified by your committee."
+      title={t('community.volunteers.title')}
+      subtitle={t('community.volunteers.subtitle')}
       loading={loading}
       error={error}
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name…" className="sm:max-w-xs" />
+        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('community.volunteers.searchPlaceholder')} className="sm:max-w-xs" />
         <div className="flex flex-wrap gap-2">
           {AVAILABILITY_OPTIONS.map((opt) => (
             <button
@@ -74,7 +78,7 @@ export default function VolunteersDirectoryPage() {
               onClick={() => setAvailability(availability === opt.value ? '' : opt.value)}
               className={`rounded-xl border px-3 py-1.5 text-xs font-semibold ${availability === opt.value && opt.value ? 'border-primary-600 bg-primary-50 text-primary-900' : 'border-border text-text-secondary'}`}
             >
-              {opt.label}
+              {t(opt.labelKey)}
             </button>
           ))}
         </div>
@@ -86,7 +90,7 @@ export default function VolunteersDirectoryPage() {
               onClick={() => setAssistanceType(assistanceType === opt.value ? '' : opt.value)}
               className={`rounded-xl border px-3 py-1.5 text-xs font-semibold ${assistanceType === opt.value && opt.value ? 'border-primary-600 bg-primary-50 text-primary-900' : 'border-border text-text-secondary'}`}
             >
-              {opt.label}
+              {t(opt.labelKey)}
             </button>
           ))}
         </div>
@@ -103,18 +107,18 @@ export default function VolunteersDirectoryPage() {
                 <p className="font-bold text-text">{v.user.name}</p>
               </div>
               <p className="mt-2 text-sm text-text-secondary">
-                <strong className="text-text">Available:</strong> {AVAILABILITY_LABEL[v.availability]}
+                <strong className="text-text">{t('community.volunteers.available')}</strong> {t(AVAILABILITY_LABEL_KEY[v.availability])}
               </p>
               <p className="mt-1 text-sm text-text-secondary">
-                <strong className="text-text">Can help with:</strong> {v.assistanceTypes.map((t) => ASSISTANCE_LABEL[t] ?? t).join(', ')}
+                <strong className="text-text">{t('community.volunteers.canHelpWith')}</strong> {v.assistanceTypes.map((a) => (ASSISTANCE_LABEL_KEY[a] ? t(ASSISTANCE_LABEL_KEY[a]) : a)).join(', ')}
               </p>
               {v.user.phone && (
                 <div className="mt-3 flex gap-2">
                   <a href={`tel:${v.user.phone}`} className="flex items-center gap-1.5 rounded-xl border border-border px-3 py-1.5 text-xs font-semibold text-text hover:bg-primary-50">
-                    <Phone className="h-3.5 w-3.5" /> Call
+                    <Phone className="h-3.5 w-3.5" /> {t('common.call')}
                   </a>
                   <a href={waLink(v.user.phone)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 rounded-xl border border-border px-3 py-1.5 text-xs font-semibold text-text hover:bg-primary-50">
-                    <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+                    <MessageCircle className="h-3.5 w-3.5" /> {t('community.volunteers.whatsapp')}
                   </a>
                 </div>
               )}
@@ -124,7 +128,7 @@ export default function VolunteersDirectoryPage() {
       </div>
 
       {!loading && (!volunteers || volunteers.length === 0) && (
-        <Card className="mt-4"><CardContent className="py-12 text-center text-text-secondary">No volunteers match right now.</CardContent></Card>
+        <Card className="mt-4"><CardContent className="py-12 text-center text-text-secondary">{t('community.volunteers.noneMatch')}</CardContent></Card>
       )}
     </CommunityPageFrame>
   );

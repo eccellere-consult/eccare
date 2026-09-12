@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { CommunityPageFrame } from '@/components/community/page-frame';
 import { communityApi, useCommunityData } from '@/lib/community-client';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
 type HobbyCategory = 'art' | 'music' | 'dance' | 'theatre' | 'books' | 'discussion' | 'teaching' | 'other';
 
@@ -23,18 +25,20 @@ interface Group {
 }
 interface Member { id: string; name: string; phone: string | null; joinedAt: string }
 
-const CATEGORIES: { key: HobbyCategory; label: string }[] = [
-  { key: 'art', label: 'Art' },
-  { key: 'music', label: 'Music' },
-  { key: 'dance', label: 'Dance' },
-  { key: 'theatre', label: 'Theatre' },
-  { key: 'books', label: 'Books' },
-  { key: 'discussion', label: 'Discussions' },
-  { key: 'teaching', label: 'Teaching' },
-  { key: 'other', label: 'Other' },
+const CATEGORIES: { key: HobbyCategory; labelKey: TranslationKey }[] = [
+  { key: 'art', labelKey: 'community.hobbies.categoryArt' },
+  { key: 'music', labelKey: 'community.hobbies.categoryMusic' },
+  { key: 'dance', labelKey: 'community.hobbies.categoryDance' },
+  { key: 'theatre', labelKey: 'community.hobbies.categoryTheatre' },
+  { key: 'books', labelKey: 'community.hobbies.categoryBooks' },
+  { key: 'discussion', labelKey: 'community.hobbies.categoryDiscussion' },
+  { key: 'teaching', labelKey: 'community.hobbies.categoryTeaching' },
+  { key: 'other', labelKey: 'community.hobbies.categoryOther' },
 ];
 
 export default function HobbiesPage() {
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   const { data, loading, error, reload } = useCommunityData<Group[]>('/community/hobby-groups');
   const [activeCategory, setActiveCategory] = useState<HobbyCategory | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -62,7 +66,7 @@ export default function HobbiesPage() {
       setShowForm(false);
       reload();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Could not create group.');
+      setFormError(err instanceof Error ? err.message : t('community.hobbies.couldNotCreate'));
     } finally {
       setBusy(false);
     }
@@ -100,16 +104,16 @@ export default function HobbiesPage() {
 
   return (
     <CommunityPageFrame
-      title="Hobbies & interests"
-      subtitle="Art, music, dance, theatre, books, discussions, teaching — find or start a group."
-      action={<Button onClick={() => setShowForm((s) => !s)}>{showForm ? 'Cancel' : 'Start a group'}</Button>}
+      title={t('community.hobbies.title')}
+      subtitle={t('community.hobbies.subtitle')}
+      action={<Button onClick={() => setShowForm((s) => !s)}>{showForm ? t('common.cancel') : t('community.hobbies.startGroup')}</Button>}
       loading={loading}
       error={error}
     >
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant={activeCategory === null ? 'primary' : 'outline'} onClick={() => setActiveCategory(null)}>
-            All
+            {t('common.all')}
           </Button>
           {CATEGORIES.map((c) => (
             <Button
@@ -118,7 +122,7 @@ export default function HobbiesPage() {
               variant={activeCategory === c.key ? 'primary' : 'outline'}
               onClick={() => setActiveCategory(activeCategory === c.key ? null : c.key)}
             >
-              {c.label}
+              {t(c.labelKey)}
             </Button>
           ))}
         </div>
@@ -128,11 +132,11 @@ export default function HobbiesPage() {
             <CardContent className="pt-6">
               <form onSubmit={create} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="hg-name">Group name</Label>
-                  <Input id="hg-name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Sunday sketching circle" />
+                  <Label htmlFor="hg-name">{t('community.hobbies.groupName')}</Label>
+                  <Input id="hg-name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder={t('community.hobbies.groupNamePlaceholder')} />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="hg-category">Category</Label>
+                  <Label htmlFor="hg-category">{t('community.hobbies.category')}</Label>
                   <select
                     id="hg-category"
                     value={form.category}
@@ -140,17 +144,17 @@ export default function HobbiesPage() {
                     className="flex h-11 w-full rounded-xl border border-border bg-surface px-4 py-2 text-base text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
                   >
                     {CATEGORIES.map((c) => (
-                      <option key={c.key} value={c.key}>{c.label}</option>
+                      <option key={c.key} value={c.key}>{t(c.labelKey)}</option>
                     ))}
                   </select>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="hg-desc">Description (optional)</Label>
-                  <Input id="hg-desc" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Meet Sundays at the clubhouse, all levels welcome" />
+                  <Label htmlFor="hg-desc">{t('community.hobbies.descriptionOptional')}</Label>
+                  <Input id="hg-desc" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder={t('community.hobbies.descriptionPlaceholder')} />
                 </div>
                 {formError && <p className="text-sm text-danger-600">{formError}</p>}
                 <Button type="submit" disabled={busy || !form.name} className="self-start">
-                  {busy ? 'Creating…' : 'Create group'}
+                  {busy ? t('community.hobbies.creating') : t('community.hobbies.createGroup')}
                 </Button>
               </form>
             </CardContent>
@@ -160,7 +164,7 @@ export default function HobbiesPage() {
         {filtered.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center text-text-secondary">
-              No groups here yet — be the first to start one.
+              {t('community.hobbies.noGroupsYet')}
             </CardContent>
           </Card>
         ) : (
@@ -175,7 +179,7 @@ export default function HobbiesPage() {
                       </span>
                       <div>
                         <p className="font-bold text-text">{g.name}</p>
-                        <Badge variant="muted">{CATEGORIES.find((c) => c.key === g.category)?.label}</Badge>
+                        <Badge variant="muted">{t(CATEGORIES.find((c) => c.key === g.category)?.labelKey ?? 'community.hobbies.categoryOther')}</Badge>
                       </div>
                     </div>
                   </div>
@@ -186,15 +190,15 @@ export default function HobbiesPage() {
                     className="mt-3 flex items-center gap-1.5 text-sm font-semibold text-primary-600 hover:underline"
                   >
                     <Users className="h-3.5 w-3.5" />
-                    {g.memberCount} member{g.memberCount === 1 ? '' : 's'}
+                    {g.memberCount} {g.memberCount === 1 ? t('community.hobbies.memberSingular') : t('community.hobbies.memberPlural')}
                   </button>
 
                   {expandedId === g.id && (
                     <div className="mt-3 flex flex-col gap-2 border-t border-border pt-3">
                       {membersLoading ? (
-                        <p className="text-sm text-text-secondary">Loading…</p>
+                        <p className="text-sm text-text-secondary">{t('common.loading')}</p>
                       ) : members.length === 0 ? (
-                        <p className="text-sm text-text-secondary">No members yet.</p>
+                        <p className="text-sm text-text-secondary">{t('community.hobbies.noMembersYet')}</p>
                       ) : (
                         members.map((m) => (
                           <div key={m.id} className="flex items-center justify-between gap-2 text-sm">
@@ -202,7 +206,7 @@ export default function HobbiesPage() {
                             {m.phone && (
                               <a href={`tel:${m.phone}`} className="flex items-center gap-1 text-primary-600 hover:underline">
                                 <Phone className="h-3.5 w-3.5" />
-                                Call
+                                {t('common.call')}
                               </a>
                             )}
                           </div>
@@ -218,7 +222,7 @@ export default function HobbiesPage() {
                     onClick={() => toggleMembership(g)}
                     className="mt-4"
                   >
-                    {actionId === g.id ? 'Please wait…' : g.isMember ? 'Leave group' : 'Join group'}
+                    {actionId === g.id ? t('community.hobbies.pleaseWait') : g.isMember ? t('community.hobbies.leaveGroup') : t('community.hobbies.joinGroup')}
                   </Button>
                 </CardContent>
               </Card>

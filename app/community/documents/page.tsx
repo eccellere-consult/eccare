@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { CommunityPageFrame } from '@/components/community/page-frame';
 import { useCommunityData } from '@/lib/community-client';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
 type DocCategory = 'bylaws' | 'minutes' | 'notice' | 'other';
 
@@ -23,14 +25,16 @@ interface Doc {
 }
 interface Me { memberships: { role: string }[] }
 
-const CATEGORIES: { key: DocCategory; label: string }[] = [
-  { key: 'bylaws', label: 'Bylaws' },
-  { key: 'minutes', label: 'AGM minutes' },
-  { key: 'notice', label: 'Notices' },
-  { key: 'other', label: 'Other' },
+const CATEGORIES: { key: DocCategory; labelKey: TranslationKey }[] = [
+  { key: 'bylaws', labelKey: 'community.documents.categoryBylaws' },
+  { key: 'minutes', labelKey: 'community.documents.categoryMinutes' },
+  { key: 'notice', labelKey: 'community.documents.categoryNotice' },
+  { key: 'other', labelKey: 'community.documents.categoryOther' },
 ];
 
 export default function DocumentsPage() {
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   const { data, loading, error, reload } = useCommunityData<Doc[]>('/community/documents');
   const { data: me } = useCommunityData<Me>('/community/me');
   const canManage = me?.memberships?.[0]?.role !== 'member';
@@ -55,26 +59,26 @@ export default function DocumentsPage() {
       body.append('file', file);
       const res = await fetch('/api/v1/community/documents', { method: 'POST', credentials: 'include', body });
       const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Could not upload.');
+      if (!res.ok || !json.success) throw new Error(json?.error?.message || t('community.documents.couldNotUpload'));
       setTitle('');
       setCategory('other');
       setFile(null);
       setShowForm(false);
       reload();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Could not upload.');
+      setFormError(err instanceof Error ? err.message : t('community.documents.couldNotUpload'));
     } finally {
       setBusy(false);
     }
   }
 
   async function remove(id: string) {
-    if (!confirm('Remove this document?')) return;
+    if (!confirm(t('community.documents.confirmRemove'))) return;
     setActionId(id);
     try {
       const res = await fetch(`/api/v1/community/documents/${id}`, { method: 'DELETE', credentials: 'include' });
       const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Could not remove.');
+      if (!res.ok || !json.success) throw new Error(json?.error?.message || t('community.documents.couldNotRemove'));
       reload();
     } finally {
       setActionId(null);
@@ -83,13 +87,13 @@ export default function DocumentsPage() {
 
   return (
     <CommunityPageFrame
-      title="Documents"
-      subtitle="Bylaws, AGM minutes, and notices — kept in one place."
-      action={canManage ? <Button onClick={() => setShowForm((s) => !s)}>{showForm ? 'Cancel' : 'Upload'}</Button> : undefined}
+      title={t('community.documents.title')}
+      subtitle={t('community.documents.subtitle')}
+      action={canManage ? <Button onClick={() => setShowForm((s) => !s)}>{showForm ? t('common.cancel') : t('community.documents.upload')}</Button> : undefined}
       loading={loading}
       error={error}
       isEmpty={!showForm && (data?.length ?? 0) === 0}
-      emptyMessage="No documents uploaded yet."
+      emptyMessage={t('community.documents.noDocuments')}
     >
       <div className="flex flex-col gap-4">
         {showForm && (
@@ -97,11 +101,11 @@ export default function DocumentsPage() {
             <CardContent className="pt-6">
               <form onSubmit={upload} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="doc-title">Title</Label>
-                  <Input id="doc-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="2026 AGM minutes" />
+                  <Label htmlFor="doc-title">{t('community.documents.titleLabel')}</Label>
+                  <Input id="doc-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('community.documents.titlePlaceholder')} />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="doc-category">Category</Label>
+                  <Label htmlFor="doc-category">{t('community.documents.category')}</Label>
                   <select
                     id="doc-category"
                     value={category}
@@ -109,12 +113,12 @@ export default function DocumentsPage() {
                     className="flex h-11 w-full rounded-xl border border-border bg-surface px-4 py-2 text-base text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
                   >
                     {CATEGORIES.map((c) => (
-                      <option key={c.key} value={c.key}>{c.label}</option>
+                      <option key={c.key} value={c.key}>{t(c.labelKey)}</option>
                     ))}
                   </select>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="doc-file">File (PDF, JPEG, or PNG)</Label>
+                  <Label htmlFor="doc-file">{t('community.documents.file')}</Label>
                   <input
                     id="doc-file"
                     type="file"
@@ -125,7 +129,7 @@ export default function DocumentsPage() {
                 </div>
                 {formError && <p className="text-sm text-danger-600">{formError}</p>}
                 <Button type="submit" disabled={busy || !title.trim() || !file} className="self-start">
-                  {busy ? 'Uploading…' : 'Upload'}
+                  {busy ? t('community.documents.uploading') : t('community.documents.upload')}
                 </Button>
               </form>
             </CardContent>
@@ -142,7 +146,7 @@ export default function DocumentsPage() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-bold text-text">{d.title}</p>
                   <div className="mt-0.5">
-                    <Badge variant="muted">{CATEGORIES.find((c) => c.key === d.category)?.label}</Badge>
+                    <Badge variant="muted">{t(CATEGORIES.find((c) => c.key === d.category)?.labelKey ?? 'community.documents.categoryOther')}</Badge>
                   </div>
                   <p className="mt-1 text-xs text-text-secondary">
                     {d.uploadedBy.name} · {new Date(d.createdAt).toLocaleDateString()}

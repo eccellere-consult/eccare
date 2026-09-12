@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CommunityPageFrame } from '@/components/community/page-frame';
 import { communityApi, useCommunityData } from '@/lib/community-client';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
 interface Group {
   id: string;
@@ -18,6 +20,8 @@ interface Group {
 interface Me { memberships: { role: string }[] }
 
 export default function WhatsAppGroupsPage() {
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   const { data: me } = useCommunityData<Me>('/community/me');
   const { data, loading, error, reload } = useCommunityData<Group[]>('/community/whatsapp-groups');
   const canPost = me?.memberships?.[0]?.role !== 'member';
@@ -45,7 +49,7 @@ export default function WhatsAppGroupsPage() {
       setShowForm(false);
       reload();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Could not add group.');
+      setFormError(err instanceof Error ? err.message : t('community.groups.couldNotAdd'));
     } finally {
       setBusy(false);
     }
@@ -53,17 +57,17 @@ export default function WhatsAppGroupsPage() {
 
   return (
     <CommunityPageFrame
-      title="Community WhatsApp groups"
-      subtitle="Tap to open WhatsApp and join."
+      title={t('community.groups.title')}
+      subtitle={t('community.groups.subtitle')}
       action={
         canPost ? (
-          <Button onClick={() => setShowForm((s) => !s)}>{showForm ? 'Cancel' : 'Add group'}</Button>
+          <Button onClick={() => setShowForm((s) => !s)}>{showForm ? t('common.cancel') : t('community.groups.addGroup')}</Button>
         ) : undefined
       }
       loading={loading}
       error={error}
       isEmpty={!showForm && (data?.length ?? 0) === 0}
-      emptyMessage="Your committee hasn't added any groups yet."
+      emptyMessage={t('community.groups.noGroups')}
     >
       <div className="flex flex-col gap-3">
         {showForm && (
@@ -71,25 +75,25 @@ export default function WhatsAppGroupsPage() {
             <CardContent className="pt-6">
               <form onSubmit={create} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="group-name">Group name</Label>
-                  <Input id="group-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Block A Residents" />
+                  <Label htmlFor="group-name">{t('community.groups.groupName')}</Label>
+                  <Input id="group-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('community.groups.groupNamePlaceholder')} />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="group-description">Description (optional)</Label>
+                  <Label htmlFor="group-description">{t('community.groups.descriptionOptional')}</Label>
                   <Input id="group-description" value={description} onChange={(e) => setDescription(e.target.value)} />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="group-url">Invite link</Label>
+                  <Label htmlFor="group-url">{t('community.groups.inviteLink')}</Label>
                   <Input
                     id="group-url"
                     value={inviteUrl}
                     onChange={(e) => setInviteUrl(e.target.value)}
-                    placeholder="https://chat.whatsapp.com/…"
+                    placeholder={t('community.groups.inviteLinkPlaceholder')}
                   />
                 </div>
                 {formError && <p className="text-sm text-danger-600">{formError}</p>}
                 <Button type="submit" disabled={busy || !name.trim() || !inviteUrl.trim()}>
-                  {busy ? 'Adding…' : 'Add group'}
+                  {busy ? t('community.groups.adding') : t('community.groups.addGroup')}
                 </Button>
               </form>
             </CardContent>

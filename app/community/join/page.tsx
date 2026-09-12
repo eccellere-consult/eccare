@@ -10,9 +10,13 @@ import { Label } from '@/components/ui/label';
 import { CommunityPageFrame } from '@/components/community/page-frame';
 import { TourButton } from '@/components/tour/TourButton';
 import { communityApi } from '@/lib/community-client';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
 export default function JoinCommunityPage() {
   const router = useRouter();
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   const [joinCode, setJoinCode] = useState('');
   const [flatNumber, setFlatNumber] = useState('');
   const [busy, setBusy] = useState(false);
@@ -30,7 +34,7 @@ export default function JoinCommunityPage() {
       router.push('/community');
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not join.');
+      setError(err instanceof Error ? err.message : t('community.join.couldNotJoin'));
     } finally {
       setBusy(false);
     }
@@ -38,8 +42,8 @@ export default function JoinCommunityPage() {
 
   return (
     <CommunityPageFrame
-      title="Join your community"
-      subtitle="Enter the code shared by your management committee."
+      title={t('community.join.title')}
+      subtitle={t('community.join.subtitle')}
     >
       <div className="max-w-lg">
         <TourButton tourId="joinCommunity" />
@@ -49,7 +53,7 @@ export default function JoinCommunityPage() {
         <CardContent className="pt-6">
           <form onSubmit={submit} className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="joinCode">Community code</Label>
+              <Label htmlFor="joinCode">{t('community.join.communityCode')}</Label>
               <Input
                 id="joinCode"
                 value={joinCode}
@@ -60,26 +64,26 @@ export default function JoinCommunityPage() {
               />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="flatNumber">Flat / house number (optional)</Label>
+              <Label htmlFor="flatNumber">{t('community.join.flatNumber')}</Label>
               <Input
                 id="flatNumber"
                 value={flatNumber}
                 onChange={(e) => setFlatNumber(e.target.value)}
-                placeholder="A-402"
+                placeholder={t('community.join.flatNumberPlaceholder')}
               />
             </div>
             {error && <p className="text-sm text-danger-600">{error}</p>}
             <Button type="submit" size="lg" disabled={busy || joinCode.trim().length < 4}>
-              {busy ? 'Joining…' : 'Join community'}
+              {busy ? t('community.join.joining') : t('community.join.joinCommunity')}
             </Button>
           </form>
         </CardContent>
       </Card>
 
       <p className="mt-4 max-w-lg text-sm text-text-secondary">
-        Don&rsquo;t have a code yet?{' '}
+        {t('community.join.noCodeYet')}{' '}
         <Link href="/community-registration" className="font-semibold text-primary-600 hover:underline">
-          Register your community
+          {t('community.join.registerYourCommunity')}
         </Link>
       </p>
     </CommunityPageFrame>

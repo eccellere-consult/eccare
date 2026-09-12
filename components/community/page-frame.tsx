@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
 /** Shared chrome for every community sub-page: back link, heading, and the
  *  loading / error / empty states so each page only writes its real content. */
@@ -25,6 +27,9 @@ export function CommunityPageFrame({
   emptyMessage?: string;
   children?: React.ReactNode;
 }) {
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
+
   return (
     <div>
       <Link
@@ -32,7 +37,7 @@ export function CommunityPageFrame({
         className="flex w-fit items-center gap-1.5 text-sm font-semibold text-text-secondary hover:text-primary-600"
       >
         <ArrowLeft className="h-4 w-4" />
-        Community
+        {t('shared.communityFrame.backToCommunity')}
       </Link>
 
       <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
@@ -45,7 +50,7 @@ export function CommunityPageFrame({
 
       <div className="mt-6">
         {loading ? (
-          <p className="text-text-secondary">Loading…</p>
+          <p className="text-text-secondary">{t('common.loading')}</p>
         ) : error ? (
           <Card>
             <CardContent className="py-8 text-center text-danger-600">{error}</CardContent>
@@ -53,7 +58,7 @@ export function CommunityPageFrame({
         ) : isEmpty ? (
           <Card>
             <CardContent className="py-12 text-center text-text-secondary">
-              {emptyMessage ?? 'Nothing here yet.'}
+              {emptyMessage ?? t('shared.communityFrame.nothingHereYet')}
             </CardContent>
           </Card>
         ) : (

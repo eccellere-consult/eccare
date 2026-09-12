@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CommunityPageFrame } from '@/components/community/page-frame';
 import { communityApi, useCommunityData } from '@/lib/community-client';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
 interface Helpline {
   id: string;
@@ -18,6 +20,8 @@ interface Helpline {
 interface Me { memberships: { role: string }[] }
 
 export default function HelplinesPage() {
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   const { data: me } = useCommunityData<Me>('/community/me');
   const { data, loading, error, reload } = useCommunityData<Helpline[]>('/community/helplines');
   const canPost = me?.memberships?.[0]?.role !== 'member';
@@ -41,7 +45,7 @@ export default function HelplinesPage() {
       setShowForm(false);
       reload();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Could not add helpline.');
+      setFormError(err instanceof Error ? err.message : t('community.helplines.couldNotAdd'));
     } finally {
       setBusy(false);
     }
@@ -49,17 +53,17 @@ export default function HelplinesPage() {
 
   return (
     <CommunityPageFrame
-      title="Helpline numbers"
-      subtitle="Tap any number to call straight away."
+      title={t('community.helplines.title')}
+      subtitle={t('community.helplines.subtitle')}
       action={
         canPost ? (
-          <Button onClick={() => setShowForm((s) => !s)}>{showForm ? 'Cancel' : 'Add helpline'}</Button>
+          <Button onClick={() => setShowForm((s) => !s)}>{showForm ? t('common.cancel') : t('community.helplines.addHelpline')}</Button>
         ) : undefined
       }
       loading={loading}
       error={error}
       isEmpty={!showForm && (data?.length ?? 0) === 0}
-      emptyMessage="Your committee hasn't added helpline numbers yet."
+      emptyMessage={t('community.helplines.noHelplines')}
     >
       <div className="flex flex-col gap-3">
         {showForm && (
@@ -67,20 +71,20 @@ export default function HelplinesPage() {
             <CardContent className="pt-6">
               <form onSubmit={create} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="helpline-label">Name</Label>
-                  <Input id="helpline-label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Security desk" />
+                  <Label htmlFor="helpline-label">{t('community.helplines.name')}</Label>
+                  <Input id="helpline-label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder={t('community.helplines.namePlaceholder')} />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="helpline-phone">Phone number</Label>
-                  <Input id="helpline-phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 98765 43210" />
+                  <Label htmlFor="helpline-phone">{t('community.helplines.phoneNumber')}</Label>
+                  <Input id="helpline-phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t('community.helplines.phonePlaceholder')} />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="helpline-category">Category (optional)</Label>
-                  <Input id="helpline-category" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Security, medical, fire…" />
+                  <Label htmlFor="helpline-category">{t('community.helplines.categoryOptional')}</Label>
+                  <Input id="helpline-category" value={category} onChange={(e) => setCategory(e.target.value)} placeholder={t('community.helplines.categoryPlaceholder')} />
                 </div>
                 {formError && <p className="text-sm text-danger-600">{formError}</p>}
                 <Button type="submit" disabled={busy || !label.trim() || !phone.trim()}>
-                  {busy ? 'Adding…' : 'Add helpline'}
+                  {busy ? t('community.helplines.adding') : t('community.helplines.addHelpline')}
                 </Button>
               </form>
             </CardContent>
@@ -100,7 +104,7 @@ export default function HelplinesPage() {
                   <span className="block text-lg font-bold text-text">{h.label}</span>
                   <span className="block text-text-secondary">{h.phone}</span>
                 </span>
-                <span className="rounded-xl bg-danger-600 px-4 py-2 font-semibold text-white">Call</span>
+                <span className="rounded-xl bg-danger-600 px-4 py-2 font-semibold text-white">{t('common.call')}</span>
               </CardContent>
             </Card>
           </a>
