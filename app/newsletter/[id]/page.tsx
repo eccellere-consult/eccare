@@ -12,11 +12,16 @@ interface NewsletterArticle {
   publishedAt: string;
 }
 
+// A logged-in visitor already gets full portal chrome from the server layout
+// (NewsletterLayout wraps them in AppShell) — the logo+"Sign in" header below
+// is only for the anonymous case. See app/newsletter/page.tsx for the same
+// pattern and the reasoning.
 export default function NewsletterArticlePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [article, setArticle] = useState<NewsletterArticle | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [shared, setShared] = useState(false);
+  const [loggedIn, setLoggedIn] = useState(false);
 
   useEffect(() => {
     fetch(`/api/v1/newsletters/${id}`)
@@ -24,6 +29,13 @@ export default function NewsletterArticlePage({ params }: { params: Promise<{ id
       .then((j) => { if (j.success) setArticle(j.data); else setNotFound(true); })
       .catch(() => setNotFound(true));
   }, [id]);
+
+  useEffect(() => {
+    fetch('/api/v1/auth/me', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((j) => setLoggedIn(Boolean(j.success)))
+      .catch(() => {});
+  }, []);
 
   async function share() {
     if (!article) return;
@@ -49,16 +61,18 @@ export default function NewsletterArticlePage({ params }: { params: Promise<{ id
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-surface">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-5">
-          <Link href="/" className="text-xl font-bold text-primary-600">
-            EC <span className="font-normal text-text-secondary">— Just Easy.</span>
-          </Link>
-          <Link href="/login" className="text-sm font-semibold text-text-secondary hover:text-primary-600">
-            Sign in
-          </Link>
-        </div>
-      </header>
+      {!loggedIn && (
+        <header className="border-b border-border bg-surface">
+          <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-5">
+            <Link href="/" className="text-xl font-bold text-primary-600">
+              EC <span className="font-normal text-text-secondary">— Just Easy.</span>
+            </Link>
+            <Link href="/login" className="text-sm font-semibold text-text-secondary hover:text-primary-600">
+              Sign in
+            </Link>
+          </div>
+        </header>
+      )}
 
       <main className="mx-auto max-w-3xl px-6 py-12">
         <Link href="/newsletter" className="flex w-fit items-center gap-1.5 text-sm font-semibold text-text-secondary hover:text-primary-600">

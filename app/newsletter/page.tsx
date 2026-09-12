@@ -13,29 +13,41 @@ interface NewsletterSummary {
 }
 
 /** Public archive — genuinely unauthenticated (see GET /api/v1/newsletters),
- *  browsable by anyone. */
+ *  browsable by anyone. A logged-in visitor already gets full portal chrome
+ *  from the server layout (NewsletterLayout wraps them in AppShell) — this
+ *  page's own logo+"Sign in" header is only for the anonymous case, so it
+ *  checks auth itself (page components don't receive layout's server-side
+ *  user as a prop) and skips its header when a session already exists,
+ *  rather than stacking a redundant "Sign in" link on top of the real nav. */
 export default function NewsletterArchivePage() {
   const [newsletters, setNewsletters] = useState<NewsletterSummary[] | null>(null);
+  const [loggedIn, setLoggedIn] = useState(false);
 
   useEffect(() => {
     fetch('/api/v1/newsletters')
       .then((r) => r.json())
       .then((j) => { if (j.success) setNewsletters(j.data); })
       .catch(() => {});
+    fetch('/api/v1/auth/me', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((j) => setLoggedIn(Boolean(j.success)))
+      .catch(() => {});
   }, []);
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-surface">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-5">
-          <Link href="/" className="text-xl font-bold text-primary-600">
-            EC <span className="font-normal text-text-secondary">— Just Easy.</span>
-          </Link>
-          <Link href="/login" className="text-sm font-semibold text-text-secondary hover:text-primary-600">
-            Sign in
-          </Link>
-        </div>
-      </header>
+      {!loggedIn && (
+        <header className="border-b border-border bg-surface">
+          <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-5">
+            <Link href="/" className="text-xl font-bold text-primary-600">
+              EC <span className="font-normal text-text-secondary">— Just Easy.</span>
+            </Link>
+            <Link href="/login" className="text-sm font-semibold text-text-secondary hover:text-primary-600">
+              Sign in
+            </Link>
+          </div>
+        </header>
+      )}
 
       <main className="mx-auto max-w-3xl px-6 py-12">
         <Link href="/" className="flex w-fit items-center gap-1.5 text-sm font-semibold text-text-secondary hover:text-primary-600">
