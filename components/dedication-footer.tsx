@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 /** Sits below the login/register card, never overlapping the primary
  *  Login/Sign-up actions above it — plain document flow, not fixed/sticky, so
  *  it can never cover a button on a short viewport. */
@@ -19,6 +21,13 @@ export function DedicationFooter() {
         <a href="mailto:care@eccare.in" className="underline hover:text-primary-600">care@eccare.in</a>
         {' '}or{' '}
         <a href="tel:9846098113" className="underline hover:text-primary-600">9846098113</a>
+      </p>
+      <p className="mt-3 text-[10px] text-text-secondary/70">
+        <Link href="/pricing" className="underline hover:text-primary-600">Plans</Link>
+        {' · '}
+        <Link href="/privacy" className="underline hover:text-primary-600">Privacy Policy</Link>
+        {' · '}
+        <Link href="/terms" className="underline hover:text-primary-600">Terms &amp; Conditions</Link>
       </p>
     </footer>
   );
