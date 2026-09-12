@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   Menu,
   X,
+  MapPin,
   LogOut,
   Home,
   Users,
@@ -86,6 +87,7 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
       { label: 'Overview', href: '/admin', icon: LayoutDashboard },
       { label: 'Users', href: '/admin/users', icon: Users },
       { label: 'Communities', href: '/admin/communities', icon: Building2 },
+      { label: 'Community Applications', href: '/admin/community-applications', icon: MapPin },
       { label: 'SOS Feed', href: '/admin/sos-feed', icon: AlertTriangle },
       { label: 'Backlog', href: '/admin/backlog', icon: Kanban },
       { label: 'Quotes', href: '/admin/quotes', icon: Sparkles },
