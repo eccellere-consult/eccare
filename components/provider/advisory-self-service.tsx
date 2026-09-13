@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { ProviderRatingSummaryDisplay } from '@/components/provider-rating-summary';
 
 interface Expert {
   id: string;
@@ -17,6 +18,7 @@ interface Expert {
   email: string | null;
   bio: string | null;
   isActive: boolean;
+  consultationFee: string | null;
 }
 interface Document {
   id: string;
@@ -26,11 +28,13 @@ interface Document {
 }
 interface Consultation {
   id: string;
-  status: 'submitted' | 'in_progress' | 'completed';
+  status: 'submitted' | 'in_progress' | 'completed' | 'closed';
   requirementDetails: Record<string, unknown>;
   notes: string | null;
+  paidAt: string | null;
   elderUser: { name: string; phone: string | null };
   documents: Document[];
+  rating: { stars: number; comment: string | null } | null;
 }
 
 const CATEGORY_LABEL: Record<Expert['category'], string> = {
@@ -42,6 +46,7 @@ const STATUS_VARIANT: Record<Consultation['status'], 'accent' | 'success' | 'mut
   submitted: 'accent',
   in_progress: 'accent',
   completed: 'success',
+  closed: 'success',
 };
 
 async function api(path: string, init?: RequestInit) {
@@ -71,6 +76,7 @@ export function AdvisorySelfService({ initial }: { initial: Expert | null }) {
     phone: initial?.phone ?? '',
     email: initial?.email ?? '',
     bio: initial?.bio ?? '',
+    consultationFee: initial?.consultationFee ?? '',
   });
   const [isActive, setIsActive] = useState(initial?.isActive ?? true);
   const [saving, setSaving] = useState(false);
@@ -113,6 +119,7 @@ export function AdvisorySelfService({ initial }: { initial: Expert | null }) {
           email: form.email.trim() || null,
           bio: form.bio.trim() || null,
           isActive,
+          consultationFee: form.consultationFee.trim() ? Number(form.consultationFee) : null,
         }),
       });
       setExpert(updated);
@@ -125,12 +132,19 @@ export function AdvisorySelfService({ initial }: { initial: Expert | null }) {
     }
   }
 
-  async function updateStatus(consultationId: string, status: Consultation['status']) {
-    await api(`/provider/advisory-expert/consultations/${consultationId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status }),
-    });
-    loadConsultations();
+  const [statusError, setStatusError] = useState('');
+
+  async function updateStatus(consultationId: string, status: 'in_progress' | 'completed') {
+    setStatusError('');
+    try {
+      await api(`/provider/advisory-expert/consultations/${consultationId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      });
+      loadConsultations();
+    } catch (err) {
+      setStatusError(err instanceof Error ? err.message : 'Could not update status.');
+    }
   }
 
   return (
@@ -160,6 +174,17 @@ export function AdvisorySelfService({ initial }: { initial: Expert | null }) {
             <div className="flex flex-col gap-1">
               <Label htmlFor="ae-email">Email</Label>
               <Input id="ae-email" type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="ae-fee">Consultation fee (₹, optional)</Label>
+              <Input
+                id="ae-fee"
+                type="number"
+                min="0"
+                value={form.consultationFee}
+                onChange={(e) => setForm((f) => ({ ...f, consultationFee: e.target.value }))}
+                placeholder="Leave blank to keep this free"
+              />
             </div>
             <div className="flex flex-col gap-1 sm:col-span-2">
               <Label htmlFor="ae-bio">Bio</Label>
@@ -191,7 +216,12 @@ export function AdvisorySelfService({ initial }: { initial: Expert | null }) {
               <CardContent className="pt-6">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <p className="font-bold text-text">{c.elderUser.name}{c.elderUser.phone ? ` · ${c.elderUser.phone}` : ''}</p>
-                  <Badge variant={STATUS_VARIANT[c.status]}>{c.status.replace('_', ' ')}</Badge>
+                  <div className="flex items-center gap-2">
+                    {expert.consultationFee != null && (
+                      <Badge variant={c.paidAt ? 'success' : 'muted'}>{c.paidAt ? 'Paid' : 'Unpaid'}</Badge>
+                    )}
+                    <Badge variant={STATUS_VARIANT[c.status]}>{c.status.replace('_', ' ')}</Badge>
+                  </div>
                 </div>
                 <pre className="mt-2 whitespace-pre-wrap rounded-lg bg-primary-50 p-2 text-xs text-text-secondary">
                   {JSON.stringify(c.requirementDetails, null, 2)}
@@ -212,18 +242,31 @@ export function AdvisorySelfService({ initial }: { initial: Expert | null }) {
                     ))}
                   </div>
                 )}
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {(['submitted', 'in_progress', 'completed'] as const).map((s) => (
-                    <button
-                      key={s}
-                      disabled={s === 'submitted'}
-                      onClick={() => updateStatus(c.id, s)}
-                      className={`rounded-xl border px-3 py-1.5 text-xs font-semibold capitalize disabled:cursor-not-allowed disabled:opacity-50 ${c.status === s ? 'border-primary-600 bg-primary-50 text-primary-900' : 'border-border text-text-secondary'}`}
-                    >
-                      {s.replace('_', ' ')}
-                    </button>
-                  ))}
-                </div>
+                {c.status !== 'closed' && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {(['in_progress', 'completed'] as const).map((s) => {
+                      const paymentBlocked = s === 'in_progress' && expert.consultationFee != null && !c.paidAt;
+                      return (
+                        <button
+                          key={s}
+                          disabled={paymentBlocked}
+                          title={paymentBlocked ? 'Awaiting customer payment' : undefined}
+                          onClick={() => updateStatus(c.id, s)}
+                          className={`rounded-xl border px-3 py-1.5 text-xs font-semibold capitalize disabled:cursor-not-allowed disabled:opacity-50 ${c.status === s ? 'border-primary-600 bg-primary-50 text-primary-900' : 'border-border text-text-secondary'}`}
+                        >
+                          {s.replace('_', ' ')}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                {c.status === 'closed' && c.rating && (
+                  <div className="mt-3">
+                    <ProviderRatingSummaryDisplay summary={{ average: c.rating.stars, count: 1 }} />
+                    {c.rating.comment && <p className="mt-1 text-sm text-text-secondary">{c.rating.comment}</p>}
+                  </div>
+                )}
+                {statusError && <p className="mt-2 text-sm text-danger-600">{statusError}</p>}
               </CardContent>
             </Card>
           ))}

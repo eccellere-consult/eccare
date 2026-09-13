@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Car, IndianRupee, Save } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,23 @@ interface Driver {
   isAvailable: boolean;
   neighborhood: { id: string; name: string };
 }
+interface Booking {
+  id: string;
+  status: 'pending_confirmation' | 'confirmed' | 'paid' | 'closed' | 'cancelled';
+  fareAmount: string;
+  pickupAddress: string;
+  dropAddress: string;
+  driver: { name: string; neighborhood: { name: string } };
+  elderUser: { name: string; phone: string | null };
+}
+
+const BOOKING_STATUS_VARIANT: Record<Booking['status'], 'accent' | 'success' | 'danger' | 'muted'> = {
+  pending_confirmation: 'accent',
+  confirmed: 'accent',
+  paid: 'success',
+  closed: 'success',
+  cancelled: 'muted',
+};
 
 async function api(path: string, init?: RequestInit) {
   const res = await fetch(`/api/v1${path}`, {
@@ -39,6 +56,18 @@ async function api(path: string, init?: RequestInit) {
  *  own category is auto_transport (see app/provider/page.tsx). */
 export function AutoDriverSelfService({ initial }: { initial: Driver[] }) {
   const [drivers, setDrivers] = useState(initial);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+
+  async function loadBookings() {
+    try {
+      setBookings(await api('/provider/auto-bookings'));
+    } catch {
+      /* leave empty — not critical if this fails to load */
+    }
+  }
+  useEffect(() => {
+    loadBookings();
+  }, []);
 
   return (
     <div className="mt-6 flex flex-col gap-4">
@@ -58,7 +87,64 @@ export function AutoDriverSelfService({ initial }: { initial: Driver[] }) {
           />
         ))
       )}
+
+      {bookings.length > 0 && (
+        <>
+          <h2 className="mt-4 text-lg font-bold text-text">Bookings</h2>
+          <div className="flex flex-col gap-3">
+            {bookings.map((b) => (
+              <BookingRow key={b.id} booking={b} onChanged={loadBookings} />
+            ))}
+          </div>
+        </>
+      )}
     </div>
+  );
+}
+
+function BookingRow({ booking, onChanged }: { booking: Booking; onChanged: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  async function act(action: 'confirm' | 'cancel') {
+    setBusy(true);
+    setError('');
+    try {
+      await api(`/provider/auto-bookings/${booking.id}`, { method: 'PATCH', body: JSON.stringify({ action }) });
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not update booking.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+        <div>
+          <p className="flex items-center gap-1.5 font-bold text-text">
+            <Car className="h-4 w-4 text-primary-600" />
+            {booking.elderUser.name}{booking.elderUser.phone ? ` · ${booking.elderUser.phone}` : ''}
+          </p>
+          <p className="text-sm text-text-secondary">
+            {booking.pickupAddress} → {booking.dropAddress} · {booking.driver.neighborhood.name}
+          </p>
+          <p className="text-sm text-text-secondary">₹{booking.fareAmount}</p>
+          <Badge variant={BOOKING_STATUS_VARIANT[booking.status]} className="mt-1">{booking.status.replace('_', ' ')}</Badge>
+          {error && <p className="mt-1 text-sm text-danger-600">{error}</p>}
+        </div>
+        {booking.status === 'pending_confirmation' && (
+          <div className="flex gap-2">
+            <Button size="sm" disabled={busy} onClick={() => act('confirm')}>Confirm</Button>
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => act('cancel')}>Cancel</Button>
+          </div>
+        )}
+        {booking.status === 'confirmed' && (
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => act('cancel')}>Cancel</Button>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

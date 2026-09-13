@@ -3,13 +3,24 @@ import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { getAuthUser } from '@/lib/auth';
 
-const schema = z.object({ status: z.enum(['confirmed', 'cancelled']) });
+const schema = z.object({ status: z.enum(['confirmed', 'delivered', 'cancelled']) });
 
 const fail = (code: string, message: string, status: number) =>
   NextResponse.json({ success: false, error: { code, message } }, { status });
 
-/** Provider marks an order confirmed (fulfilling it) or cancelled. Only valid on a
- *  `paid` order — nothing to confirm/cancel before payment actually went through. */
+// Only these two (status, current-status) pairs are legal — everything else
+// (skipping a step, moving backward, acting on an already-closed/cancelled
+// order) is rejected. `cancelled` is only reachable from `paid`, matching the
+// existing "nothing to cancel before payment went through" rule unchanged.
+const ALLOWED_TRANSITIONS: Record<string, 'paid' | 'confirmed'> = {
+  confirmed: 'paid',
+  cancelled: 'paid',
+  delivered: 'confirmed',
+};
+
+/** Provider moves a `paid` order to `confirmed` (accepted/fulfilling) or
+ *  `cancelled`, or a `confirmed` order to `delivered` (physical handoff
+ *  done) — `closed` is customer-only, see POST /api/v1/orders/[id]/close. */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await getAuthUser(req);
   if (!auth) return fail('UNAUTHORIZED', 'Please log in.', 401);
@@ -25,8 +36,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const order = await prisma.order.findUnique({ where: { id } });
   if (!order) return fail('NOT_FOUND', 'Order not found.', 404);
   if (order.providerId !== provider.id) return fail('FORBIDDEN', "You don't have access to this order.", 403);
-  if (order.status !== 'paid') {
-    return fail('INVALID_STATE', 'Only a paid order can be confirmed or cancelled.', 409);
+
+  const requiredCurrentStatus = ALLOWED_TRANSITIONS[parsed.data.status];
+  if (order.status !== requiredCurrentStatus) {
+    return fail('INVALID_STATE', `Only a ${requiredCurrentStatus} order can be moved to ${parsed.data.status}.`, 409);
   }
 
   const updated = await prisma.order.update({ where: { id }, data: { status: parsed.data.status } });

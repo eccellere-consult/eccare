@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { PROVIDER_CATEGORIES } from '@/lib/provider-categories';
+import { ShareLocationButton } from '@/components/share-location-button';
 
 type ElderCareCategory = 'home_treatment' | 'home_nursing' | 'companion_service' | 'local_errands' | 'other';
 const ELDER_CARE_CATEGORIES: { key: ElderCareCategory; label: string }[] = [
@@ -25,6 +26,10 @@ interface ServiceProvider {
   serviceArea: string | null;
   phone: string | null;
   address: string | null;
+  backupContactName: string | null;
+  backupContactPhone: string | null;
+  lat: string | null;
+  lng: string | null;
   certificationFileName: string | null;
   certificationFilePath: string | null;
   verificationStatus: 'pending' | 'verified' | 'rejected';
@@ -80,6 +85,10 @@ export function ProviderProfileClient({ initial }: { initial: ServiceProvider })
   const [serviceArea, setServiceArea] = useState(initial.serviceArea ?? '');
   const [phone, setPhone] = useState(initial.phone ?? '');
   const [address, setAddress] = useState(initial.address ?? '');
+  const [backupContactName, setBackupContactName] = useState(initial.backupContactName ?? '');
+  const [backupContactPhone, setBackupContactPhone] = useState(initial.backupContactPhone ?? '');
+  const [lat, setLat] = useState(initial.lat ?? '');
+  const [lng, setLng] = useState(initial.lng ?? '');
   const [elderCareCategory, setElderCareCategory] = useState<ElderCareCategory | ''>(initial.elderCareCategory ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -105,6 +114,10 @@ export function ProviderProfileClient({ initial }: { initial: ServiceProvider })
           serviceArea: serviceArea || undefined,
           phone: phone || undefined,
           address: address || undefined,
+          backupContactName: backupContactName || null,
+          backupContactPhone: backupContactPhone || null,
+          lat: lat ? Number(lat) : null,
+          lng: lng ? Number(lng) : null,
           elderCareCategory: elderCareCategory || null,
         }),
       });
@@ -246,6 +259,25 @@ export function ProviderProfileClient({ initial }: { initial: ServiceProvider })
             <div className="flex flex-col gap-2">
               <Label htmlFor="address">Address</Label>
               <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="backupContactName">Backup contact name (optional)</Label>
+                <Input
+                  id="backupContactName"
+                  value={backupContactName}
+                  onChange={(e) => setBackupContactName(e.target.value)}
+                  placeholder="Someone we can reach if you're unavailable"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="backupContactPhone">Backup contact phone (optional)</Label>
+                <Input id="backupContactPhone" value={backupContactPhone} onChange={(e) => setBackupContactPhone(e.target.value)} />
+              </div>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label>Business location (optional)</Label>
+              <ShareLocationButton lat={lat} onLocated={(newLat, newLng) => { setLat(newLat); setLng(newLng); }} onError={setError} />
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="elderCareCategory">Elder Care Services category (optional)</Label>

@@ -11,6 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { CommunityPageFrame } from '@/components/community/page-frame';
 import { communityApi, useCommunityData } from '@/lib/community-client';
 import { buildWaLink } from '@/lib/whatsapp';
+import { RatingInput } from '@/components/rating-input';
+import { ProviderRatingSummaryDisplay } from '@/components/provider-rating-summary';
 
 type VerificationStatus = 'pending' | 'verified' | 'rejected';
 interface Slot {
@@ -37,11 +39,12 @@ interface Doctor {
 }
 interface Booking {
   id: string;
-  status: 'pending_confirmation' | 'confirmed' | 'paid' | 'cancelled';
+  status: 'pending_confirmation' | 'confirmed' | 'paid' | 'closed' | 'cancelled';
   amount: string;
   razorpayOrderId: string | null;
   doctor: { name: string; specialty: string; phone: string; locality: string | null; clinicName: string | null; mapsLink: string | null };
   slot: { startsAt: string };
+  rating: { stars: number; comment: string | null } | null;
 }
 interface Me {
   memberships: { role: string }[];
@@ -77,12 +80,14 @@ const STATUS_LABEL: Record<Booking['status'], string> = {
   pending_confirmation: 'Waiting for clinic to confirm',
   confirmed: 'Confirmed — payment due',
   paid: 'Paid',
+  closed: 'Visit confirmed',
   cancelled: 'Cancelled',
 };
 const STATUS_VARIANT: Record<Booking['status'], 'accent' | 'success' | 'danger' | 'muted'> = {
   pending_confirmation: 'accent',
   confirmed: 'accent',
   paid: 'success',
+  closed: 'success',
   cancelled: 'muted',
 };
 const VERIFICATION_VARIANT: Record<VerificationStatus, 'accent' | 'success' | 'danger'> = {
@@ -130,6 +135,8 @@ export default function DoctorsPage() {
   const [payingId, setPayingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState('');
   const [askAuto, setAskAuto] = useState<Booking | null>(null);
+  const [ratingBookingId, setRatingBookingId] = useState<string | null>(null);
+  const [closingId, setClosingId] = useState<string | null>(null);
 
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const [photoDoctorId, setPhotoDoctorId] = useState<string | null>(null);
@@ -278,6 +285,27 @@ export default function DoctorsPage() {
       reloadBookings();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Could not update booking.');
+    }
+  }
+
+  async function closeBooking(id: string, stars: number, comment: string) {
+    setClosingId(id);
+    setActionError('');
+    try {
+      const res = await fetch(`/api/v1/community/doctor-bookings/${id}/close`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ stars, comment: comment.trim() || undefined }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Could not confirm the visit.');
+      setRatingBookingId(null);
+      reloadBookings();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not confirm the visit.');
+    } finally {
+      setClosingId(null);
     }
   }
 
@@ -577,37 +605,58 @@ export default function DoctorsPage() {
           {(!bookings || bookings.length === 0) ? (
             <Card><CardContent className="py-12 text-center text-text-secondary">No bookings yet.</CardContent></Card>
           ) : (
-            bookings.map((b) => (
-              <Card key={b.id}>
-                <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
-                  <div>
-                    <p className="font-bold text-text">{b.doctor.name} — {b.doctor.specialty}</p>
-                    <p className="text-sm text-text-secondary">{new Date(b.slot.startsAt).toLocaleString('en-IN')}</p>
-                    <p className="text-sm text-text-secondary">₹{b.amount}</p>
-                    <Badge variant={STATUS_VARIANT[b.status]} className="mt-1">{STATUS_LABEL[b.status]}</Badge>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {b.status === 'pending_confirmation' && (
-                      <>
-                        <Button size="sm" onClick={() => confirmBooking(b.id)}>Clinic confirmed — mark confirmed</Button>
-                        <Button size="sm" variant="outline" onClick={() => cancelBooking(b.id)}>Cancel</Button>
-                      </>
+            bookings.map((b) => {
+              const visitTimePassed = new Date(b.slot.startsAt) <= new Date();
+              return (
+                <Card key={b.id}>
+                  <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+                    <div>
+                      <p className="font-bold text-text">{b.doctor.name} — {b.doctor.specialty}</p>
+                      <p className="text-sm text-text-secondary">{new Date(b.slot.startsAt).toLocaleString('en-IN')}</p>
+                      <p className="text-sm text-text-secondary">₹{b.amount}</p>
+                      <Badge variant={STATUS_VARIANT[b.status]} className="mt-1">{STATUS_LABEL[b.status]}</Badge>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {b.status === 'pending_confirmation' && (
+                        <>
+                          <Button size="sm" onClick={() => confirmBooking(b.id)}>Clinic confirmed — mark confirmed</Button>
+                          <Button size="sm" variant="outline" onClick={() => cancelBooking(b.id)}>Cancel</Button>
+                        </>
+                      )}
+                      {b.status === 'confirmed' && (
+                        <>
+                          <Button size="sm" disabled={payingId === b.id} onClick={() => pay(b)}>{payingId === b.id ? 'Opening…' : `Pay ₹${b.amount}`}</Button>
+                          <Button size="sm" variant="outline" onClick={() => cancelBooking(b.id)}>Cancel</Button>
+                        </>
+                      )}
+                      {(b.status === 'confirmed' || b.status === 'paid') && (
+                        <Button size="sm" variant="outline" onClick={() => setAskAuto(b)}>
+                          <Car className="h-3.5 w-3.5" /> Need an auto?
+                        </Button>
+                      )}
+                      {b.status === 'paid' && visitTimePassed && ratingBookingId !== b.id && (
+                        <Button size="sm" onClick={() => setRatingBookingId(b.id)}>Confirm visit happened</Button>
+                      )}
+                    </div>
+                    {b.status === 'paid' && visitTimePassed && ratingBookingId === b.id && (
+                      <div className="w-full">
+                        <RatingInput
+                          busy={closingId === b.id}
+                          submitLabel="Confirm visit happened"
+                          onSubmit={(stars, comment) => closeBooking(b.id, stars, comment)}
+                        />
+                      </div>
                     )}
-                    {b.status === 'confirmed' && (
-                      <>
-                        <Button size="sm" disabled={payingId === b.id} onClick={() => pay(b)}>{payingId === b.id ? 'Opening…' : `Pay ₹${b.amount}`}</Button>
-                        <Button size="sm" variant="outline" onClick={() => cancelBooking(b.id)}>Cancel</Button>
-                      </>
+                    {b.status === 'closed' && b.rating && (
+                      <div className="w-full">
+                        <ProviderRatingSummaryDisplay summary={{ average: b.rating.stars, count: 1 }} />
+                        {b.rating.comment && <p className="mt-1 text-sm text-text-secondary">{b.rating.comment}</p>}
+                      </div>
                     )}
-                    {(b.status === 'confirmed' || b.status === 'paid') && (
-                      <Button size="sm" variant="outline" onClick={() => setAskAuto(b)}>
-                        <Car className="h-3.5 w-3.5" /> Need an auto?
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+                  </CardContent>
+                </Card>
+              );
+            })
           )}
         </div>
       )}
