@@ -11,6 +11,7 @@ export const CONFIRM_REQUIRED_ACTIONS = [
   'send_family_message',
   'book_appointment',
   'order_food',
+  'order_online',
   'set_reminder',
 ] as const;
 

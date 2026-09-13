@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db';
 import { sendPushToTokens } from '@/lib/fcm';
 import { type ConfirmRequiredAction } from '@/lib/voice-shared';
+import { buildSwiggySearchUrl, type SwiggyCategory } from '@/lib/swiggy';
 
 export { isConfirmRequiredAction } from '@/lib/voice-shared';
 
@@ -8,6 +9,9 @@ interface ExecuteResult {
   success: boolean;
   /** Spoken back to the elder — confirms what happened, or plainly explains why not. */
   message: string;
+  /** order_online only — the frontend opens this in a new tab/browser after
+   *  speaking `message`. Never present for any other action. */
+  redirectUrl?: string;
 }
 
 function str(data: Record<string, unknown> | undefined, key: string): string | undefined {
@@ -139,6 +143,27 @@ async function orderFood(userId: string, data: Record<string, unknown> | undefin
   return { success: true, message: `Done — I've asked your family to help with ${requestType}.` };
 }
 
+const SWIGGY_CATEGORIES: readonly SwiggyCategory[] = ['food', 'instamart'];
+
+/** Never places an order — only builds a Swiggy search link for the frontend to
+ *  open, pre-filled with what the elder asked for. See lib/swiggy.ts for why this
+ *  is a deep-link handoff and not real ordering automation. */
+async function orderOnline(data: Record<string, unknown> | undefined): Promise<ExecuteResult> {
+  const category = str(data, 'category');
+  const query = str(data, 'query');
+  if (!category || !SWIGGY_CATEGORIES.includes(category as SwiggyCategory) || !query) {
+    return { success: false, message: "I need to know what you'd like, and whether it's food or an item — could you say it again?" };
+  }
+
+  const redirectUrl = buildSwiggySearchUrl(category as SwiggyCategory, query);
+  const appName = category === 'instamart' ? 'Swiggy Instamart' : 'Swiggy';
+  return {
+    success: true,
+    message: `Opening ${appName} with "${query}" — pick what you'd like and pay there, cash on delivery is usually an option.`,
+    redirectUrl,
+  };
+}
+
 async function setReminder(userId: string, data: Record<string, unknown> | undefined): Promise<ExecuteResult> {
   const message = str(data, 'message');
   const remindAt = parseDateTime(data, 'remindAt');
@@ -173,6 +198,8 @@ export async function executeVoiceAction(
       return bookAppointment(userId, actionData);
     case 'order_food':
       return orderFood(userId, actionData);
+    case 'order_online':
+      return orderOnline(actionData);
     case 'set_reminder':
       return setReminder(userId, actionData);
   }

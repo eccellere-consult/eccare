@@ -170,10 +170,11 @@ export function VoiceAssistant() {
       // A logical "couldn't do it" (e.g. no matching family member) still comes
       // back here with success:true at the HTTP level and its own friendly
       // message — spoken the same as a real success, not treated as an error.
-      const { message } = json.data as { success: boolean; message: string };
+      const { message, redirectUrl } = json.data as { success: boolean; message: string; redirectUrl?: string };
       setReply(message);
       speak(message);
       setStatus('speaking');
+      if (redirectUrl) window.open(redirectUrl, '_blank', 'noopener,noreferrer');
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
       setStatus('error');
