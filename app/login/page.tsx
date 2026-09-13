@@ -14,6 +14,7 @@ import { HelpGuidesSection } from '@/components/help-guides-section';
 import { TourButton } from '@/components/tour/TourButton';
 import { DedicationFooter } from '@/components/dedication-footer';
 import { PROVIDER_CATEGORIES } from '@/lib/provider-categories';
+import { ShareLocationButton } from '@/components/share-location-button';
 import { SUPPORTED_LANGUAGES } from '@/lib/i18n/languages';
 import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
@@ -173,6 +174,10 @@ function CreateAccountForm({
   const [businessName, setBusinessName] = useState('');
   const [category, setCategory] = useState('');
   const [otherCategory, setOtherCategory] = useState('');
+  const [backupContactName, setBackupContactName] = useState('');
+  const [backupContactPhone, setBackupContactPhone] = useState('');
+  const [lat, setLat] = useState('');
+  const [lng, setLng] = useState('');
   const [isVolunteer, setIsVolunteer] = useState(false);
   const [availability, setAvailability] = useState<VolunteerAvailability | ''>('');
   const [assistanceTypes, setAssistanceTypes] = useState<AssistanceType[]>([]);
@@ -230,7 +235,15 @@ function CreateAccountForm({
           ...(email.trim() ? { email: email.trim() } : {}),
           password,
           role,
-          ...(role === 'provider' ? { businessName, category: resolvedCategory } : {}),
+          ...(role === 'provider'
+            ? {
+                businessName,
+                category: resolvedCategory,
+                ...(backupContactName.trim() ? { backupContactName: backupContactName.trim() } : {}),
+                ...(backupContactPhone.trim() ? { backupContactPhone: backupContactPhone.trim() } : {}),
+                ...(lat && lng ? { lat: Number(lat), lng: Number(lng) } : {}),
+              }
+            : {}),
           ...(role === 'caregiver' && isVolunteer
             ? { isVolunteer: true, volunteerAvailability: availability, volunteerAssistanceTypes: assistanceTypes }
             : {}),
@@ -435,6 +448,31 @@ function CreateAccountForm({
               />
             </div>
           )}
+          {/* Backup contact + geolocation — both optional, skippable here and
+              fillable later via the provider's own profile page. */}
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="reg-backup-name">{t('login.provider.backupContactName')}</Label>
+            <Input
+              id="reg-backup-name"
+              value={backupContactName}
+              onChange={(e) => setBackupContactName(e.target.value)}
+              placeholder={t('login.provider.backupContactNamePlaceholder')}
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="reg-backup-phone">{t('login.provider.backupContactPhone')}</Label>
+            <Input
+              id="reg-backup-phone"
+              type="tel"
+              value={backupContactPhone}
+              onChange={(e) => setBackupContactPhone(e.target.value)}
+              placeholder={t('login.provider.backupContactPhonePlaceholder')}
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label>{t('login.provider.businessLocation')}</Label>
+            <ShareLocationButton lat={lat} onLocated={(newLat, newLng) => { setLat(newLat); setLng(newLng); }} onError={setError} />
+          </div>
         </>
       )}
       {error && <p className="text-sm text-danger-600">{error}</p>}

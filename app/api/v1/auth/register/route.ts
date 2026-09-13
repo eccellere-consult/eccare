@@ -23,6 +23,12 @@ const schema = z
     role: z.enum(['elder', 'caregiver', 'provider']),
     businessName: z.string().min(1).max(160).optional(),
     category: z.string().min(1).max(80).optional(),
+    // Provider-only, all optional — collected here going forward, but
+    // skippable at signup and fillable later via PATCH /api/v1/provider/profile.
+    backupContactName: z.string().trim().max(100).optional(),
+    backupContactPhone: z.string().trim().max(20).optional(),
+    lat: z.number().optional(),
+    lng: z.number().optional(),
     // "Register as a Community Volunteer" — only meaningful for caregivers, since
     // volunteering is something a family member/neighbour does for other elders,
     // not something an elder registers to do for themselves.
@@ -72,7 +78,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { email, password, name, role, businessName, category, isVolunteer, volunteerAvailability, volunteerAssistanceTypes, billingCycle, language } = parsed.data;
+  const { email, password, name, role, businessName, category, backupContactName, backupContactPhone, lat, lng, isVolunteer, volunteerAvailability, volunteerAssistanceTypes, billingCycle, language } = parsed.data;
   const phone = normalizePhone(parsed.data.phone);
   const passwordHash = await hashPassword(password);
 
@@ -142,6 +148,10 @@ export async function POST(req: NextRequest) {
             userId: created.id,
             businessName: businessName!,
             category: category!,
+            backupContactName,
+            backupContactPhone,
+            lat,
+            lng,
             verificationStatus: 'pending',
           },
         });
