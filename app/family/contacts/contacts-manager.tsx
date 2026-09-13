@@ -31,7 +31,15 @@ const PRIORITY_LABEL: Record<NonNullable<Contact['priorityLevel']>, string> = {
 };
 const PRIORITY_OPTIONS = ['primary', 'secondary', 'backup'] as const;
 
-export function ContactsManager({ elderUserId, elderName }: { elderUserId: string; elderName: string }) {
+export function ContactsManager({
+  elderUserId,
+  elderName,
+  isSelf,
+}: {
+  elderUserId: string;
+  elderName: string;
+  isSelf?: boolean;
+}) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -155,7 +163,7 @@ export function ContactsManager({ elderUserId, elderName }: { elderUserId: strin
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-text">{elderName}'s contacts</h1>
+          <h1 className="text-2xl font-bold text-text">{isSelf ? 'Your contacts' : `${elderName}'s contacts`}</h1>
           <p className="mt-1 text-text-secondary">Notified automatically during an SOS alert.</p>
         </div>
         <div className="flex gap-2">
