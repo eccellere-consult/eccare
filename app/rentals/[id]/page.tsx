@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useCallback, use } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Home, Phone, MessageCircle, Upload, Accessibility } from 'lucide-react';
+import { ArrowLeft, Home, Phone, MessageCircle, Accessibility } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { PhotoUploadButtons } from '@/components/photo-upload-buttons';
 import { buildWaLink as waLink } from '@/lib/whatsapp';
 
 interface Listing {
@@ -176,10 +177,14 @@ export default function RentalDetailPage({ params }: { params: Promise<{ id: str
       </div>
 
       {isOwner && (
-        <label className="mt-2 flex w-fit cursor-pointer items-center gap-1.5 text-xs font-semibold text-primary-600 hover:underline">
-          <Upload className="h-3.5 w-3.5" /> {uploading ? 'Uploading…' : listing.imagePath ? 'Replace photo' : 'Add a photo'}
-          <input type="file" accept="image/jpeg,image/png" className="hidden" disabled={uploading} onChange={uploadPhoto} />
-        </label>
+        <div className="mt-2">
+          <PhotoUploadButtons
+            idPrefix={`rental-detail-${listing.id}`}
+            disabled={uploading}
+            busyLabel={uploading ? 'Uploading…' : undefined}
+            onFile={uploadPhoto}
+          />
+        </div>
       )}
 
       <h1 className="mt-4 text-2xl font-bold text-text">{listing.title}</h1>
