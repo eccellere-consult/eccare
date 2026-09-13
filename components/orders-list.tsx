@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { PackageCheck } from 'lucide-react';
+import { PackageCheck, RefreshCw } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { RatingInput } from '@/components/rating-input';
 import { ProviderRatingSummaryDisplay } from '@/components/provider-rating-summary';
+import { RecurringOrderSuggestions } from '@/components/recurring-order-suggestions';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
@@ -28,7 +29,7 @@ interface Order {
   totalAmount: string;
   createdAt: string;
   items: OrderItem[];
-  provider: { businessName: string };
+  provider: { businessName: string; category: string };
   rating: Rating | null;
 }
 
@@ -62,6 +63,8 @@ export function OrdersList({ elderUserId }: { elderUserId?: string }) {
   const [loading, setLoading] = useState(true);
   const [ratingOrderId, setRatingOrderId] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
+  const [reorderSetUpFor, setReorderSetUpFor] = useState<Set<string>>(new Set());
+  const [settingUpReorder, setSettingUpReorder] = useState<string | null>(null);
 
   function load() {
     setLoading(true);
@@ -96,21 +99,43 @@ export function OrdersList({ elderUserId }: { elderUserId?: string }) {
     }
   }
 
+  async function setUpReorder(orderId: string) {
+    setSettingUpReorder(orderId);
+    try {
+      const res = await fetch('/api/v1/orders/recurring-templates/from-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ orderId }),
+      });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setReorderSetUpFor((prev) => new Set(prev).add(orderId));
+      }
+    } finally {
+      setSettingUpReorder(null);
+    }
+  }
+
   if (loading) return <p className="text-text-secondary">{t('common.loading')}</p>;
 
   if (orders.length === 0) {
     return (
-      <Card>
-        <CardContent className="flex flex-col items-center gap-2 py-12 text-center text-text-secondary">
-          <PackageCheck className="h-8 w-8 text-primary-600" />
-          {t('elder.orders.noOrders')}
-        </CardContent>
-      </Card>
+      <>
+        <RecurringOrderSuggestions elderUserId={elderUserId} onApproved={load} />
+        <Card>
+          <CardContent className="flex flex-col items-center gap-2 py-12 text-center text-text-secondary">
+            <PackageCheck className="h-8 w-8 text-primary-600" />
+            {t('elder.orders.noOrders')}
+          </CardContent>
+        </Card>
+      </>
     );
   }
 
   return (
     <div className="flex flex-col gap-3">
+      <RecurringOrderSuggestions elderUserId={elderUserId} onApproved={load} />
       {orders.map((o) => (
         <Card key={o.id}>
           <CardContent className="pt-6">
@@ -146,6 +171,25 @@ export function OrdersList({ elderUserId }: { elderUserId?: string }) {
                 <ProviderRatingSummaryDisplay summary={{ average: o.rating.stars, count: 1 }} />
                 {o.rating.comment && <p className="mt-1 text-sm text-text-secondary">{o.rating.comment}</p>}
               </div>
+            )}
+
+            {o.provider.category === 'pharmacy' && (o.status === 'closed' || o.status === 'confirmed' || o.status === 'delivered') && (
+              reorderSetUpFor.has(o.id) ? (
+                <p className="mt-3 flex items-center gap-1.5 text-sm font-semibold text-success-600">
+                  <RefreshCw className="h-3.5 w-3.5" /> Monthly reorder set up
+                </p>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-3"
+                  disabled={settingUpReorder === o.id}
+                  onClick={() => setUpReorder(o.id)}
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  {settingUpReorder === o.id ? 'Setting up…' : 'Set up monthly reorder'}
+                </Button>
+              )
             )}
           </CardContent>
         </Card>

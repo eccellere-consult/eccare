@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
   // happened. It genuinely never was one.
   const orders = await prisma.order.findMany({
     where: { elderUserId, status: { in: ['paid', 'confirmed', 'delivered', 'closed', 'cancelled'] } },
-    include: { items: true, provider: { select: { businessName: true } }, rating: true },
+    include: { items: true, provider: { select: { businessName: true, category: true } }, rating: true },
     orderBy: { createdAt: 'desc' },
   });
 
