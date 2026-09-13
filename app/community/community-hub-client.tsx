@@ -173,9 +173,14 @@ export function CommunityHubClient() {
             {membership.flatNumber ? ` · ${membership.flatNumber}` : ''}
           </p>
         </div>
-        <span className="rounded-full bg-primary-50 px-3 py-1 text-sm font-semibold text-primary-900">
-          {t('community.hub.codePrefix').replace('{code}', membership.neighborhood.joinCode)}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="rounded-full bg-primary-50 px-3 py-1 text-sm font-semibold text-primary-900">
+            {t('community.hub.codePrefix').replace('{code}', membership.neighborhood.joinCode)}
+          </span>
+          <Link href="/community/settings" className="text-sm font-semibold text-danger-600 hover:underline">
+            {t('community.hub.leaveThisCommunity')}
+          </Link>
+        </div>
       </div>
 
       <Card className="mt-6 border-danger-100 bg-danger-50 p-5">

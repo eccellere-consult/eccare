@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { EmergencyContactPicker } from '@/components/emergency-contact-picker';
 
 interface Contact {
   id: string;
@@ -166,7 +167,8 @@ export function ContactsManager({
           <h1 className="text-2xl font-bold text-text">{isSelf ? 'Your contacts' : `${elderName}'s contacts`}</h1>
           <p className="mt-1 text-text-secondary">Notified automatically during an SOS alert.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <EmergencyContactPicker elderUserId={elderUserId} onAdded={load} />
           <Button variant="outline" onClick={() => setShowLinkForm((s) => !s)} disabled={linkedCount >= 3}>
             <Link2 className="h-5 w-5" />
             Link volunteer/family

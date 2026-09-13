@@ -1286,6 +1286,15 @@ model NeighborhoodMember {
   userId          String
   role            NeighborhoodRole @default(member)
   flatNumber      String?
+  // Which member of a shared flat/house gets billed for community fees — see
+  // FeeCharge generation, which issues one charge per flatNumber (not one per
+  // member row), to stop a household from being billed twice when e.g. both an
+  // elder and their caregiver are separately registered members of the same
+  // flat. Self-serve toggle (either side can set it — see
+  // /api/v1/community/members/[id]/billing-contact); setting one member's flag
+  // clears it on the rest of that flat in the same transaction, so at most one
+  // member per flat carries it at a time.
+  isBillingContact Boolean         @default(false)
   // Residents can stay in the community but keep themselves out of the public
   // directory — a privacy affordance both reference apps get wrong by default.
   showInDirectory Boolean          @default(true)
@@ -1561,7 +1570,11 @@ model AutoBooking {
   elderUserId       String
   bookedById        String
   pickupAddress     String            @db.Text
+  pickupLat         Decimal?          @db.Decimal(10, 7)
+  pickupLng         Decimal?          @db.Decimal(10, 7)
   dropAddress       String            @db.Text
+  dropLat           Decimal?          @db.Decimal(10, 7)
+  dropLng           Decimal?          @db.Decimal(10, 7)
   fareAmount        Decimal           @db.Decimal(10, 2)
   status            AutoBookingStatus @default(pending_confirmation)
   razorpayOrderId   String?           @unique

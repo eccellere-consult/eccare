@@ -10,7 +10,13 @@ const fail = (code: string, message: string, status: number) =>
  *  the committee's GET /api/v1/community/fees/[id]/charges (which sees everyone's
  *  bills). Same elderUserId/canAccessElder pattern as Order and every other
  *  elder-scoped resource — either the elder themself or a linked caregiver can
- *  view and pay. */
+ *  view and pay.
+ *
+ *  Also resolves the resident's household (same neighborhood + flatNumber) and
+ *  returns every housemate's charges too — read-only for whichever side isn't
+ *  the flat's designated billing contact, so a shared flat's bill is settled
+ *  once and simply visible (not payable) to the other party, per
+ *  NeighborhoodMember.isBillingContact. */
 export async function GET(req: NextRequest) {
   const auth = await getAuthUser(req);
   if (!auth) return fail('UNAUTHORIZED', 'Please log in.', 401);
@@ -20,14 +26,52 @@ export async function GET(req: NextRequest) {
     return fail('FORBIDDEN', "You don't have access to this resident's fees.", 403);
   }
 
+  const myMembership = await prisma.neighborhoodMember.findFirst({
+    where: { userId: elderUserId, flatNumber: { not: null } },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  let household: {
+    flatNumber: string;
+    myMembershipId: string;
+    payerUserId: string;
+    payerName: string;
+    isMePayer: boolean;
+    memberCount: number;
+  } | null = null;
+  let neighborhoodMemberIds: string[] = [];
+
+  if (myMembership) {
+    const siblings = await prisma.neighborhoodMember.findMany({
+      where: { neighborhoodId: myMembership.neighborhoodId, flatNumber: myMembership.flatNumber },
+      orderBy: { createdAt: 'asc' },
+      include: { user: { select: { name: true } } },
+    });
+    const payer = siblings.find((m) => m.isBillingContact) ?? siblings[0];
+    household = {
+      flatNumber: myMembership.flatNumber!,
+      myMembershipId: myMembership.id,
+      payerUserId: payer.userId,
+      payerName: payer.user.name,
+      isMePayer: payer.userId === elderUserId,
+      memberCount: siblings.length,
+    };
+    neighborhoodMemberIds = siblings.map((m) => m.id);
+  }
+
   const charges = await prisma.feeCharge.findMany({
-    where: { residentUserId: elderUserId },
+    where: neighborhoodMemberIds.length > 0
+      ? { OR: [{ residentUserId: elderUserId }, { neighborhoodMemberId: { in: neighborhoodMemberIds } }] }
+      : { residentUserId: elderUserId },
     include: {
       communityFee: { select: { label: true } },
       neighborhoodMember: { select: { flatNumber: true } },
+      resident: { select: { name: true } },
     },
     orderBy: [{ status: 'asc' }, { dueDate: 'asc' }],
   });
 
-  return NextResponse.json({ success: true, data: charges });
+  const data = charges.map((c) => ({ ...c, payable: c.residentUserId === elderUserId }));
+
+  return NextResponse.json({ success: true, data: { household, charges: data } });
 }

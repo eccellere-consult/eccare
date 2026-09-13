@@ -296,6 +296,13 @@ const kn: Record<TranslationKey, string> = {
   'shared.paymentsDue.couldNotStartRetry': 'ಪಾವತಿ ಪ್ರಾರಂಭಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
   'shared.paymentsDue.couldNotLoadScript': 'ಪಾವತಿ ಪುಟವನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ನಿಮ್ಮ ಸಂಪರ್ಕವನ್ನು ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
   'shared.paymentsDue.couldNotVerify': 'ಪಾವತಿಯನ್ನು ಪರಿಶೀಲಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸುವ ಮೊದಲು ದಯವಿಟ್ಟು ಬೆಂಬಲವನ್ನು ಸಂಪರ್ಕಿಸಿ.',
+  'shared.paymentsDue.householdIntro': 'ಮನೆ {flat}:',
+  'shared.paymentsDue.billedToMe': 'ಬಿಲ್‌ಗಳು ನಿಮಗೆ ಬರುತ್ತವೆ.',
+  'shared.paymentsDue.billedTo': 'ಬಿಲ್‌ಗಳು {name} ಅವರಿಗೆ ಹೋಗುತ್ತವೆ.',
+  'shared.paymentsDue.billThisToMe': 'ಇದನ್ನು ನನಗೆ ಬಿಲ್ ಮಾಡಿ',
+  'shared.paymentsDue.viewOnly': 'ವೀಕ್ಷಣೆ ಮಾತ್ರ',
+  'shared.paymentsDue.viewOnlyBilledTo': '{name} ಗೆ ಬಿಲ್ ಮಾಡಲಾಗಿದೆ',
+  'shared.paymentsDue.couldNotSetPayer': 'ಪಾವತಿದಾರರನ್ನು ಅಪ್‌ಡೇಟ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
 
   'shared.changePassword.title': 'ಪಾಸ್‌ವರ್ಡ್ ಬದಲಾಯಿಸಿ',
   'shared.changePassword.description': 'ಕನಿಷ್ಠ 8 ಅಕ್ಷರಗಳನ್ನು ಬಳಸಿ.',
@@ -361,6 +368,7 @@ const kn: Record<TranslationKey, string> = {
   'community.hub.joinIntro':
     'ನಿಮ್ಮ ನೆರೆಹೊರೆ ಇಲ್ಲಿ ಪ್ರಕಟಣೆಗಳು, ಕಾರ್ಯಕ್ರಮಗಳು, ವಿಶ್ವಾಸಾರ್ಹ ವೆಂಡರ್‌ಗಳು ಮತ್ತು ಹೆಲ್ಪ್‌ಲೈನ್ ಸಂಖ್ಯೆಗಳನ್ನು ಹಂಚಿಕೊಳ್ಳುತ್ತದೆ. ಕಮ್ಯುನಿಟಿ ಕೋಡ್‌ಗಾಗಿ ನಿಮ್ಮ ನಿರ್ವಹಣಾ ಸಮಿತಿಯನ್ನು ಕೇಳಿ.',
   'community.hub.enterCommunityCode': 'ಕಮ್ಯುನಿಟಿ ಕೋಡ್ ನಮೂದಿಸಿ',
+  'community.hub.leaveThisCommunity': 'ಈ ಕಮ್ಯುನಿಟಿಯನ್ನು ಬಿಡಿ',
   'community.hub.pendingApprovalTitle': 'ಅನುಮೋದನೆಗಾಗಿ ಕಾಯಲಾಗುತ್ತಿದೆ',
   'community.hub.pendingApprovalBody': '{name} ಗೆ ಸೇರಲು ನಿಮ್ಮ ವಿನಂತಿಯು ಸಮಿತಿ ಸದಸ್ಯರ ಅನುಮೋದನೆಗಾಗಿ ಕಾಯುತ್ತಿದೆ.',
   'community.hub.resident': 'ನಿವಾಸಿ',

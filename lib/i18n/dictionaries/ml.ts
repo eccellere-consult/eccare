@@ -296,6 +296,13 @@ const ml: Record<TranslationKey, string> = {
   'shared.paymentsDue.couldNotStartRetry': 'പേയ്‌മെന്റ് ആരംഭിക്കാൻ കഴിഞ്ഞില്ല. ദയവായി വീണ്ടും ശ്രമിക്കുക.',
   'shared.paymentsDue.couldNotLoadScript': 'പേയ്‌മെന്റ് പേജ് ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല. ദയവായി നിങ്ങളുടെ കണക്ഷൻ പരിശോധിച്ച് വീണ്ടും ശ്രമിക്കുക.',
   'shared.paymentsDue.couldNotVerify': 'പേയ്‌മെന്റ് സ്ഥിരീകരിക്കാൻ കഴിഞ്ഞില്ല. വീണ്ടും ശ്രമിക്കുന്നതിന് മുമ്പ് ദയവായി പിന്തുണയുമായി ബന്ധപ്പെടുക.',
+  'shared.paymentsDue.householdIntro': 'വീട് {flat}:',
+  'shared.paymentsDue.billedToMe': 'ബില്ലുകൾ നിങ്ങൾക്ക് വരും.',
+  'shared.paymentsDue.billedTo': 'ബില്ലുകൾ {name}-ന് പോകുന്നു.',
+  'shared.paymentsDue.billThisToMe': 'ഇത് എനിക്ക് ബിൽ ചെയ്യുക',
+  'shared.paymentsDue.viewOnly': 'കാണാൻ മാത്രം',
+  'shared.paymentsDue.viewOnlyBilledTo': '{name}-ന് ബിൽ ചെയ്തു',
+  'shared.paymentsDue.couldNotSetPayer': 'പണമടയ്ക്കുന്നയാളെ അപ്ഡേറ്റ് ചെയ്യാൻ കഴിഞ്ഞില്ല. വീണ്ടും ശ്രമിക്കുക.',
 
   'shared.changePassword.title': 'പാസ്‌വേഡ് മാറ്റുക',
   'shared.changePassword.description': 'കുറഞ്ഞത് 8 അക്ഷരങ്ങൾ ഉപയോഗിക്കുക.',
@@ -361,6 +368,7 @@ const ml: Record<TranslationKey, string> = {
   'community.hub.joinIntro':
     'നിങ്ങളുടെ അയൽപക്കം ഇവിടെ അറിയിപ്പുകൾ, പരിപാടികൾ, വിശ്വസനീയമായ വെണ്ടർമാർ, ഹെൽപ്പ്‌ലൈൻ നമ്പറുകൾ എന്നിവ പങ്കിടുന്നു. കമ്മ്യൂണിറ്റി കോഡിനായി നിങ്ങളുടെ മാനേജ്മെന്റ് കമ്മിറ്റിയോട് ചോദിക്കുക.',
   'community.hub.enterCommunityCode': 'കമ്മ്യൂണിറ്റി കോഡ് നൽകുക',
+  'community.hub.leaveThisCommunity': 'ഈ കമ്മ്യൂണിറ്റി വിടുക',
   'community.hub.pendingApprovalTitle': 'അംഗീകാരത്തിനായി കാത്തിരിക്കുന്നു',
   'community.hub.pendingApprovalBody': '{name} ൽ ചേരാനുള്ള നിങ്ങളുടെ അഭ്യർത്ഥന ഒരു കമ്മിറ്റി അംഗത്തിന്റെ അംഗീകാരത്തിനായി കാത്തിരിക്കുന്നു.',
   'community.hub.resident': 'താമസക്കാരൻ',

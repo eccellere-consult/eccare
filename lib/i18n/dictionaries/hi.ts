@@ -296,6 +296,13 @@ const hi: Record<TranslationKey, string> = {
   'shared.paymentsDue.couldNotStartRetry': 'भुगतान शुरू नहीं हो सका। कृपया फिर से प्रयास करें।',
   'shared.paymentsDue.couldNotLoadScript': 'भुगतान पेज लोड नहीं हो सका। कृपया अपना कनेक्शन जांचें और फिर से प्रयास करें।',
   'shared.paymentsDue.couldNotVerify': 'भुगतान सत्यापित नहीं हो सका। फिर से प्रयास करने से पहले कृपया सहायता से संपर्क करें।',
+  'shared.paymentsDue.householdIntro': 'घर {flat}:',
+  'shared.paymentsDue.billedToMe': 'बिल आपके पास आते हैं।',
+  'shared.paymentsDue.billedTo': 'बिल {name} के पास जाते हैं।',
+  'shared.paymentsDue.billThisToMe': 'इसे मेरे नाम बिल करें',
+  'shared.paymentsDue.viewOnly': 'केवल देखने के लिए',
+  'shared.paymentsDue.viewOnlyBilledTo': '{name} को बिल किया गया',
+  'shared.paymentsDue.couldNotSetPayer': 'भुगतानकर्ता अपडेट नहीं हो सका। कृपया फिर से प्रयास करें।',
 
   'shared.changePassword.title': 'पासवर्ड बदलें',
   'shared.changePassword.description': 'कम से कम 8 अक्षर का उपयोग करें।',
@@ -361,6 +368,7 @@ const hi: Record<TranslationKey, string> = {
   'community.hub.joinIntro':
     'आपका पड़ोस यहां घोषणाएं, कार्यक्रम, विश्वसनीय विक्रेता और हेल्पलाइन नंबर साझा करता है। कम्युनिटी कोड के लिए अपनी प्रबंधन समिति से पूछें।',
   'community.hub.enterCommunityCode': 'कम्युनिटी कोड दर्ज करें',
+  'community.hub.leaveThisCommunity': 'यह कम्युनिटी छोड़ें',
   'community.hub.pendingApprovalTitle': 'स्वीकृति की प्रतीक्षा में',
   'community.hub.pendingApprovalBody': '{name} में शामिल होने का आपका अनुरोध एक समिति सदस्य की स्वीकृति की प्रतीक्षा कर रहा है।',
   'community.hub.resident': 'निवासी',

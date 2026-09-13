@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { EmergencyContactPicker } from '@/components/emergency-contact-picker';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
@@ -61,6 +62,12 @@ export function ElderContactsClient({ initialContacts }: { initialContacts: Cont
     setContacts((prev) => prev.filter((c) => c.id !== id));
   }
 
+  async function reload() {
+    const res = await fetch('/api/v1/emergency/contacts', { credentials: 'include' });
+    const json = await res.json();
+    if (json.success) setContacts(json.data);
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between">
@@ -68,10 +75,13 @@ export function ElderContactsClient({ initialContacts }: { initialContacts: Cont
           <h1 className="text-2xl font-bold text-text">{t('elder.contacts.yourFamily')}</h1>
           <p className="mt-1 text-text-secondary">{t('elder.contacts.tapToCall')}</p>
         </div>
-        <Button onClick={() => setShowForm((s) => !s)} size="lg">
-          <UserPlus className="h-5 w-5" />
-          {t('elder.contacts.add')}
-        </Button>
+        <div className="flex gap-2">
+          <EmergencyContactPicker onAdded={reload} />
+          <Button onClick={() => setShowForm((s) => !s)} size="lg">
+            <UserPlus className="h-5 w-5" />
+            {t('elder.contacts.add')}
+          </Button>
+        </div>
       </div>
 
       {showForm && (

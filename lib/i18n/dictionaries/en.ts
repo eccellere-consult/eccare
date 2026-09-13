@@ -308,6 +308,13 @@ const en = {
   'shared.paymentsDue.couldNotStartRetry': 'Could not start payment. Please try again.',
   'shared.paymentsDue.couldNotLoadScript': 'Could not load the payment page. Please check your connection and try again.',
   'shared.paymentsDue.couldNotVerify': 'Payment could not be verified. Please contact support before trying again.',
+  'shared.paymentsDue.householdIntro': 'House {flat}:',
+  'shared.paymentsDue.billedToMe': 'bills come to you.',
+  'shared.paymentsDue.billedTo': 'bills go to {name}.',
+  'shared.paymentsDue.billThisToMe': 'Bill this to me instead',
+  'shared.paymentsDue.viewOnly': 'View only',
+  'shared.paymentsDue.viewOnlyBilledTo': 'billed to {name}',
+  'shared.paymentsDue.couldNotSetPayer': 'Could not update who pays. Please try again.',
 
   'shared.changePassword.title': 'Change password',
   'shared.changePassword.description': 'Use at least 8 characters.',
@@ -379,6 +386,7 @@ const en = {
   'community.hub.joinIntro':
     "Your neighbourhood shares announcements, events, trusted vendors and helpline numbers here. Ask your management committee for the community code.",
   'community.hub.enterCommunityCode': 'Enter community code',
+  'community.hub.leaveThisCommunity': 'Leave this community',
   'community.hub.pendingApprovalTitle': 'Awaiting approval',
   'community.hub.pendingApprovalBody': 'Your request to join {name} is waiting for a committee member to approve it.',
   'community.hub.resident': 'Resident',
