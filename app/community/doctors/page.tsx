@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { CommunityPageFrame } from '@/components/community/page-frame';
 import { communityApi, useCommunityData } from '@/lib/community-client';
 import { buildWaLink } from '@/lib/whatsapp';
+import { renderTemplate, getTemplateDef } from '@/lib/whatsapp-templates-shared';
 import { RatingInput } from '@/components/rating-input';
 import { ProviderRatingSummaryDisplay } from '@/components/provider-rating-summary';
 
@@ -116,6 +117,7 @@ export default function DoctorsPage() {
   const { data: me } = useCommunityData<Me>('/community/me');
   const { data: account } = useCommunityData<Account>('/auth/me');
   const { data: familyMembers } = useCommunityData<LinkedElder[]>('/family/members');
+  const { data: messageTemplates } = useCommunityData<Record<string, string>>('/whatsapp-templates');
   const canManage = me?.memberships?.[0]?.role !== 'member';
   const acceptedElders = (familyMembers ?? []).filter((m) => m.inviteStatus === 'accepted');
   const isCaregiver = account?.role === 'caregiver';
@@ -245,13 +247,12 @@ export default function DoctorsPage() {
       const booking = await communityApi.post<Booking>('/community/doctor-bookings', { slotId: slot.id, elderUserId });
       // Notify the clinic — same wa.me handoff as Auto Booking, since the clinic
       // has no login to receive an in-app request.
-      const message = [
-        'Hello, I would like to confirm an appointment booked through EC.',
-        `Patient: ${me?.name ?? ''}`,
-        `Requested time: ${new Date(slot.startsAt).toLocaleString('en-IN')}`,
-        `Consultation fee: ₹${doctor.consultationFee}`,
-        'Please call or reply to confirm this slot. Thank you!',
-      ].join('\n');
+      const templateBody = messageTemplates?.doctor_booking_confirm ?? getTemplateDef('doctor_booking_confirm').defaultBody;
+      const message = renderTemplate(templateBody, {
+        patient: me?.name ?? '',
+        time: new Date(slot.startsAt).toLocaleString('en-IN'),
+        fee: doctor.consultationFee,
+      });
       window.open(buildWaLink(doctor.phone, message), '_blank');
       reload();
       reloadBookings();
