@@ -1,9 +1,16 @@
-import { AlertTriangle, MapPin } from 'lucide-react';
+import { AlertTriangle, MapPin, ExternalLink } from 'lucide-react';
 import { prisma } from '@/lib/db';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
 export const dynamic = 'force-dynamic';
+
+const TRIGGER_LABEL: Record<string, string> = {
+  manual: 'Manual SOS',
+  ambulance: 'Ambulance called',
+  police: 'Police called',
+  community_panic: 'Community panic alert',
+};
 
 export default async function AdminSosFeedPage() {
   const events = await prisma.sOSEvent.findMany({
@@ -32,13 +39,19 @@ export default async function AdminSosFeedPage() {
                 <div className="flex-1">
                   <p className="font-semibold text-text">{event.user.name}</p>
                   <p className="text-sm text-text-secondary">
-                    {event.user.phone} &middot; {event.createdAt.toLocaleString()}
+                    {event.user.phone} &middot; {TRIGGER_LABEL[event.triggerType] ?? event.triggerType} &middot; {event.createdAt.toLocaleString()}
                   </p>
                   {event.lat && event.lng && (
-                    <p className="mt-1 flex items-center gap-1 text-sm text-text-secondary">
+                    <a
+                      href={`https://www.google.com/maps?q=${event.lat.toFixed(6)},${event.lng.toFixed(6)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 flex items-center gap-1 text-sm text-primary-600 hover:underline"
+                    >
                       <MapPin className="h-3.5 w-3.5" />
-                      {event.lat.toFixed(5)}, {event.lng.toFixed(5)}
-                    </p>
+                      View location on map
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
                   )}
                 </div>
                 <Badge variant={event.status === 'resolved' ? 'success' : 'danger'}>{event.status}</Badge>

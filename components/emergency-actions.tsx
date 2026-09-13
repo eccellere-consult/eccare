@@ -76,10 +76,27 @@ export function EmergencyActions() {
     }
   }
 
+  /** Logs an SOSEvent (same route the "I need help" button uses, just a
+   *  different triggerType) so an ambulance/police dial shows up in the
+   *  elder's and family's SOS history with a map link and pushes a
+   *  notification to caregivers — previously only the manual SOS button did
+   *  this, so calling 108/100 directly left family with no idea it happened.
+   *  Deliberately fire-and-forget, never awaited before dialing: the phone
+   *  call itself is the priority action and must not wait on a network
+   *  request or a slow GPS fix. */
+  function logEmergencyDial(triggerType: 'ambulance' | 'police', lat?: number, lng?: number) {
+    fetch('/api/v1/emergency/sos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ triggerType, lat, lng }),
+    }).catch(() => {});
+  }
+
   function handleAmbulance() {
-    if (confirm(t('elder.home.confirmAmbulance').replace('{number}', AMBULANCE_NUMBER))) {
-      window.location.href = `tel:${AMBULANCE_NUMBER}`;
-    }
+    if (!confirm(t('elder.home.confirmAmbulance').replace('{number}', AMBULANCE_NUMBER))) return;
+    window.location.href = `tel:${AMBULANCE_NUMBER}`;
+    getLocation().then(({ lat, lng }) => logEmergencyDial('ambulance', lat, lng));
   }
 
   /** Dials the police helpline and, when a primary emergency contact with a phone
@@ -87,15 +104,17 @@ export function EmergencyActions() {
    *  location to that contact — same wa.me share-intent pattern as
    *  app/admin/invite/page.tsx, a one-tap "Send" the caller does themselves.
    *  Skips the WhatsApp step gracefully when no contact has a phone on file. */
-  async function handlePolice() {
+  function handlePolice() {
     if (!confirm(t('elder.home.confirmPolice').replace('{number}', POLICE_NUMBER))) return;
-    if (primaryContact?.phone) {
-      const { lat, lng } = await getLocation();
-      const locationLine = lat != null && lng != null ? ` My location: https://www.google.com/maps?q=${lat},${lng}` : '';
-      const message = `This is an emergency, I need help.${locationLine}`;
-      window.open(buildWaLink(primaryContact.phone, message), '_blank');
-    }
     window.location.href = `tel:${POLICE_NUMBER}`;
+    getLocation().then(({ lat, lng }) => {
+      logEmergencyDial('police', lat, lng);
+      if (primaryContact?.phone) {
+        const locationLine = lat != null && lng != null ? ` My location: https://www.google.com/maps?q=${lat},${lng}` : '';
+        const message = `This is an emergency, I need help.${locationLine}`;
+        window.open(buildWaLink(primaryContact.phone, message), '_blank');
+      }
+    });
   }
 
   return (
