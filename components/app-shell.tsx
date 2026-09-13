@@ -77,7 +77,6 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
       { label: 'Health', href: '/family/health', icon: HeartPulse },
       { label: 'Contacts', href: '/family/contacts', icon: Users },
       { label: 'Community', href: '/community', icon: Building2 },
-      { label: "Elder's Community", href: '/family/community', icon: Building2 },
       { label: 'Services', href: '/services', icon: Sparkles },
       { label: 'Orders', href: '/family/orders', icon: PackageCheck },
       { label: 'Payments', href: '/family/payments', icon: IndianRupee },

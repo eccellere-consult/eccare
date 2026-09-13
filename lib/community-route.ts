@@ -36,6 +36,12 @@ export async function requireMembership(
     (await getPrimaryNeighborhoodId(auth.userId));
 
   if (!neighborhoodId) {
+    // getPrimaryNeighborhoodId only considers approved rows — a caller whose only
+    // membership is still pending would otherwise get the generic "haven't joined"
+    // message, which reads as if their request vanished rather than being in review.
+    if (auth.role !== 'admin' && (await prisma.neighborhoodMember.findFirst({ where: { userId: auth.userId, status: 'pending' }, select: { id: true } }))) {
+      return fail('PENDING_APPROVAL', 'Your request to join is awaiting approval.', 403);
+    }
     return fail('NO_COMMUNITY', "You haven't joined a community yet.", 404);
   }
 
@@ -52,6 +58,17 @@ export async function requireMembership(
     membership = await getMembership(auth.userId, neighborhoodId);
   }
   if (!membership) {
+    // Distinguish "never joined" from "joined, still waiting on approval" — same
+    // reasoning as the NO_COMMUNITY branch above, just for an explicitly-named
+    // neighbourhood rather than the caller's primary one.
+    if (auth.role !== 'admin') {
+      const raw = await prisma.neighborhoodMember.findUnique({
+        where: { neighborhoodId_userId: { neighborhoodId, userId: auth.userId } },
+        select: { status: true },
+      });
+      if (raw?.status === 'pending') return fail('PENDING_APPROVAL', 'Your request to join is awaiting approval.', 403);
+      if (raw?.status === 'rejected') return fail('REJECTED', 'Your request to join this community was not approved.', 403);
+    }
     return fail('NOT_A_MEMBER', 'You are not a member of this community.', 403);
   }
 

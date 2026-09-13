@@ -132,6 +132,7 @@ const kn: Record<TranslationKey, string> = {
   'elder.profile.pincode': 'ಪಿನ್‌ಕೋಡ್',
   'elder.profile.saving': 'ಉಳಿಸಲಾಗುತ್ತಿದೆ...',
   'elder.profile.saveChanges': 'ಬದಲಾವಣೆಗಳನ್ನು ಉಳಿಸಿ',
+  'elder.profile.mySosHistory': 'ನನ್ನ SOS ಇತಿಹಾಸ',
   'elder.profile.saved': 'ಉಳಿಸಲಾಗಿದೆ.',
   'elder.profile.couldNotSave': 'ಬದಲಾವಣೆಗಳನ್ನು ಉಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.',
 
@@ -200,6 +201,7 @@ const kn: Record<TranslationKey, string> = {
   'login.alreadyHaveAccount': 'ಈಗಾಗಲೇ ಖಾತೆ ಇದೆಯೇ? ಸೈನ್ ಇನ್ ಮಾಡಿ',
 
   'shared.contactForm.pickFromContacts': 'ಫೋನ್ ಸಂಪರ್ಕಗಳಿಂದ ಆಯ್ಕೆಮಾಡಿ',
+  'shared.contactForm.pickMultipleFromContacts': 'ಫೋನ್‌ನಿಂದ ಹಲವಾರು ಸಂಪರ್ಕಗಳನ್ನು ಆಮದು ಮಾಡಿ',
   'shared.contactForm.name': 'ಹೆಸರು',
   'shared.contactForm.namePlaceholder': 'ರಮೇಶ್',
   'shared.contactForm.phoneNumber': 'ಫೋನ್ ಸಂಖ್ಯೆ',
@@ -236,6 +238,11 @@ const kn: Record<TranslationKey, string> = {
   'shared.contactForm.adding': 'ಸೇರಿಸಲಾಗುತ್ತಿದೆ…',
   'shared.contactForm.addContact': 'ಸಂಪರ್ಕ ಸೇರಿಸಿ',
   'shared.contactForm.cancel': 'ರದ್ದುಮಾಡಿ',
+  'shared.contactForm.reviewImported': '{count} ಆಮದು ಮಾಡಿದ ಸಂಪರ್ಕಗಳನ್ನು ಪರಿಶೀಲಿಸಿ',
+  'shared.contactForm.removeFromImport': 'ಆಮದಿನಿಂದ ತೆಗೆದುಹಾಕಿ',
+  'shared.contactForm.addNContacts': '{count} ಸಂಪರ್ಕಗಳನ್ನು ಸೇರಿಸಿ',
+  'shared.contactForm.importSummary': '{total} ರಲ್ಲಿ {added} ಸೇರಿಸಲಾಗಿದೆ.',
+  'shared.contactForm.done': 'ಮುಗಿದಿದೆ',
 
   'shared.contactList.loading': 'ಲೋಡ್ ಆಗುತ್ತಿದೆ…',
   'shared.contactList.noContacts': 'ಇನ್ನೂ ಯಾವುದೇ ಸಂಪರ್ಕವನ್ನು ಸೇರಿಸಿಲ್ಲ.',
@@ -307,6 +314,10 @@ const kn: Record<TranslationKey, string> = {
     '{name} ಅವರನ್ನು ಈ ಕಮ್ಯುನಿಟಿಯಿಂದ ತೆಗೆದುಹಾಕುವುದೇ? ಅವರು ಜಾಯಿನ್ ಕೋಡ್‌ನೊಂದಿಗೆ ಮತ್ತೆ ಸೇರಬೇಕಾಗುತ್ತದೆ.',
   'shared.communityMembers.couldNotUpdateRole': 'ಪಾತ್ರವನ್ನು ಅಪ್‌ಡೇಟ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.',
   'shared.communityMembers.couldNotRemove': 'ಸದಸ್ಯರನ್ನು ತೆಗೆದುಹಾಕಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.',
+  'shared.communityMembers.pendingRequests': 'ಬಾಕಿ ಇರುವ ವಿನಂತಿಗಳು',
+  'shared.communityMembers.approve': 'ಅನುಮೋದಿಸಿ',
+  'shared.communityMembers.reject': 'ತಿರಸ್ಕರಿಸಿ',
+  'shared.communityMembers.couldNotDecideRequest': 'ಈ ವಿನಂತಿಯನ್ನು ನವೀಕರಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.',
   'shared.communityMembers.role.member': 'ಸದಸ್ಯ',
   'shared.communityMembers.role.committee': 'ಸಮಿತಿ',
   'shared.communityMembers.role.admin': 'ಅಡ್ಮಿನ್',
@@ -342,6 +353,8 @@ const kn: Record<TranslationKey, string> = {
   'community.hub.joinIntro':
     'ನಿಮ್ಮ ನೆರೆಹೊರೆ ಇಲ್ಲಿ ಪ್ರಕಟಣೆಗಳು, ಕಾರ್ಯಕ್ರಮಗಳು, ವಿಶ್ವಾಸಾರ್ಹ ವೆಂಡರ್‌ಗಳು ಮತ್ತು ಹೆಲ್ಪ್‌ಲೈನ್ ಸಂಖ್ಯೆಗಳನ್ನು ಹಂಚಿಕೊಳ್ಳುತ್ತದೆ. ಕಮ್ಯುನಿಟಿ ಕೋಡ್‌ಗಾಗಿ ನಿಮ್ಮ ನಿರ್ವಹಣಾ ಸಮಿತಿಯನ್ನು ಕೇಳಿ.',
   'community.hub.enterCommunityCode': 'ಕಮ್ಯುನಿಟಿ ಕೋಡ್ ನಮೂದಿಸಿ',
+  'community.hub.pendingApprovalTitle': 'ಅನುಮೋದನೆಗಾಗಿ ಕಾಯಲಾಗುತ್ತಿದೆ',
+  'community.hub.pendingApprovalBody': '{name} ಗೆ ಸೇರಲು ನಿಮ್ಮ ವಿನಂತಿಯು ಸಮಿತಿ ಸದಸ್ಯರ ಅನುಮೋದನೆಗಾಗಿ ಕಾಯುತ್ತಿದೆ.',
   'community.hub.resident': 'ನಿವಾಸಿ',
   'community.hub.managementCommittee': 'ನಿರ್ವಹಣಾ ಸಮಿತಿ',
   'community.hub.codePrefix': 'ಕೋಡ್: {code}',
@@ -403,6 +416,7 @@ const kn: Record<TranslationKey, string> = {
   'community.join.joining': 'ಸೇರುತ್ತಿದ್ದಾರೆ…',
   'community.join.joinCommunity': 'ಕಮ್ಯುನಿಟಿಗೆ ಸೇರಿ',
   'community.join.couldNotJoin': 'ಸೇರಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.',
+  'community.join.requestSent': 'ಸೇರಲು ನಿಮ್ಮ ವಿನಂತಿಯನ್ನು ಕಳುಹಿಸಲಾಗಿದೆ. ಶೀಘ್ರದಲ್ಲೇ ಸಮಿತಿ ಸದಸ್ಯರು ಅದನ್ನು ಅನುಮೋದಿಸುತ್ತಾರೆ.',
   'community.join.noCodeYet': 'ಇನ್ನೂ ಕೋಡ್ ಇಲ್ಲವೇ?',
   'community.join.registerYourCommunity': 'ನಿಮ್ಮ ಕಮ್ಯುನಿಟಿಯನ್ನು ನೋಂದಾಯಿಸಿ',
 
@@ -493,6 +507,11 @@ const kn: Record<TranslationKey, string> = {
     'ಸಹ ಸದಸ್ಯರು ನಿಮ್ಮನ್ನು ನೋಡಬಹುದು ಮತ್ತು ನೇರವಾಗಿ ಕರೆ ಮಾಡಬಹುದು. ಪಟ್ಟಿಯಲ್ಲಿ ಕಾಣಿಸಿಕೊಳ್ಳದೆ ಸದಸ್ಯರಾಗಿ ಉಳಿಯಲು ಇದನ್ನು ಆಫ್ ಮಾಡಿ.',
   'community.settings.saving': 'ಉಳಿಸಲಾಗುತ್ತಿದೆ…',
   'community.settings.notifications': 'ಅಧಿಸೂಚನೆಗಳು',
+  'community.settings.leaveSection': 'ನಿಮ್ಮ ಕಮ್ಯುನಿಟಿಗಳು',
+  'community.settings.leaveCommunity': 'ಈ ಕಮ್ಯುನಿಟಿಯನ್ನು ಬಿಡಿ',
+  'community.settings.leaving': 'ಬಿಡಲಾಗುತ್ತಿದೆ…',
+  'community.settings.confirmLeave': '{name} ಬಿಡಬೇಕೇ? ಹಿಂತಿರುಗಲು ನಿಮಗೆ ಸೇರ್ಪಡೆ ಕೋಡ್ ಬೇಕಾಗುತ್ತದೆ.',
+  'community.settings.couldNotLeave': 'ಈ ಕಮ್ಯುನಿಟಿಯನ್ನು ಬಿಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.',
 
   'community.documents.title': 'ದಾಖಲೆಗಳು',
   'community.documents.subtitle': 'ನಿಯಮಗಳು, AGM ನಿಮಿಷಗಳು, ಮತ್ತು ಸೂಚನೆಗಳು — ಒಂದೇ ಸ್ಥಳದಲ್ಲಿ ಇಡಲಾಗಿದೆ.',

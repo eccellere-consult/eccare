@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { Megaphone, Users, Phone, Pin } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +31,11 @@ const TABS = [
   ['directory', 'Directory', Users],
 ] as const;
 
+/** Read-only "[Elder]'s Community" mode — announcements + directory only, per
+ *  the caregiver self-mode plan's explicit scope (no posting, managing, or
+ *  RSVPing "as" the elder). Rendered by app/community/community-page-content.tsx
+ *  when the caregiver's pill toggle is set to the elder; switching back to
+ *  "My Community" is just the toggle above this, not a separate page. */
 export function ElderCommunityView({ elderName, elderUserId }: { elderName: string; elderUserId: string }) {
   const [tab, setTab] = useState<'announcements' | 'directory'>('announcements');
   const notices = useCommunityData<Notice[]>(`/community/notices?elderUserId=${elderUserId}`);
@@ -39,13 +43,9 @@ export function ElderCommunityView({ elderName, elderUserId }: { elderName: stri
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-text">{elderName}&rsquo;s Community</h1>
-      <p className="mt-1 text-text-secondary">
+      <p className="text-text-secondary">
         Read-only — announcements and the neighbour directory for {elderName}&rsquo;s residents association.
       </p>
-      <Link href="/community" className="mt-1 inline-block text-sm font-semibold text-primary-600 hover:underline">
-        Go to your own community instead →
-      </Link>
 
       <div className="mt-4 flex h-12 w-fit min-w-[18rem] items-center rounded-xl bg-primary-50 p-1">
         {TABS.map(([value, label, Icon]) => (

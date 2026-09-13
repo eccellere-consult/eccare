@@ -16,21 +16,30 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  // Rejected rows are excluded — a rejected join isn't a membership worth showing
+  // here at all (re-joining creates a fresh pending row, see /community/join).
+  // Pending rows ARE included so the UI can show "awaiting approval" instead of
+  // either the full hub or the generic "join a community" empty state.
   const memberships = await prisma.neighborhoodMember.findMany({
-    where: { userId: auth.userId },
+    where: { userId: auth.userId, status: { in: ['approved', 'pending'] } },
     include: { neighborhood: true },
     orderBy: { createdAt: 'asc' },
   });
+  const approved = memberships.filter((m) => m.status === 'approved');
 
   return ok({
-    memberships: memberships.map((m) => ({
+    memberships: approved.map((m) => ({
+      id: m.id,
       neighborhoodId: m.neighborhoodId,
       role: m.role,
       flatNumber: m.flatNumber,
       showInDirectory: m.showInDirectory,
       neighborhood: m.neighborhood,
     })),
-    primaryNeighborhoodId: memberships[0]?.neighborhoodId ?? null,
+    pendingMemberships: memberships
+      .filter((m) => m.status === 'pending')
+      .map((m) => ({ neighborhoodId: m.neighborhoodId, neighborhood: m.neighborhood })),
+    primaryNeighborhoodId: approved[0]?.neighborhoodId ?? null,
   });
 }
 

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
+import { AlertTriangle, ChevronRight } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -112,6 +114,20 @@ export function ProfileClient({ profile }: { profile: Profile }) {
       <div className="mt-6">
         <ChangePasswordCard />
       </div>
+
+      <Link href="/elder/sos-history" className="mt-4 block">
+        <Card className="transition-shadow hover:shadow-md">
+          <CardContent className="flex items-center gap-4 py-5">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-danger-50">
+              <AlertTriangle className="h-5 w-5 text-danger-600" />
+            </span>
+            <div className="flex-1">
+              <p className="font-bold text-text">{t('elder.profile.mySosHistory')}</p>
+            </div>
+            <ChevronRight className="h-5 w-5 shrink-0 text-text-secondary" />
+          </CardContent>
+        </Card>
+      </Link>
     </div>
   );
 }

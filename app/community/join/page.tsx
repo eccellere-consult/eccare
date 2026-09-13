@@ -21,16 +21,24 @@ export default function JoinCommunityPage() {
   const [flatNumber, setFlatNumber] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [pending, setPending] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     setBusy(true);
     try {
-      await communityApi.post('/community/join', {
+      const result = await communityApi.post<{ status: 'pending' | 'approved' | 'rejected' }>('/community/join', {
         joinCode: joinCode.trim(),
         flatNumber: flatNumber.trim() || undefined,
       });
+      if (result.status === 'pending') {
+        // Stay on this page with a confirmation instead of redirecting into a
+        // community the caller can't actually see yet (requireMembership 403s
+        // a pending row) — that would just look broken.
+        setPending(true);
+        return;
+      }
       router.push('/community');
       router.refresh();
     } catch (err) {
@@ -38,6 +46,18 @@ export default function JoinCommunityPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  if (pending) {
+    return (
+      <CommunityPageFrame title={t('community.join.title')}>
+        <Card className="max-w-lg">
+          <CardContent className="py-8 text-center">
+            <p className="font-semibold text-text">{t('community.join.requestSent')}</p>
+          </CardContent>
+        </Card>
+      </CommunityPageFrame>
+    );
   }
 
   return (

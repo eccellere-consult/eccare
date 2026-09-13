@@ -39,8 +39,13 @@ interface Membership {
   flatNumber: string | null;
   neighborhood: { id: string; name: string; city: string | null; joinCode: string };
 }
+interface PendingMembership {
+  neighborhoodId: string;
+  neighborhood: { name: string };
+}
 interface MeResponse {
   memberships: Membership[];
+  pendingMemberships: PendingMembership[];
   primaryNeighborhoodId: string | null;
 }
 
@@ -104,6 +109,18 @@ export function CommunityHubClient() {
   }
 
   const membership = data?.memberships?.[0];
+  const pending = data?.pendingMemberships?.[0];
+
+  if (!membership && pending) {
+    return (
+      <div className="mx-auto max-w-lg text-center">
+        <h1 className="text-2xl font-bold text-text">{t('community.hub.pendingApprovalTitle')}</h1>
+        <p className="mt-2 text-text-secondary">
+          {t('community.hub.pendingApprovalBody').replace('{name}', pending.neighborhood.name)}
+        </p>
+      </div>
+    );
+  }
 
   if (!membership) {
     return (
