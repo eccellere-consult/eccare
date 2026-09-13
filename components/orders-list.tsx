@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { RatingInput } from '@/components/rating-input';
 import { ProviderRatingSummaryDisplay } from '@/components/provider-rating-summary';
 import { RecurringOrderSuggestions } from '@/components/recurring-order-suggestions';
+import { RecurringOrderTemplates } from '@/components/recurring-order-templates';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
@@ -16,6 +17,7 @@ interface OrderItem {
   name: string;
   price: string;
   quantity: number;
+  catalogItemId: string | null;
 }
 
 interface Rating {
@@ -63,15 +65,36 @@ export function OrdersList({ elderUserId }: { elderUserId?: string }) {
   const [loading, setLoading] = useState(true);
   const [ratingOrderId, setRatingOrderId] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
-  const [reorderSetUpFor, setReorderSetUpFor] = useState<Set<string>>(new Set());
+  // Keyed by catalogItemId — sourced from the elder's actual active
+  // RecurringOrderTemplate rows (not a page-session-only "I just clicked this"
+  // flag), so "Monthly reorder set up" still shows correctly after a reload,
+  // not just immediately after clicking the button.
+  const [activeReorderItemIds, setActiveReorderItemIds] = useState<Set<string>>(new Set());
   const [settingUpReorder, setSettingUpReorder] = useState<string | null>(null);
+  // Bumped after a successful setUpReorder — remounts RecurringOrderTemplates
+  // (a self-fetching component) so its own list picks up the new template
+  // right away instead of waiting for an unrelated reload.
+  const [reorderVersion, setReorderVersion] = useState(0);
 
   function load() {
     setLoading(true);
     const qs = elderUserId ? `?elderUserId=${elderUserId}` : '';
-    return fetch(`/api/v1/orders${qs}`, { credentials: 'include' })
-      .then((r) => r.json())
-      .then((j) => { if (j.success) setOrders(j.data); })
+    return Promise.all([
+      fetch(`/api/v1/orders${qs}`, { credentials: 'include' }).then((r) => r.json()),
+      fetch(`/api/v1/orders/recurring-templates${qs}`, { credentials: 'include' }).then((r) => r.json()),
+    ])
+      .then(([ordersJson, templatesJson]) => {
+        if (ordersJson.success) setOrders(ordersJson.data);
+        if (templatesJson.success) {
+          setActiveReorderItemIds(
+            new Set(
+              templatesJson.data
+                .filter((tpl: { isActive: boolean }) => tpl.isActive)
+                .map((tpl: { catalogItemId: string }) => tpl.catalogItemId),
+            ),
+          );
+        }
+      })
       .finally(() => setLoading(false));
   }
 
@@ -110,7 +133,8 @@ export function OrdersList({ elderUserId }: { elderUserId?: string }) {
       });
       const json = await res.json();
       if (res.ok && json.success) {
-        setReorderSetUpFor((prev) => new Set(prev).add(orderId));
+        await load();
+        setReorderVersion((v) => v + 1);
       }
     } finally {
       setSettingUpReorder(null);
@@ -122,6 +146,7 @@ export function OrdersList({ elderUserId }: { elderUserId?: string }) {
   if (orders.length === 0) {
     return (
       <>
+        <RecurringOrderTemplates key={reorderVersion} elderUserId={elderUserId} />
         <RecurringOrderSuggestions elderUserId={elderUserId} onApproved={load} />
         <Card>
           <CardContent className="flex flex-col items-center gap-2 py-12 text-center text-text-secondary">
@@ -174,7 +199,7 @@ export function OrdersList({ elderUserId }: { elderUserId?: string }) {
             )}
 
             {o.provider.category === 'pharmacy' && (o.status === 'closed' || o.status === 'confirmed' || o.status === 'delivered') && (
-              reorderSetUpFor.has(o.id) ? (
+              o.items.some((i) => i.catalogItemId) && o.items.every((i) => !i.catalogItemId || activeReorderItemIds.has(i.catalogItemId)) ? (
                 <p className="mt-3 flex items-center gap-1.5 text-sm font-semibold text-success-600">
                   <RefreshCw className="h-3.5 w-3.5" /> Monthly reorder set up
                 </p>
