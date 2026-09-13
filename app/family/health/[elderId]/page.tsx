@@ -14,7 +14,6 @@ import {
   ArrowLeft,
   Sparkles,
   Video,
-  Zap,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
@@ -340,21 +339,6 @@ export default function FamilyHealthPage({
       </p>
 
       <HealthEssentials elderUserId={elderId} />
-
-      {/* Bill Pay moved to Services — this is just a shortcut so a caregiver
-          already scoped to this elder doesn't lose the direct jump. */}
-      <Link
-        href={`/services/bill-pay?elderUserId=${elderId}`}
-        className="mt-8 flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 hover:border-primary-600 hover:bg-primary-50"
-      >
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-50">
-          <Zap className="h-5 w-5 text-primary-600" />
-        </span>
-        <div>
-          <p className="font-bold text-text">Bill Pay</p>
-          <p className="text-sm text-text-secondary">Manage {isSelf ? 'your own' : "this elder's"} linked billers in Services</p>
-        </div>
-      </Link>
 
       {/* Recent mood — from the AI Companion's daily check-in on the elder's home page */}
       {(mood.data?.length ?? 0) > 0 && (
