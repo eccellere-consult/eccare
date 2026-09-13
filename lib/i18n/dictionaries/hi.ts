@@ -10,6 +10,7 @@ const hi: Record<TranslationKey, string> = {
   'common.by': 'द्वारा',
   'common.myPrescriptions': 'मेरे नुस्खे',
   'common.cancel': 'रद्द करें',
+  'common.save': 'सहेजें',
   'common.call': 'कॉल करें',
   'common.all': 'सभी',
 
