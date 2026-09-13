@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Package, Upload, Trash2, Pencil } from 'lucide-react';
+import { Package, Trash2, Pencil } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { PhotoUploadButtons } from '@/components/photo-upload-buttons';
 
 interface CatalogItem {
   id: string;
@@ -185,17 +186,12 @@ export default function ProviderCatalogPage() {
                     {item.category && <Badge variant="muted" className="mt-1">{item.category}</Badge>}
                     {!item.inStock && <Badge variant="danger" className="ml-1 mt-1">Out of stock</Badge>}
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <label className="flex cursor-pointer items-center gap-1.5 rounded-xl border border-border px-3 py-1.5 text-xs font-semibold text-text hover:bg-primary-50">
-                        <Upload className="h-3.5 w-3.5" />
-                        {uploadingId === item.id ? 'Uploading…' : 'Photo'}
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png"
-                          className="hidden"
-                          disabled={uploadingId === item.id}
-                          onChange={(e) => uploadImage(item.id, e)}
-                        />
-                      </label>
+                      <PhotoUploadButtons
+                        idPrefix={`catalog-${item.id}`}
+                        disabled={uploadingId === item.id}
+                        busyLabel={uploadingId === item.id ? 'Uploading…' : undefined}
+                        onFile={(e) => uploadImage(item.id, e)}
+                      />
                       <Button size="sm" variant="outline" onClick={() => toggleStock(item)}>
                         <Pencil className="h-3.5 w-3.5" />
                         {item.inStock ? 'Mark out of stock' : 'Mark in stock'}

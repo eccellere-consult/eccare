@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { PhotoUploadButtons } from '@/components/photo-upload-buttons';
 
 interface Listing {
   id: string;
@@ -62,6 +63,16 @@ export default function RentalsPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
 
+  const [myUserId, setMyUserId] = useState('');
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/v1/auth/me', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((j) => { if (j.success) setMyUserId(j.data.id); })
+      .catch(() => {});
+  }, []);
+
   const load = useCallback(() => {
     setLoading(true);
     setError('');
@@ -81,6 +92,25 @@ export default function RentalsPage() {
     const timer = setTimeout(load, 300);
     return () => clearTimeout(timer);
   }, [load]);
+
+  async function uploadImage(id: string, e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingId(id);
+    try {
+      const body = new FormData();
+      body.append('file', file);
+      const res = await fetch(`/api/v1/rentals/${id}/image`, { method: 'POST', credentials: 'include', body });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Could not upload photo.');
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not upload photo.');
+    } finally {
+      setUploadingId(null);
+      e.target.value = '';
+    }
+  }
 
   function toggleAccessibility(key: string) {
     setAccessibilityFilters((prev) => {
@@ -254,8 +284,8 @@ export default function RentalsPage() {
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {listings?.map((l) => (
-          <Link key={l.id} href={`/rentals/${l.id}`}>
-            <Card className="h-full transition-shadow hover:shadow-md">
+          <Card key={l.id} className="h-full transition-shadow hover:shadow-md">
+            <Link href={`/rentals/${l.id}`}>
               <div className="flex h-32 items-center justify-center overflow-hidden rounded-t-2xl bg-primary-50">
                 {l.imagePath ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -281,8 +311,18 @@ export default function RentalsPage() {
                   ))}
                 </div>
               </CardContent>
-            </Card>
-          </Link>
+            </Link>
+            {l.postedBy.id === myUserId && (
+              <CardContent className="pt-0">
+                <PhotoUploadButtons
+                  idPrefix={`rental-${l.id}`}
+                  disabled={uploadingId === l.id}
+                  busyLabel={uploadingId === l.id ? 'Uploading…' : undefined}
+                  onFile={(e) => uploadImage(l.id, e)}
+                />
+              </CardContent>
+            )}
+          </Card>
         ))}
       </div>
 

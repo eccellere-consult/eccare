@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Phone, Clock, ImagePlus, Tag, Home } from 'lucide-react';
+import { Phone, Clock, Tag, Home } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { CommunityPageFrame } from '@/components/community/page-frame';
+import { PhotoUploadButtons } from '@/components/photo-upload-buttons';
 import { communityApi, useCommunityData } from '@/lib/community-client';
 
 interface Listing {
@@ -322,17 +323,12 @@ function ListingCard({
               Call
             </a>
             {isOwner && (
-              <label className="flex cursor-pointer items-center gap-1.5 rounded-xl border border-border px-3 py-1.5 text-xs font-semibold text-text hover:bg-primary-50">
-                <ImagePlus className="h-3.5 w-3.5" />
-                {uploading ? 'Uploading…' : 'Photo'}
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png"
-                  className="hidden"
-                  disabled={uploading}
-                  onChange={(e) => onUpload(listing.id, e)}
-                />
-              </label>
+              <PhotoUploadButtons
+                idPrefix={`marketplace-${listing.id}`}
+                disabled={uploading}
+                busyLabel={uploading ? 'Uploading…' : undefined}
+                onFile={(e) => onUpload(listing.id, e)}
+              />
             )}
             {isOwner && listing.status !== 'closed' && (
               <>
