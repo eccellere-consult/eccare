@@ -118,7 +118,10 @@ const ml: Record<TranslationKey, string> = {
   'elder.orders.status.pending': 'തീർപ്പാക്കാത്തത്',
   'elder.orders.status.paid': 'പണമടച്ചു',
   'elder.orders.status.confirmed': 'സ്ഥിരീകരിച്ചു',
+  'elder.orders.status.delivered': 'ഡെലിവർ ചെയ്തു',
+  'elder.orders.status.closed': 'അടച്ചു',
   'elder.orders.status.cancelled': 'റദ്ദാക്കി',
+  'elder.orders.confirmReceived': 'ലഭിച്ചത് സ്ഥിരീകരിക്കുക',
 
   'elder.profile.title': 'നിങ്ങളുടെ പ്രൊഫൈൽ',
   'elder.profile.subtitle': 'കുടുംബത്തിനും സേവനങ്ങൾക്കും നിങ്ങളെ ബന്ധപ്പെടാൻ കഴിയുംവിധം കാലികമായി സൂക്ഷിക്കുക.',

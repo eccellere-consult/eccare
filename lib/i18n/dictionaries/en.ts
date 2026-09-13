@@ -121,7 +121,10 @@ const en = {
   'elder.orders.status.pending': 'pending',
   'elder.orders.status.paid': 'paid',
   'elder.orders.status.confirmed': 'confirmed',
+  'elder.orders.status.delivered': 'delivered',
+  'elder.orders.status.closed': 'closed',
   'elder.orders.status.cancelled': 'cancelled',
+  'elder.orders.confirmReceived': 'Confirm received',
 
   'elder.profile.title': 'Your profile',
   'elder.profile.subtitle': 'Kept up to date so family and services can reach you.',

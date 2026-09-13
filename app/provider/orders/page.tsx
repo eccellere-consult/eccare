@@ -15,7 +15,7 @@ interface OrderItem {
 
 interface Order {
   id: string;
-  status: 'pending' | 'paid' | 'confirmed' | 'cancelled';
+  status: 'pending' | 'paid' | 'confirmed' | 'delivered' | 'closed' | 'cancelled';
   totalAmount: string;
   deliveryAddress: string;
   createdAt: string;
@@ -23,7 +23,14 @@ interface Order {
   elderUser: { name: string; phone: string | null };
 }
 
-const STATUS_VARIANT = { pending: 'muted', paid: 'accent', confirmed: 'success', cancelled: 'danger' } as const;
+const STATUS_VARIANT = {
+  pending: 'muted',
+  paid: 'accent',
+  confirmed: 'default',
+  delivered: 'accent',
+  closed: 'success',
+  cancelled: 'danger',
+} as const;
 
 async function api(path: string, init?: RequestInit) {
   const res = await fetch(`/api/v1${path}`, { credentials: 'include', ...init });
@@ -32,6 +39,57 @@ async function api(path: string, init?: RequestInit) {
     throw new Error(json?.error?.message || 'Something went wrong. Please try again.');
   }
   return json.data;
+}
+
+function OrderCard({ order: o, busy, onDecide }: { order: Order; busy: boolean; onDecide: (status: 'confirmed' | 'delivered' | 'cancelled') => void }) {
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="font-bold text-text">{o.elderUser.name}</p>
+            {o.elderUser.phone && (
+              <a href={`tel:${o.elderUser.phone}`} className="mt-0.5 flex items-center gap-1.5 text-sm text-primary-600 hover:underline">
+                <Phone className="h-3.5 w-3.5" />
+                {o.elderUser.phone}
+              </a>
+            )}
+          </div>
+          <Badge variant={STATUS_VARIANT[o.status]}>{o.status}</Badge>
+        </div>
+        <p className="mt-2 text-sm text-text-secondary">{o.deliveryAddress}</p>
+        <div className="mt-3 flex flex-col gap-1 border-t border-border pt-3 text-sm">
+          {o.items.map((i) => (
+            <div key={i.id} className="flex justify-between">
+              <span>{i.name} × {i.quantity}</span>
+              <span>₹{(Number(i.price) * i.quantity).toFixed(2)}</span>
+            </div>
+          ))}
+          <div className="mt-1 flex justify-between font-bold text-text">
+            <span>Total</span>
+            <span>₹{o.totalAmount}</span>
+          </div>
+        </div>
+        {o.status === 'paid' && (
+          <div className="mt-4 flex gap-2">
+            <Button size="sm" disabled={busy} onClick={() => onDecide('confirmed')}>
+              Confirm order
+            </Button>
+            <Button size="sm" variant="outline" className="text-danger-600" disabled={busy} onClick={() => onDecide('cancelled')}>
+              Cancel
+            </Button>
+          </div>
+        )}
+        {o.status === 'confirmed' && (
+          <div className="mt-4">
+            <Button size="sm" disabled={busy} onClick={() => onDecide('delivered')}>
+              Mark delivered
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function ProviderOrdersPage() {
@@ -54,7 +112,7 @@ export default function ProviderOrdersPage() {
     load();
   }, []);
 
-  async function decide(id: string, status: 'confirmed' | 'cancelled') {
+  async function decide(id: string, status: 'confirmed' | 'delivered' | 'cancelled') {
     setBusyId(id);
     try {
       await api(`/provider/orders/${id}`, {
@@ -67,6 +125,10 @@ export default function ProviderOrdersPage() {
       setBusyId(null);
     }
   }
+
+  const pendingFulfillment = orders.filter((o) => o.status === 'paid' || o.status === 'confirmed');
+  const awaitingConfirmation = orders.filter((o) => o.status === 'delivered');
+  const history = orders.filter((o) => o.status === 'closed' || o.status === 'cancelled');
 
   return (
     <div>
@@ -84,48 +146,45 @@ export default function ProviderOrdersPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="flex flex-col gap-3">
-            {orders.map((o) => (
-              <Card key={o.id}>
-                <CardContent className="pt-6">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <p className="font-bold text-text">{o.elderUser.name}</p>
-                      {o.elderUser.phone && (
-                        <a href={`tel:${o.elderUser.phone}`} className="mt-0.5 flex items-center gap-1.5 text-sm text-primary-600 hover:underline">
-                          <Phone className="h-3.5 w-3.5" />
-                          {o.elderUser.phone}
-                        </a>
-                      )}
-                    </div>
-                    <Badge variant={STATUS_VARIANT[o.status]}>{o.status}</Badge>
-                  </div>
-                  <p className="mt-2 text-sm text-text-secondary">{o.deliveryAddress}</p>
-                  <div className="mt-3 flex flex-col gap-1 border-t border-border pt-3 text-sm">
-                    {o.items.map((i) => (
-                      <div key={i.id} className="flex justify-between">
-                        <span>{i.name} × {i.quantity}</span>
-                        <span>₹{(Number(i.price) * i.quantity).toFixed(2)}</span>
-                      </div>
-                    ))}
-                    <div className="mt-1 flex justify-between font-bold text-text">
-                      <span>Total</span>
-                      <span>₹{o.totalAmount}</span>
-                    </div>
-                  </div>
-                  {o.status === 'paid' && (
-                    <div className="mt-4 flex gap-2">
-                      <Button size="sm" disabled={busyId === o.id} onClick={() => decide(o.id, 'confirmed')}>
-                        Confirm order
-                      </Button>
-                      <Button size="sm" variant="outline" className="text-danger-600" disabled={busyId === o.id} onClick={() => decide(o.id, 'cancelled')}>
-                        Cancel
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+          <div className="flex flex-col gap-8">
+            <div>
+              <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-text-secondary">
+                Pending fulfillment {pendingFulfillment.length > 0 && `(${pendingFulfillment.length})`}
+              </h2>
+              {pendingFulfillment.length === 0 ? (
+                <p className="text-sm text-text-secondary">Nothing waiting on you right now.</p>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {pendingFulfillment.map((o) => (
+                    <OrderCard key={o.id} order={o} busy={busyId === o.id} onDecide={(status) => decide(o.id, status)} />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {awaitingConfirmation.length > 0 && (
+              <div>
+                <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-text-secondary">
+                  Delivered — awaiting customer confirmation ({awaitingConfirmation.length})
+                </h2>
+                <div className="flex flex-col gap-3">
+                  {awaitingConfirmation.map((o) => (
+                    <OrderCard key={o.id} order={o} busy={busyId === o.id} onDecide={(status) => decide(o.id, status)} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {history.length > 0 && (
+              <div>
+                <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-text-secondary">History</h2>
+                <div className="flex flex-col gap-3">
+                  {history.map((o) => (
+                    <OrderCard key={o.id} order={o} busy={busyId === o.id} onDecide={(status) => decide(o.id, status)} />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

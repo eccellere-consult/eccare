@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   if (!provider) return fail('NOT_FOUND', 'Provider profile not found.', 404);
 
   const orders = await prisma.order.findMany({
-    where: { providerId: provider.id, status: { in: ['paid', 'confirmed', 'cancelled'] } },
+    where: { providerId: provider.id, status: { in: ['paid', 'confirmed', 'delivered', 'closed', 'cancelled'] } },
     include: { items: true, elderUser: { select: { name: true, phone: true } } },
     orderBy: { createdAt: 'desc' },
   });

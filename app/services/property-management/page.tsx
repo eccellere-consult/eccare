@@ -8,13 +8,16 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PROPERTY_REVIEW_RATES } from '@/lib/property-rates';
+import { RatingInput } from '@/components/rating-input';
+import { ProviderRatingSummaryDisplay } from '@/components/provider-rating-summary';
 
 type Frequency = 'monthly' | 'quarterly' | 'biannually';
 type ChecklistStatus = 'pass' | 'fail' | 'needs_attention';
 interface Invoice {
   id: string;
   amount: string;
-  status: 'pending' | 'paid';
+  status: 'pending' | 'paid' | 'closed';
+  rating: { stars: number; comment: string | null } | null;
 }
 interface RepairEstimate {
   id: string;
@@ -87,6 +90,8 @@ function PropertyManagementPageContent() {
   const [subscribing, setSubscribing] = useState<Frequency | null>(null);
   const [payingId, setPayingId] = useState<string | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [ratingInvoiceId, setRatingInvoiceId] = useState<string | null>(null);
+  const [closingId, setClosingId] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -155,6 +160,26 @@ function PropertyManagementPageContent() {
       setError(err instanceof Error ? err.message : 'Could not approve.');
     } finally {
       setApprovingId(null);
+    }
+  }
+
+  async function closeInvoice(invoiceId: string, stars: number, comment: string) {
+    setClosingId(invoiceId);
+    try {
+      const res = await fetch(`/api/v1/property-invoices/${invoiceId}/close`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ stars, comment: comment.trim() || undefined }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Could not confirm the job is done.');
+      setRatingInvoiceId(null);
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not confirm the job is done.');
+    } finally {
+      setClosingId(null);
     }
   }
 
@@ -315,21 +340,40 @@ function PropertyManagementPageContent() {
                       {insp.repairEstimates.length > 0 && (
                         <div className="mt-3 flex flex-col gap-2 border-t border-border pt-2">
                           {insp.repairEstimates.map((est) => (
-                            <div key={est.id} className="flex flex-wrap items-center justify-between gap-2">
-                              <div>
-                                <p className="text-sm font-semibold text-text">{est.itemDescription}</p>
-                                <p className="text-xs text-text-secondary">Estimated ₹{est.estimatedCost}</p>
+                            <div key={est.id} className="flex flex-col gap-2">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div>
+                                  <p className="text-sm font-semibold text-text">{est.itemDescription}</p>
+                                  <p className="text-xs text-text-secondary">Estimated ₹{est.estimatedCost}</p>
+                                </div>
+                                {!est.isApproved ? (
+                                  <Button size="sm" disabled={approvingId === est.id} onClick={() => approve(est.id)}>
+                                    {approvingId === est.id ? 'Approving…' : 'Approve'}
+                                  </Button>
+                                ) : est.invoice?.status === 'pending' ? (
+                                  <Button size="sm" disabled={payingId === est.invoice.id} onClick={() => pay(est.invoice!, est.itemDescription)}>
+                                    {payingId === est.invoice.id ? 'Opening…' : `Pay ₹${est.invoice.amount}`}
+                                  </Button>
+                                ) : est.invoice?.status === 'paid' ? (
+                                  ratingInvoiceId === est.invoice.id ? null : (
+                                    <Button size="sm" onClick={() => setRatingInvoiceId(est.invoice!.id)}>Confirm job done</Button>
+                                  )
+                                ) : (
+                                  <Badge variant="success">Closed</Badge>
+                                )}
                               </div>
-                              {!est.isApproved ? (
-                                <Button size="sm" disabled={approvingId === est.id} onClick={() => approve(est.id)}>
-                                  {approvingId === est.id ? 'Approving…' : 'Approve'}
-                                </Button>
-                              ) : est.invoice?.status === 'pending' ? (
-                                <Button size="sm" disabled={payingId === est.invoice.id} onClick={() => pay(est.invoice!, est.itemDescription)}>
-                                  {payingId === est.invoice.id ? 'Opening…' : `Pay ₹${est.invoice.amount}`}
-                                </Button>
-                              ) : (
-                                <Badge variant="success">Paid</Badge>
+                              {est.invoice?.status === 'paid' && ratingInvoiceId === est.invoice.id && (
+                                <RatingInput
+                                  busy={closingId === est.invoice.id}
+                                  submitLabel="Confirm job done"
+                                  onSubmit={(stars, comment) => closeInvoice(est.invoice!.id, stars, comment)}
+                                />
+                              )}
+                              {est.invoice?.status === 'closed' && est.invoice.rating && (
+                                <div>
+                                  <ProviderRatingSummaryDisplay summary={{ average: est.invoice.rating.stars, count: 1 }} />
+                                  {est.invoice.rating.comment && <p className="mt-1 text-sm text-text-secondary">{est.invoice.rating.comment}</p>}
+                                </div>
                               )}
                             </div>
                           ))}

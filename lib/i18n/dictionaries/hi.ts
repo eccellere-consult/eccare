@@ -118,7 +118,10 @@ const hi: Record<TranslationKey, string> = {
   'elder.orders.status.pending': 'लंबित',
   'elder.orders.status.paid': 'भुगतान हो गया',
   'elder.orders.status.confirmed': 'पुष्टि हो गई',
+  'elder.orders.status.delivered': 'डिलीवर हुआ',
+  'elder.orders.status.closed': 'बंद',
   'elder.orders.status.cancelled': 'रद्द',
+  'elder.orders.confirmReceived': 'प्राप्ति की पुष्टि करें',
 
   'elder.profile.title': 'आपकी प्रोफ़ाइल',
   'elder.profile.subtitle': 'हमेशा अपडेट रखें ताकि परिवार और सेवाएं आप तक पहुंच सकें।',

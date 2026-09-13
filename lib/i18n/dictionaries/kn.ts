@@ -118,7 +118,10 @@ const kn: Record<TranslationKey, string> = {
   'elder.orders.status.pending': 'ಬಾಕಿ ಇದೆ',
   'elder.orders.status.paid': 'ಪಾವತಿಸಲಾಗಿದೆ',
   'elder.orders.status.confirmed': 'ದೃಢಪಡಿಸಲಾಗಿದೆ',
+  'elder.orders.status.delivered': 'ವಿತರಿಸಲಾಗಿದೆ',
+  'elder.orders.status.closed': 'ಮುಚ್ಚಲಾಗಿದೆ',
   'elder.orders.status.cancelled': 'ರದ್ದುಗೊಳಿಸಲಾಗಿದೆ',
+  'elder.orders.confirmReceived': 'ಸ್ವೀಕೃತಿ ದೃಢೀಕರಿಸಿ',
 
   'elder.profile.title': 'ನಿಮ್ಮ ಪ್ರೊಫೈಲ್',
   'elder.profile.subtitle': 'ಕುಟುಂಬ ಮತ್ತು ಸೇವೆಗಳು ನಿಮ್ಮನ್ನು ಸಂಪರ್ಕಿಸಲು ಸಾಧ್ಯವಾಗುವಂತೆ ನವೀಕೃತವಾಗಿ ಇರಿಸಿ.',

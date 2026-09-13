@@ -36,8 +36,8 @@ export async function GET(req: NextRequest) {
   // checkout attempt look like "an order was placed" even though no payment ever
   // happened. It genuinely never was one.
   const orders = await prisma.order.findMany({
-    where: { elderUserId, status: { in: ['paid', 'confirmed', 'cancelled'] } },
-    include: { items: true, provider: { select: { businessName: true } } },
+    where: { elderUserId, status: { in: ['paid', 'confirmed', 'delivered', 'closed', 'cancelled'] } },
+    include: { items: true, provider: { select: { businessName: true } }, rating: true },
     orderBy: { createdAt: 'desc' },
   });
 
