@@ -308,6 +308,13 @@ const en = {
   'shared.paymentsDue.couldNotStartRetry': 'Could not start payment. Please try again.',
   'shared.paymentsDue.couldNotLoadScript': 'Could not load the payment page. Please check your connection and try again.',
   'shared.paymentsDue.couldNotVerify': 'Payment could not be verified. Please contact support before trying again.',
+  'shared.paymentsDue.householdIntro': 'House {flat}:',
+  'shared.paymentsDue.billedToMe': 'bills come to you.',
+  'shared.paymentsDue.billedTo': 'bills go to {name}.',
+  'shared.paymentsDue.billThisToMe': 'Bill this to me instead',
+  'shared.paymentsDue.viewOnly': 'View only',
+  'shared.paymentsDue.viewOnlyBilledTo': 'billed to {name}',
+  'shared.paymentsDue.couldNotSetPayer': 'Could not update who pays. Please try again.',
 
   'shared.changePassword.title': 'Change password',
   'shared.changePassword.description': 'Use at least 8 characters.',

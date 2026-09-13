@@ -65,7 +65,7 @@ function FeeRow({ fee, onChanged }: { fee: CommunityFee; onChanged: () => void }
     setBusy(true);
     setMessage('');
     try {
-      const result = await communityApi.post<{ period: string; chargesCreated: number; alreadyBilled: number }>(
+      const result = await communityApi.post<{ period: string; chargesCreated: number; alreadyBilled: number; householdsBilled: number }>(
         `/community/fees/${fee.id}/generate`,
         {},
       );
