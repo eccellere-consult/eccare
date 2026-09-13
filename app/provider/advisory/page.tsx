@@ -63,7 +63,13 @@ export default async function ProviderAdvisoryPage() {
       {backLink}
       <h1 className="mt-3 text-2xl font-bold text-text">Advisory profile &amp; consultations</h1>
       <p className="mt-1 text-text-secondary">Manage your profile and move consultations along yourself.</p>
-      <AdvisorySelfService initial={advisoryExpert} />
+      <AdvisorySelfService
+        initial={
+          advisoryExpert
+            ? { ...advisoryExpert, consultationFee: advisoryExpert.consultationFee?.toString() ?? null }
+            : null
+        }
+      />
     </div>
   );
 }

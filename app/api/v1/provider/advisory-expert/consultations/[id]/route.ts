@@ -33,6 +33,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const parsed = schema.safeParse(await req.json());
   if (!parsed.success) return fail('VALIDATION', 'Please check the details.', 400);
 
+  // An expert with a consultationFee set can't be marked "actively working"
+  // until the customer has paid it — same "billable once confirmed" idea as
+  // a doctor slot. An expert with no fee set (legacy/free) skips this gate
+  // entirely, matching today's behavior for them.
+  if (parsed.data.status === 'in_progress' && expert.consultationFee != null && !consultation.paidAt) {
+    return fail('PAYMENT_REQUIRED', 'This consultation is awaiting the customer\'s payment.', 409);
+  }
+
   const updated = await prisma.consultationRequest.update({ where: { id }, data: { status: parsed.data.status } });
   return NextResponse.json({ success: true, data: updated });
 }

@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
 
   const consultations = await prisma.consultationRequest.findMany({
     where: { elderUserId },
-    include: { assignedExpert: true, documents: { select: { id: true, fileName: true, filePath: true, createdAt: true } } },
+    include: { assignedExpert: true, documents: { select: { id: true, fileName: true, filePath: true, createdAt: true } }, rating: true },
     orderBy: { createdAt: 'desc' },
   });
 
