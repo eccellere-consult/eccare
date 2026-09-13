@@ -1,6 +1,13 @@
-import { AlertTriangle, MapPin } from 'lucide-react';
+import { AlertTriangle, MapPin, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+
+const TRIGGER_LABEL: Record<string, string> = {
+  manual: 'Manual SOS',
+  ambulance: 'Ambulance called',
+  police: 'Police called',
+  community_panic: 'Community panic alert',
+};
 
 /** lat/lng come through as Prisma's Decimal type from a direct query but as
  *  plain numbers if ever passed through JSON — both have .toFixed(), which is
@@ -45,14 +52,20 @@ export function SosEventsList({ events }: { events: SosEvent[] }) {
             </div>
             <div className="flex-1">
               <p className="font-semibold text-text">
-                {event.triggerType === 'manual' ? 'Manual SOS' : event.triggerType}
+                {TRIGGER_LABEL[event.triggerType] ?? event.triggerType}
               </p>
               <p className="text-sm text-text-secondary">{event.createdAt.toLocaleString()}</p>
               {event.lat != null && event.lng != null && (
-                <p className="mt-1 flex items-center gap-1 text-sm text-text-secondary">
+                <a
+                  href={`https://www.google.com/maps?q=${event.lat.toFixed(6)},${event.lng.toFixed(6)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 flex items-center gap-1 text-sm text-primary-600 hover:underline"
+                >
                   <MapPin className="h-3.5 w-3.5" />
-                  {event.lat.toFixed(5)}, {event.lng.toFixed(5)}
-                </p>
+                  View location on map
+                  <ExternalLink className="h-3 w-3" />
+                </a>
               )}
             </div>
             <Badge variant={event.status === 'resolved' ? 'success' : 'danger'}>{event.status}</Badge>
