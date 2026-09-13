@@ -19,6 +19,9 @@ import {
   Scale,
   Wrench,
   Zap,
+  Store,
+  Stethoscope,
+  Hammer,
   type LucideIcon,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -226,6 +229,78 @@ export function ServicesClient({
             <div className="flex-1">
               <p className="font-bold text-text">Property Management</p>
               <p className="text-sm text-text-secondary">Periodic home reviews, inspections, and repair estimates</p>
+            </div>
+            <ChevronRight className="h-5 w-5 shrink-0 text-text-secondary" />
+          </CardContent>
+        </Card>
+      </Link>
+
+      {/* These four already work for any community member today — a caregiver
+          who shares the same community as their elder can already, for
+          instance, book a doctor's slot and attribute it to that elder (see
+          POST /api/v1/community/doctor-bookings). No elderUserId param here:
+          unlike Advisory/Bill Pay/Property Management, access to these is
+          gated on the CALLER's own community membership (requireMembership),
+          not an elder param — the "My Community" / "[Elder]'s Community"
+          toggle on /community itself is the relevant switch, not this link. */}
+      <Link href="/community/vendors" className="mt-4 block">
+        <Card className="border-border bg-surface transition-shadow hover:shadow-md">
+          <CardContent className="flex items-center gap-4 pt-6">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-50">
+              <Store className="h-6 w-6 text-primary-600" />
+            </span>
+            <div className="flex-1">
+              <p className="font-bold text-text">Community Vendors</p>
+              <p className="text-sm text-text-secondary">Trusted vendors and shops recommended by your community</p>
+            </div>
+            <ChevronRight className="h-5 w-5 shrink-0 text-text-secondary" />
+          </CardContent>
+        </Card>
+      </Link>
+
+      <Link href="/community/doctors" className="mt-4 block">
+        <Card className="border-border bg-surface transition-shadow hover:shadow-md">
+          <CardContent className="flex items-center gap-4 pt-6">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-50">
+              <Stethoscope className="h-6 w-6 text-primary-600" />
+            </span>
+            <div className="flex-1">
+              <p className="font-bold text-text">Community Doctors</p>
+              <p className="text-sm text-text-secondary">Book an appointment with a doctor in your community</p>
+            </div>
+            <ChevronRight className="h-5 w-5 shrink-0 text-text-secondary" />
+          </CardContent>
+        </Card>
+      </Link>
+
+      <Link href="/community/auto-booking" className="mt-4 block">
+        <Card className="border-border bg-surface transition-shadow hover:shadow-md">
+          <CardContent className="flex items-center gap-4 pt-6">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-50">
+              <Car className="h-6 w-6 text-primary-600" />
+            </span>
+            <div className="flex-1">
+              <p className="font-bold text-text">Auto Booking</p>
+              <p className="text-sm text-text-secondary">Book a trusted auto driver from your community</p>
+            </div>
+            <ChevronRight className="h-5 w-5 shrink-0 text-text-secondary" />
+          </CardContent>
+        </Card>
+      </Link>
+
+      {/* Labeled "Home Maintenance" rather than "Home services" — SERVICE_CATEGORIES
+          below already has a generic "Home services" partner-link-out tile
+          (Urban Company); this one is community-vetted vendors specifically, a
+          different thing, so it needed a different name to avoid confusion. */}
+      <Link href="/community/home-services" className="mt-4 block">
+        <Card className="border-border bg-surface transition-shadow hover:shadow-md">
+          <CardContent className="flex items-center gap-4 pt-6">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-50">
+              <Hammer className="h-6 w-6 text-primary-600" />
+            </span>
+            <div className="flex-1">
+              <p className="font-bold text-text">Home Maintenance</p>
+              <p className="text-sm text-text-secondary">Vetted plumbers, electricians, cleaners and more from your community</p>
             </div>
             <ChevronRight className="h-5 w-5 shrink-0 text-text-secondary" />
           </CardContent>
