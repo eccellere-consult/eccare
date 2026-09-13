@@ -50,8 +50,18 @@ export default function NewsletterArchivePage() {
       )}
 
       <main className="mx-auto max-w-3xl px-6 py-12">
-        <Link href="/" className="flex w-fit items-center gap-1.5 text-sm font-semibold text-text-secondary hover:text-primary-600">
-          <ArrowLeft className="h-4 w-4" /> Back to EC
+        {/* "/" unconditionally redirects to /login (see app/page.tsx) — for an
+            already-logged-in visitor that reads as being logged out, even
+            though the session itself is untouched. Newsletter is reachable
+            as a tile from the Community hub, so send a logged-in visitor
+            back there, matching every other Community tile's back-link
+            pattern; an anonymous visitor has nowhere else to go, so "/" (->
+            /login) stays correct for them. */}
+        <Link
+          href={loggedIn ? '/community' : '/'}
+          className="flex w-fit items-center gap-1.5 text-sm font-semibold text-text-secondary hover:text-primary-600"
+        >
+          <ArrowLeft className="h-4 w-4" /> {loggedIn ? 'Back to Community' : 'Back to EC'}
         </Link>
         <h1 className="mt-3 text-3xl font-bold text-text">Newsletter</h1>
         <p className="mt-2 text-text-secondary">Community updates, elder care tips, and announcements from the EC team.</p>

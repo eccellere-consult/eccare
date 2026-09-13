@@ -361,6 +361,7 @@ const ml: Record<TranslationKey, string> = {
   'community.hub.joinIntro':
     'നിങ്ങളുടെ അയൽപക്കം ഇവിടെ അറിയിപ്പുകൾ, പരിപാടികൾ, വിശ്വസനീയമായ വെണ്ടർമാർ, ഹെൽപ്പ്‌ലൈൻ നമ്പറുകൾ എന്നിവ പങ്കിടുന്നു. കമ്മ്യൂണിറ്റി കോഡിനായി നിങ്ങളുടെ മാനേജ്മെന്റ് കമ്മിറ്റിയോട് ചോദിക്കുക.',
   'community.hub.enterCommunityCode': 'കമ്മ്യൂണിറ്റി കോഡ് നൽകുക',
+  'community.hub.leaveThisCommunity': 'ഈ കമ്മ്യൂണിറ്റി വിടുക',
   'community.hub.pendingApprovalTitle': 'അംഗീകാരത്തിനായി കാത്തിരിക്കുന്നു',
   'community.hub.pendingApprovalBody': '{name} ൽ ചേരാനുള്ള നിങ്ങളുടെ അഭ്യർത്ഥന ഒരു കമ്മിറ്റി അംഗത്തിന്റെ അംഗീകാരത്തിനായി കാത്തിരിക്കുന്നു.',
   'community.hub.resident': 'താമസക്കാരൻ',

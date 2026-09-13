@@ -379,6 +379,7 @@ const en = {
   'community.hub.joinIntro':
     "Your neighbourhood shares announcements, events, trusted vendors and helpline numbers here. Ask your management committee for the community code.",
   'community.hub.enterCommunityCode': 'Enter community code',
+  'community.hub.leaveThisCommunity': 'Leave this community',
   'community.hub.pendingApprovalTitle': 'Awaiting approval',
   'community.hub.pendingApprovalBody': 'Your request to join {name} is waiting for a committee member to approve it.',
   'community.hub.resident': 'Resident',

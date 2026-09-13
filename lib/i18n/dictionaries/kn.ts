@@ -361,6 +361,7 @@ const kn: Record<TranslationKey, string> = {
   'community.hub.joinIntro':
     'ನಿಮ್ಮ ನೆರೆಹೊರೆ ಇಲ್ಲಿ ಪ್ರಕಟಣೆಗಳು, ಕಾರ್ಯಕ್ರಮಗಳು, ವಿಶ್ವಾಸಾರ್ಹ ವೆಂಡರ್‌ಗಳು ಮತ್ತು ಹೆಲ್ಪ್‌ಲೈನ್ ಸಂಖ್ಯೆಗಳನ್ನು ಹಂಚಿಕೊಳ್ಳುತ್ತದೆ. ಕಮ್ಯುನಿಟಿ ಕೋಡ್‌ಗಾಗಿ ನಿಮ್ಮ ನಿರ್ವಹಣಾ ಸಮಿತಿಯನ್ನು ಕೇಳಿ.',
   'community.hub.enterCommunityCode': 'ಕಮ್ಯುನಿಟಿ ಕೋಡ್ ನಮೂದಿಸಿ',
+  'community.hub.leaveThisCommunity': 'ಈ ಕಮ್ಯುನಿಟಿಯನ್ನು ಬಿಡಿ',
   'community.hub.pendingApprovalTitle': 'ಅನುಮೋದನೆಗಾಗಿ ಕಾಯಲಾಗುತ್ತಿದೆ',
   'community.hub.pendingApprovalBody': '{name} ಗೆ ಸೇರಲು ನಿಮ್ಮ ವಿನಂತಿಯು ಸಮಿತಿ ಸದಸ್ಯರ ಅನುಮೋದನೆಗಾಗಿ ಕಾಯುತ್ತಿದೆ.',
   'community.hub.resident': 'ನಿವಾಸಿ',
