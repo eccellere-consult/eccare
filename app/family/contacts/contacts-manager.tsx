@@ -162,22 +162,67 @@ export function ContactsManager({
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-text">{isSelf ? 'Your contacts' : `${elderName}'s contacts`}</h1>
-          <p className="mt-1 text-text-secondary">Notified automatically during an SOS alert.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <EmergencyContactPicker elderUserId={elderUserId} onAdded={load} />
-          <Button variant="outline" onClick={() => setShowLinkForm((s) => !s)} disabled={linkedCount >= 3}>
-            <Link2 className="h-5 w-5" />
-            Link volunteer/family
-          </Button>
-          <Button onClick={() => setShowForm((s) => !s)}>
-            <UserPlus className="h-5 w-5" />
-            Add contact
-          </Button>
-        </div>
+      <h1 className="text-2xl font-bold text-text">{isSelf ? 'Your contacts' : `${elderName}'s contacts`}</h1>
+      <p className="mt-1 text-text-secondary">Notified automatically during an SOS alert.</p>
+
+      <div className="mt-6 flex flex-col gap-3">
+        {loading ? (
+          <p className="text-text-secondary">Loading...</p>
+        ) : contacts.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center text-text-secondary">No contacts added yet.</CardContent>
+          </Card>
+        ) : (
+          contacts.map((contact) => (
+            <Card key={contact.id}>
+              <CardContent className="flex items-center gap-4 py-4">
+                <a href={`tel:${contact.phone}`} className="flex min-w-0 flex-1 items-center gap-4">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-50 font-bold text-primary-900">
+                    {contact.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate font-semibold text-text">{contact.name}</p>
+                      {contact.priorityLevel && (
+                        <Badge variant="success">
+                          <ShieldCheck className="mr-1 h-3 w-3" />
+                          {PRIORITY_LABEL[contact.priorityLevel]}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="truncate text-sm text-text-secondary">{contact.relationship} &middot; {contact.phone}</p>
+                  </div>
+                </a>
+                <a
+                  href={`tel:${contact.phone}`}
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-600 hover:bg-primary-100"
+                  aria-label={`Call ${contact.name}`}
+                >
+                  <Phone className="h-5 w-5" />
+                </a>
+                <button
+                  onClick={() => handleRemove(contact.id)}
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-danger-600 hover:bg-danger-50"
+                  aria-label={`Remove ${contact.name}`}
+                >
+                  <Trash2 className="h-5 w-5" />
+                </button>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+
+      <div className="mt-6 flex flex-wrap gap-2">
+        <EmergencyContactPicker elderUserId={elderUserId} onAdded={load} />
+        <Button variant="outline" onClick={() => setShowLinkForm((s) => !s)} disabled={linkedCount >= 3}>
+          <Link2 className="h-5 w-5" />
+          Link volunteer/family
+        </Button>
+        <Button onClick={() => setShowForm((s) => !s)}>
+          <UserPlus className="h-5 w-5" />
+          Add contact
+        </Button>
       </div>
 
       {showLinkForm && (
@@ -260,52 +305,6 @@ export function ContactsManager({
           </CardContent>
         </Card>
       )}
-
-      <div className="mt-6 flex flex-col gap-3">
-        {loading ? (
-          <p className="text-text-secondary">Loading...</p>
-        ) : contacts.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center text-text-secondary">No contacts added yet.</CardContent>
-          </Card>
-        ) : (
-          contacts.map((contact) => (
-            <Card key={contact.id}>
-              <CardContent className="flex items-center gap-4 py-4">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-50 font-bold text-primary-900">
-                  {contact.name.charAt(0).toUpperCase()}
-                </div>
-                <div className="flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-semibold text-text">{contact.name}</p>
-                    {contact.priorityLevel && (
-                      <Badge variant="success">
-                        <ShieldCheck className="mr-1 h-3 w-3" />
-                        {PRIORITY_LABEL[contact.priorityLevel]}
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-sm text-text-secondary">{contact.relationship} &middot; {contact.phone}</p>
-                </div>
-                <a
-                  href={`tel:${contact.phone}`}
-                  className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-50 text-primary-600 hover:bg-primary-100"
-                  aria-label={`Call ${contact.name}`}
-                >
-                  <Phone className="h-5 w-5" />
-                </a>
-                <button
-                  onClick={() => handleRemove(contact.id)}
-                  className="flex h-11 w-11 items-center justify-center rounded-xl text-danger-600 hover:bg-danger-50"
-                  aria-label={`Remove ${contact.name}`}
-                >
-                  <Trash2 className="h-5 w-5" />
-                </button>
-              </CardContent>
-            </Card>
-          ))
-        )}
-      </div>
     </div>
   );
 }

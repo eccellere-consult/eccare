@@ -1,10 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Megaphone, Users, Phone, Pin, Store, Stethoscope, Car, IndianRupee, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Megaphone, Users, Phone, Pin, Store, Stethoscope, Car, IndianRupee, ShieldCheck } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
 import { useCommunityData } from '@/lib/community-client';
 
 interface Notice {
@@ -59,11 +58,11 @@ interface RateCard {
 }
 
 const TABS = [
-  ['announcements', 'Announcements', Megaphone],
-  ['directory', 'Directory', Users],
-  ['vendors', 'Vendors', Store],
-  ['doctors', 'Doctors', Stethoscope],
-  ['auto', 'Auto Booking', Car],
+  ['announcements', 'Announcements', 'Notices from the residents association', Megaphone],
+  ['directory', 'Directory', 'Neighbours and their contact numbers', Users],
+  ['vendors', 'Vendors', 'Local shops and service providers', Store],
+  ['doctors', 'Doctors', 'Local doctors and clinics', Stethoscope],
+  ['auto', 'Auto Booking', 'Trusted local auto-rickshaw drivers', Car],
 ] as const;
 type Tab = (typeof TABS)[number][0];
 
@@ -83,7 +82,15 @@ function EmptyOrError({ loading, error, empty, emptyMessage }: { loading: boolea
  *  app/community/community-page-content.tsx when the caregiver's pill
  *  toggle is set to the elder. */
 export function ElderCommunityView({ elderName, elderUserId }: { elderName: string; elderUserId: string }) {
-  const [tab, setTab] = useState<Tab>('announcements');
+  // A tile per section — like the real Community hub's own tile grid
+  // (community-hub-client.tsx), not a pill/tab bar: this stays a single
+  // component (nothing here actually posts/manages/books, so there's no real
+  // route per section to link to), but visually and navigationally it should
+  // read the same way the rest of Community does. A tab bar sized for the
+  // original 2 sections (Announcements, Directory) stopped fitting once
+  // Vendors/Doctors/Auto Booking were added — this scales to any number of
+  // sections without an overflow/alignment problem on narrow screens.
+  const [tab, setTab] = useState<Tab | null>(null);
   const qs = `?elderUserId=${elderUserId}`;
   const notices = useCommunityData<Notice[]>(`/community/notices${qs}`);
   const directory = useCommunityData<Neighbour[]>(`/community/directory${qs}`);
@@ -92,29 +99,43 @@ export function ElderCommunityView({ elderName, elderUserId }: { elderName: stri
   const drivers = useCommunityData<Driver[]>(`/community/auto-drivers${qs}`);
   const rateCard = useCommunityData<RateCard | null>(`/community/auto-rate-card${qs}`);
 
+  if (tab === null) {
+    return (
+      <div>
+        <p className="text-text-secondary">
+          Read-only — browsing {elderName}&rsquo;s residents association. Call directly for anything you need to arrange.
+        </p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {TABS.map(([value, label, sub, Icon]) => (
+            <button key={value} type="button" onClick={() => setTab(value)} className="text-left">
+              <Card className="flex h-full items-center gap-4 p-5 transition-shadow hover:shadow-md">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-50">
+                  <Icon className="h-6 w-6 text-primary-600" />
+                </span>
+                <span>
+                  <span className="block font-bold text-text">{label}</span>
+                  <span className="block text-sm text-text-secondary">{sub}</span>
+                </span>
+              </Card>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
-      <p className="text-text-secondary">
-        Read-only — browsing {elderName}&rsquo;s residents association. Call directly for anything you need to arrange.
-      </p>
+      <button
+        type="button"
+        onClick={() => setTab(null)}
+        className="flex w-fit items-center gap-1.5 text-sm font-semibold text-text-secondary hover:text-primary-600"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        {elderName}&rsquo;s Community
+      </button>
 
-      <div className="mt-4 flex h-12 w-fit min-w-[28rem] items-center rounded-xl bg-primary-50 p-1">
-        {TABS.map(([value, label, Icon]) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => setTab(value)}
-            className={cn(
-              'flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold transition-colors',
-              tab === value ? 'bg-surface text-primary-900 shadow-sm' : 'text-primary-900/70',
-            )}
-          >
-            <Icon className="h-4 w-4" /> {label}
-          </button>
-        ))}
-      </div>
-
-      <div className="mt-6">
+      <div className="mt-4">
         {tab === 'announcements' && (
           notices.loading || notices.error || (notices.data?.length ?? 0) === 0 ? (
             <EmptyOrError

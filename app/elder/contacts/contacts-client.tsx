@@ -70,22 +70,59 @@ export function ElderContactsClient({ initialContacts }: { initialContacts: Cont
 
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-text">{t('elder.contacts.yourFamily')}</h1>
-          <p className="mt-1 text-text-secondary">{t('elder.contacts.tapToCall')}</p>
-        </div>
-        <div className="flex gap-2">
-          <EmergencyContactPicker onAdded={reload} />
-          <Button onClick={() => setShowForm((s) => !s)} size="lg">
-            <UserPlus className="h-5 w-5" />
-            {t('elder.contacts.add')}
-          </Button>
-        </div>
+      <h1 className="text-2xl font-bold text-text">{t('elder.contacts.yourFamily')}</h1>
+      <p className="mt-1 text-text-secondary">{t('elder.contacts.tapToCall')}</p>
+
+      <div className="mt-6 flex flex-col gap-3">
+        {contacts.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center text-text-secondary">
+              {t('elder.contacts.noContacts')}
+            </CardContent>
+          </Card>
+        ) : (
+          contacts.map((contact) => (
+            <Card key={contact.id}>
+              <CardContent className="flex items-center gap-4 py-4">
+                <a href={`tel:${contact.phone}`} className="flex min-w-0 flex-1 items-center gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-50 text-lg font-bold text-primary-900">
+                    {contact.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-lg font-semibold text-text">{contact.name}</p>
+                    <p className="truncate text-sm text-text-secondary">{contact.relationship}</p>
+                  </div>
+                </a>
+                <a
+                  href={`tel:${contact.phone}`}
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary-600 text-white hover:bg-primary-900"
+                  aria-label={`Call ${contact.name}`}
+                >
+                  <Phone className="h-5 w-5" />
+                </a>
+                <button
+                  onClick={() => handleRemove(contact.id)}
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-danger-600 hover:bg-danger-50"
+                  aria-label={`Remove ${contact.name}`}
+                >
+                  <Trash2 className="h-5 w-5" />
+                </button>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+
+      <div className="mt-6 flex flex-wrap gap-2">
+        <EmergencyContactPicker onAdded={reload} />
+        <Button onClick={() => setShowForm((s) => !s)} size="lg">
+          <UserPlus className="h-5 w-5" />
+          {t('elder.contacts.add')}
+        </Button>
       </div>
 
       {showForm && (
-        <Card className="mt-6">
+        <Card className="mt-4">
           <CardContent className="pt-6">
             <form onSubmit={handleAdd} className="flex flex-col gap-4 sm:flex-row sm:items-end sm:flex-wrap">
               <div className="flex flex-col gap-2">
@@ -108,44 +145,6 @@ export function ElderContactsClient({ initialContacts }: { initialContacts: Cont
           </CardContent>
         </Card>
       )}
-
-      <div className="mt-6 flex flex-col gap-3">
-        {contacts.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center text-text-secondary">
-              {t('elder.contacts.noContacts')}
-            </CardContent>
-          </Card>
-        ) : (
-          contacts.map((contact) => (
-            <Card key={contact.id}>
-              <CardContent className="flex items-center gap-4 py-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-50 text-lg font-bold text-primary-900">
-                  {contact.name.charAt(0).toUpperCase()}
-                </div>
-                <div className="flex-1">
-                  <p className="text-lg font-semibold text-text">{contact.name}</p>
-                  <p className="text-sm text-text-secondary">{contact.relationship}</p>
-                </div>
-                <a
-                  href={`tel:${contact.phone}`}
-                  className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-600 text-white hover:bg-primary-900"
-                  aria-label={`Call ${contact.name}`}
-                >
-                  <Phone className="h-5 w-5" />
-                </a>
-                <button
-                  onClick={() => handleRemove(contact.id)}
-                  className="flex h-12 w-12 items-center justify-center rounded-xl text-danger-600 hover:bg-danger-50"
-                  aria-label={`Remove ${contact.name}`}
-                >
-                  <Trash2 className="h-5 w-5" />
-                </button>
-              </CardContent>
-            </Card>
-          ))
-        )}
-      </div>
     </div>
   );
 }
