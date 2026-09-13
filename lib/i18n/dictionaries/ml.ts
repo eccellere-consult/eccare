@@ -132,6 +132,7 @@ const ml: Record<TranslationKey, string> = {
   'elder.profile.pincode': 'പിൻകോഡ്',
   'elder.profile.saving': 'സേവ് ചെയ്യുന്നു...',
   'elder.profile.saveChanges': 'മാറ്റങ്ങൾ സേവ് ചെയ്യുക',
+  'elder.profile.mySosHistory': 'എന്റെ SOS ചരിത്രം',
   'elder.profile.saved': 'സേവ് ചെയ്തു.',
   'elder.profile.couldNotSave': 'മാറ്റങ്ങൾ സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല.',
 
@@ -200,6 +201,7 @@ const ml: Record<TranslationKey, string> = {
   'login.alreadyHaveAccount': 'അക്കൗണ്ട് ഉണ്ടോ? സൈൻ ഇൻ ചെയ്യുക',
 
   'shared.contactForm.pickFromContacts': 'ഫോൺ കോൺടാക്റ്റുകളിൽ നിന്ന് തിരഞ്ഞെടുക്കുക',
+  'shared.contactForm.pickMultipleFromContacts': 'ഫോണിൽ നിന്ന് നിരവധി കോൺടാക്റ്റുകൾ ഇറക്കുമതി ചെയ്യുക',
   'shared.contactForm.name': 'പേര്',
   'shared.contactForm.namePlaceholder': 'രമേശ്',
   'shared.contactForm.phoneNumber': 'ഫോൺ നമ്പർ',
@@ -236,6 +238,11 @@ const ml: Record<TranslationKey, string> = {
   'shared.contactForm.adding': 'ചേർക്കുന്നു…',
   'shared.contactForm.addContact': 'കോൺടാക്റ്റ് ചേർക്കുക',
   'shared.contactForm.cancel': 'റദ്ദാക്കുക',
+  'shared.contactForm.reviewImported': '{count} ഇറക്കുമതി ചെയ്ത കോൺടാക്റ്റുകൾ അവലോകനം ചെയ്യുക',
+  'shared.contactForm.removeFromImport': 'ഇറക്കുമതിയിൽ നിന്ന് നീക്കം ചെയ്യുക',
+  'shared.contactForm.addNContacts': '{count} കോൺടാക്റ്റുകൾ ചേർക്കുക',
+  'shared.contactForm.importSummary': '{total} ൽ {added} ചേർത്തു.',
+  'shared.contactForm.done': 'പൂർത്തിയായി',
 
   'shared.contactList.loading': 'ലോഡ് ചെയ്യുന്നു…',
   'shared.contactList.noContacts': 'ഇതുവരെ കോൺടാക്റ്റുകളൊന്നും ചേർത്തിട്ടില്ല.',
@@ -307,6 +314,10 @@ const ml: Record<TranslationKey, string> = {
     '{name} എന്ന വ്യക്തിയെ ഈ കമ്മ്യൂണിറ്റിയിൽ നിന്ന് നീക്കം ചെയ്യണോ? ജോയിൻ കോഡ് ഉപയോഗിച്ച് അവർക്ക് വീണ്ടും ചേരേണ്ടിവരും.',
   'shared.communityMembers.couldNotUpdateRole': 'റോൾ അപ്‌ഡേറ്റ് ചെയ്യാൻ കഴിഞ്ഞില്ല.',
   'shared.communityMembers.couldNotRemove': 'അംഗത്തെ നീക്കം ചെയ്യാൻ കഴിഞ്ഞില്ല.',
+  'shared.communityMembers.pendingRequests': 'തീർപ്പുകൽപ്പിക്കാത്ത അഭ്യർത്ഥനകൾ',
+  'shared.communityMembers.approve': 'അംഗീകരിക്കുക',
+  'shared.communityMembers.reject': 'നിരസിക്കുക',
+  'shared.communityMembers.couldNotDecideRequest': 'ഈ അഭ്യർത്ഥന അപ്ഡേറ്റ് ചെയ്യാൻ കഴിഞ്ഞില്ല.',
   'shared.communityMembers.role.member': 'അംഗം',
   'shared.communityMembers.role.committee': 'കമ്മിറ്റി',
   'shared.communityMembers.role.admin': 'അഡ്മിൻ',
@@ -342,6 +353,8 @@ const ml: Record<TranslationKey, string> = {
   'community.hub.joinIntro':
     'നിങ്ങളുടെ അയൽപക്കം ഇവിടെ അറിയിപ്പുകൾ, പരിപാടികൾ, വിശ്വസനീയമായ വെണ്ടർമാർ, ഹെൽപ്പ്‌ലൈൻ നമ്പറുകൾ എന്നിവ പങ്കിടുന്നു. കമ്മ്യൂണിറ്റി കോഡിനായി നിങ്ങളുടെ മാനേജ്മെന്റ് കമ്മിറ്റിയോട് ചോദിക്കുക.',
   'community.hub.enterCommunityCode': 'കമ്മ്യൂണിറ്റി കോഡ് നൽകുക',
+  'community.hub.pendingApprovalTitle': 'അംഗീകാരത്തിനായി കാത്തിരിക്കുന്നു',
+  'community.hub.pendingApprovalBody': '{name} ൽ ചേരാനുള്ള നിങ്ങളുടെ അഭ്യർത്ഥന ഒരു കമ്മിറ്റി അംഗത്തിന്റെ അംഗീകാരത്തിനായി കാത്തിരിക്കുന്നു.',
   'community.hub.resident': 'താമസക്കാരൻ',
   'community.hub.managementCommittee': 'മാനേജ്മെന്റ് കമ്മിറ്റി',
   'community.hub.codePrefix': 'കോഡ്: {code}',
@@ -403,6 +416,7 @@ const ml: Record<TranslationKey, string> = {
   'community.join.joining': 'ചേരുന്നു…',
   'community.join.joinCommunity': 'കമ്മ്യൂണിറ്റിയിൽ ചേരുക',
   'community.join.couldNotJoin': 'ചേരാൻ കഴിഞ്ഞില്ല.',
+  'community.join.requestSent': 'ചേരാനുള്ള നിങ്ങളുടെ അഭ്യർത്ഥന അയച്ചു. ഒരു കമ്മിറ്റി അംഗം ഉടൻ ഇത് അംഗീകരിക്കും.',
   'community.join.noCodeYet': 'ഇതുവരെ കോഡ് ഇല്ലേ?',
   'community.join.registerYourCommunity': 'നിങ്ങളുടെ കമ്മ്യൂണിറ്റി രജിസ്റ്റർ ചെയ്യുക',
 
@@ -493,6 +507,11 @@ const ml: Record<TranslationKey, string> = {
     'സഹ അംഗങ്ങൾക്ക് നിങ്ങളെ കാണാനും നേരിട്ട് വിളിക്കാനും കഴിയും. പട്ടികയിൽ പ്രത്യക്ഷപ്പെടാതെ അംഗമായി തുടരാൻ ഇത് ഓഫ് ചെയ്യുക.',
   'community.settings.saving': 'സേവ് ചെയ്യുന്നു…',
   'community.settings.notifications': 'അറിയിപ്പുകൾ',
+  'community.settings.leaveSection': 'നിങ്ങളുടെ കമ്മ്യൂണിറ്റികൾ',
+  'community.settings.leaveCommunity': 'ഈ കമ്മ്യൂണിറ്റി വിടുക',
+  'community.settings.leaving': 'വിടുന്നു…',
+  'community.settings.confirmLeave': '{name} വിടണോ? തിരികെ വരാൻ നിങ്ങൾക്ക് ജോയിൻ കോഡ് ആവശ്യമാണ്.',
+  'community.settings.couldNotLeave': 'ഈ കമ്മ്യൂണിറ്റി വിടാൻ കഴിഞ്ഞില്ല.',
 
   'community.documents.title': 'രേഖകൾ',
   'community.documents.subtitle': 'ബൈലോകൾ, AGM മിനിറ്റ്സ്, അറിയിപ്പുകൾ — ഒരിടത്ത് സൂക്ഷിച്ചിരിക്കുന്നു.',

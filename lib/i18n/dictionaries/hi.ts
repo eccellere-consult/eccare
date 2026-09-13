@@ -132,6 +132,7 @@ const hi: Record<TranslationKey, string> = {
   'elder.profile.pincode': 'पिनकोड',
   'elder.profile.saving': 'सेव हो रहा है...',
   'elder.profile.saveChanges': 'बदलाव सेव करें',
+  'elder.profile.mySosHistory': 'मेरी एसओएस हिस्ट्री',
   'elder.profile.saved': 'सेव हो गया।',
   'elder.profile.couldNotSave': 'बदलाव सेव नहीं हो सके।',
 
@@ -200,6 +201,7 @@ const hi: Record<TranslationKey, string> = {
   'login.alreadyHaveAccount': 'पहले से खाता है? साइन इन करें',
 
   'shared.contactForm.pickFromContacts': 'फ़ोन संपर्कों से चुनें',
+  'shared.contactForm.pickMultipleFromContacts': 'फ़ोन से कई संपर्क आयात करें',
   'shared.contactForm.name': 'नाम',
   'shared.contactForm.namePlaceholder': 'रमेश',
   'shared.contactForm.phoneNumber': 'फ़ोन नंबर',
@@ -236,6 +238,11 @@ const hi: Record<TranslationKey, string> = {
   'shared.contactForm.adding': 'जोड़ा जा रहा है…',
   'shared.contactForm.addContact': 'संपर्क जोड़ें',
   'shared.contactForm.cancel': 'रद्द करें',
+  'shared.contactForm.reviewImported': '{count} आयातित संपर्कों की समीक्षा करें',
+  'shared.contactForm.removeFromImport': 'आयात से हटाएं',
+  'shared.contactForm.addNContacts': '{count} संपर्क जोड़ें',
+  'shared.contactForm.importSummary': '{total} में से {added} जोड़े गए।',
+  'shared.contactForm.done': 'हो गया',
 
   'shared.contactList.loading': 'लोड हो रहा है…',
   'shared.contactList.noContacts': 'अभी तक कोई संपर्क नहीं जोड़ा गया है।',
@@ -307,6 +314,10 @@ const hi: Record<TranslationKey, string> = {
     '{name} को इस कम्युनिटी से हटाएं? उन्हें जॉइन कोड से फिर से जुड़ना होगा।',
   'shared.communityMembers.couldNotUpdateRole': 'भूमिका अपडेट नहीं हो सकी।',
   'shared.communityMembers.couldNotRemove': 'सदस्य को हटाया नहीं जा सका।',
+  'shared.communityMembers.pendingRequests': 'लंबित अनुरोध',
+  'shared.communityMembers.approve': 'स्वीकृत करें',
+  'shared.communityMembers.reject': 'अस्वीकार करें',
+  'shared.communityMembers.couldNotDecideRequest': 'यह अनुरोध अपडेट नहीं किया जा सका।',
   'shared.communityMembers.role.member': 'सदस्य',
   'shared.communityMembers.role.committee': 'समिति',
   'shared.communityMembers.role.admin': 'एडमिन',
@@ -342,6 +353,8 @@ const hi: Record<TranslationKey, string> = {
   'community.hub.joinIntro':
     'आपका पड़ोस यहां घोषणाएं, कार्यक्रम, विश्वसनीय विक्रेता और हेल्पलाइन नंबर साझा करता है। कम्युनिटी कोड के लिए अपनी प्रबंधन समिति से पूछें।',
   'community.hub.enterCommunityCode': 'कम्युनिटी कोड दर्ज करें',
+  'community.hub.pendingApprovalTitle': 'स्वीकृति की प्रतीक्षा में',
+  'community.hub.pendingApprovalBody': '{name} में शामिल होने का आपका अनुरोध एक समिति सदस्य की स्वीकृति की प्रतीक्षा कर रहा है।',
   'community.hub.resident': 'निवासी',
   'community.hub.managementCommittee': 'प्रबंधन समिति',
   'community.hub.codePrefix': 'कोड: {code}',
@@ -403,6 +416,7 @@ const hi: Record<TranslationKey, string> = {
   'community.join.joining': 'जुड़ रहे हैं…',
   'community.join.joinCommunity': 'कम्युनिटी से जुड़ें',
   'community.join.couldNotJoin': 'जुड़ा नहीं जा सका।',
+  'community.join.requestSent': 'आपका जुड़ने का अनुरोध भेज दिया गया है। जल्द ही एक समिति सदस्य इसे स्वीकृत करेंगे।',
   'community.join.noCodeYet': 'अभी तक कोड नहीं है?',
   'community.join.registerYourCommunity': 'अपनी कम्युनिटी रजिस्टर करें',
 
@@ -493,6 +507,11 @@ const hi: Record<TranslationKey, string> = {
     'साथी सदस्य आपको देख सकते हैं और सीधे कॉल कर सकते हैं। सूची में दिखाई दिए बिना सदस्य बने रहने के लिए इसे बंद करें।',
   'community.settings.saving': 'सेव हो रहा है…',
   'community.settings.notifications': 'सूचनाएं',
+  'community.settings.leaveSection': 'आपकी कम्युनिटी',
+  'community.settings.leaveCommunity': 'यह कम्युनिटी छोड़ें',
+  'community.settings.leaving': 'छोड़ा जा रहा है…',
+  'community.settings.confirmLeave': '{name} छोड़ें? वापस आने के लिए आपको जॉइन कोड की आवश्यकता होगी।',
+  'community.settings.couldNotLeave': 'यह कम्युनिटी छोड़ी नहीं जा सकी।',
 
   'community.documents.title': 'दस्तावेज़',
   'community.documents.subtitle': 'नियम, AGM मिनट्स, और सूचनाएं — एक जगह पर रखे गए।',

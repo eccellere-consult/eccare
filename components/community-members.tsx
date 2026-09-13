@@ -16,6 +16,13 @@ interface Member {
   user: { id: string; name: string; phone: string | null };
 }
 
+interface PendingRequest {
+  id: string;
+  flatNumber: string | null;
+  createdAt: string;
+  user: { id: string; name: string; phone: string | null };
+}
+
 const ROLE_BADGE = { member: 'muted', committee: 'accent', admin: 'success' } as const;
 const ROLE_LABEL_KEY: Record<Member['role'], TranslationKey> = {
   member: 'shared.communityMembers.role.member',
@@ -42,8 +49,29 @@ export function CommunityMembers({
   const { data, loading, error, reload } = useCommunityData<Member[]>(
     `/community/members?neighborhoodId=${neighborhoodId}`,
   );
+  const {
+    data: pending,
+    loading: pendingLoading,
+    reload: reloadPending,
+  } = useCommunityData<PendingRequest[]>(`/community/members?neighborhoodId=${neighborhoodId}&status=pending`);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState('');
+
+  async function decide(request: PendingRequest, action: 'approve' | 'reject') {
+    setBusyId(request.id);
+    setActionError('');
+    try {
+      await communityApi.patch(`/community/members/${request.id}`, { action });
+      reloadPending();
+      if (action === 'approve') reload();
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : t('shared.communityMembers.couldNotDecideRequest'),
+      );
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   async function setRole(memberId: string, role: Member['role']) {
     setBusyId(memberId);
@@ -80,18 +108,52 @@ export function CommunityMembers({
       </Card>
     );
   }
-  if ((data?.length ?? 0) === 0) {
-    return (
-      <Card>
-        <CardContent className="py-12 text-center text-text-secondary">{t('shared.communityMembers.noMembersYet')}</CardContent>
-      </Card>
-    );
-  }
 
   return (
     <div className="flex flex-col gap-3">
       {actionError && <p className="text-sm text-danger-600">{actionError}</p>}
-      {data?.map((m) => (
+
+      {!pendingLoading && (pending?.length ?? 0) > 0 && (
+        <div className="flex flex-col gap-3">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-text-secondary">
+            {t('shared.communityMembers.pendingRequests')}
+          </h2>
+          {pending!.map((p) => (
+            <Card key={p.id} className="border-accent-100 bg-accent-50">
+              <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+                <div className="min-w-0">
+                  <p className="font-bold text-text">{p.user.name}</p>
+                  <p className="text-sm text-text-secondary">
+                    {p.user.phone ?? '—'}
+                    {p.flatNumber ? ` · ${p.flatNumber}` : ''}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button size="sm" disabled={busyId === p.id} onClick={() => decide(p, 'approve')}>
+                    {t('shared.communityMembers.approve')}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busyId === p.id}
+                    onClick={() => decide(p, 'reject')}
+                    className="text-danger-600 hover:bg-danger-50"
+                  >
+                    {t('shared.communityMembers.reject')}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {(data?.length ?? 0) === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center text-text-secondary">{t('shared.communityMembers.noMembersYet')}</CardContent>
+        </Card>
+      ) : (
+        data?.map((m) => (
         <Card key={m.id}>
           <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
             <div className="min-w-0">
@@ -156,7 +218,8 @@ export function CommunityMembers({
             </div>
           </CardContent>
         </Card>
-      ))}
+        ))
+      )}
     </div>
   );
 }

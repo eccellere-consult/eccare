@@ -12,6 +12,10 @@ const schema = z.object({
   // the same trust level that already lets a committee/admin promote/demote/remove
   // a member covers fixing how their name is spelled everywhere they use EC.
   name: z.string().trim().min(1).max(100).optional(),
+  // Deciding a pending join request — a separate concern from the edits above,
+  // handled in its own branch below (see approve/reject handling).
+  action: z.enum(['approve', 'reject']).optional(),
+  rejectionReason: z.string().trim().max(500).optional(),
 });
 
 const forbidden = (message: string) =>
@@ -37,9 +41,6 @@ const notFound = () =>
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const parsed = schema.safeParse(await req.json());
   if (!parsed.success) return invalidInput('Please choose a valid role, name, or flat number.');
-  if (parsed.data.role === undefined && parsed.data.flatNumber === undefined && parsed.data.name === undefined) {
-    return invalidInput('Nothing to update.');
-  }
 
   const { id } = await params;
   const target = await prisma.neighborhoodMember.findUnique({ where: { id } });
@@ -47,6 +48,30 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const guard = await requireMembership(req, { manage: true, neighborhoodId: target.neighborhoodId });
   if (guard.error) return guard.error;
+
+  // Approving/rejecting a pending join request — same idiom as
+  // CommunityProviderListing's approve/reject (app/api/v1/community/provider-requests/[id]/route.ts).
+  if (parsed.data.action) {
+    if (target.status !== 'pending') {
+      return NextResponse.json(
+        { success: false, error: { code: 'INVALID_STATE', message: 'This request has already been decided.' } },
+        { status: 409 },
+      );
+    }
+    const updated = await prisma.neighborhoodMember.update({
+      where: { id },
+      data:
+        parsed.data.action === 'approve'
+          ? { status: 'approved', approvedAt: new Date(), approvedById: guard.auth.userId, rejectionReason: null }
+          : { status: 'rejected', rejectionReason: parsed.data.rejectionReason ?? null },
+      include: { user: { select: { id: true, name: true, phone: true } } },
+    });
+    return ok(updated);
+  }
+
+  if (parsed.data.role === undefined && parsed.data.flatNumber === undefined && parsed.data.name === undefined) {
+    return invalidInput('Nothing to update.');
+  }
 
   const callerIsAdminTier = guard.membership.role === 'admin';
   const touchesAdmin = parsed.data.role === 'admin' || target.role === 'admin';
@@ -104,24 +129,35 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 /**
  * Remove a member from the community entirely (not the same as demoting them —
  * this deletes the NeighborhoodMember row, so they'd need to rejoin by join code
- * to come back). Committee/admin only, same guard as PATCH; a community can never
- * be left with zero admins, same rule as demoting the last admin above.
+ * to come back). Committee/admin removing someone else, OR a member removing
+ * their OWN row (self-serve "Leave this community") — either way, a community
+ * can never be left with zero admins, same rule as demoting the last admin
+ * above.
  */
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const target = await prisma.neighborhoodMember.findUnique({ where: { id } });
   if (!target) return notFound();
 
-  const guard = await requireMembership(req, { manage: true, neighborhoodId: target.neighborhoodId });
+  // Authenticate + confirm the caller belongs to this same neighbourhood, without
+  // yet requiring manage-tier — a self-leave doesn't need it, only removing
+  // someone else does.
+  const guard = await requireMembership(req, { neighborhoodId: target.neighborhoodId });
   if (guard.error) return guard.error;
 
-  if (target.role === 'admin' && guard.membership.role !== 'admin') {
-    return forbidden('Only a community admin can remove another admin.');
+  const isSelf = guard.auth.userId === target.userId;
+  if (!isSelf) {
+    if (guard.membership.role !== 'committee' && guard.membership.role !== 'admin') {
+      return forbidden('Only the management committee can do this.');
+    }
+    if (target.role === 'admin' && guard.membership.role !== 'admin') {
+      return forbidden('Only a community admin can remove another admin.');
+    }
   }
 
   if (target.role === 'admin') {
     const otherAdmins = await prisma.neighborhoodMember.count({
-      where: { neighborhoodId: target.neighborhoodId, role: 'admin', id: { not: target.id } },
+      where: { neighborhoodId: target.neighborhoodId, role: 'admin', status: 'approved', id: { not: target.id } },
     });
     if (otherAdmins === 0) {
       return NextResponse.json(
@@ -129,7 +165,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
           success: false,
           error: {
             code: 'LAST_ADMIN',
-            message: 'A community must keep at least one admin. Promote someone else to admin first.',
+            message: isSelf
+              ? 'You are the only admin. Promote someone else to admin before leaving.'
+              : 'A community must keep at least one admin. Promote someone else to admin first.',
           },
         },
         { status: 400 },

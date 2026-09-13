@@ -1,7 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { LogOut } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { CommunityPageFrame } from '@/components/community/page-frame';
 import { communityApi, useCommunityData } from '@/lib/community-client';
 import { cn } from '@/lib/utils';
@@ -17,6 +20,7 @@ interface Preference {
 }
 
 interface Membership {
+  id: string;
   neighborhoodId: string;
   showInDirectory: boolean;
   neighborhood: { name: string };
@@ -112,6 +116,57 @@ function DirectoryVisibilitySection() {
   );
 }
 
+function LeaveCommunitySection() {
+  const router = useRouter();
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
+  const { data, loading } = useCommunityData<Me>('/community/me');
+  const [leavingId, setLeavingId] = useState<string | null>(null);
+  const [error, setError] = useState('');
+
+  if (loading || (data?.memberships.length ?? 0) === 0) return null;
+
+  async function leave(m: Membership) {
+    if (!confirm(t('community.settings.confirmLeave').replace('{name}', m.neighborhood.name))) return;
+    setLeavingId(m.id);
+    setError('');
+    try {
+      await communityApi.delete(`/community/members/${m.id}`);
+      router.push('/community/join');
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('community.settings.couldNotLeave'));
+      setLeavingId(null);
+    }
+  }
+
+  return (
+    <div className="mb-6 flex flex-col gap-3">
+      <h2 className="text-sm font-bold uppercase tracking-wide text-text-secondary">
+        {t('community.settings.leaveSection')}
+      </h2>
+      {error && <p className="text-sm text-danger-600">{error}</p>}
+      {data?.memberships.map((m) => (
+        <Card key={m.id} className="border-danger-100">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+            <p className="font-semibold text-text">{m.neighborhood.name}</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-danger-600 text-danger-600"
+              disabled={leavingId === m.id}
+              onClick={() => leave(m)}
+            >
+              <LogOut className="h-4 w-4" />
+              {leavingId === m.id ? t('community.settings.leaving') : t('community.settings.leaveCommunity')}
+            </Button>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 export default function NotificationSettingsPage() {
   const lang = useLanguage();
   const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
@@ -144,6 +199,7 @@ export default function NotificationSettingsPage() {
       error={error}
     >
       <DirectoryVisibilitySection />
+      <LeaveCommunitySection />
 
       <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-text-secondary">
         {t('community.settings.notifications')}
