@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { ArrowLeft, Scale, Home, ShieldCheck, Upload, FileText, Phone, type LucideIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,18 +40,20 @@ const CATEGORY_META: Record<Category, { label: string; description: string; icon
 };
 const STATUS_VARIANT: Record<Consultation['status'], 'accent' | 'success'> = { submitted: 'accent', in_progress: 'accent', completed: 'success' };
 
-export default function AdvisoryPage() {
+function AdvisoryPageContent() {
+  const elderUserId = useSearchParams().get('elderUserId') || undefined;
   const [activeCategory, setActiveCategory] = useState<Category | null>(null);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(() => {
     setLoading(true);
-    fetch('/api/v1/advisory/consultations', { credentials: 'include' })
+    const qs = elderUserId ? `?elderUserId=${elderUserId}` : '';
+    fetch(`/api/v1/advisory/consultations${qs}`, { credentials: 'include' })
       .then((r) => r.json())
       .then((j) => { if (j.success) setConsultations(j.data); })
       .finally(() => setLoading(false));
-  }, []);
+  }, [elderUserId]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -79,7 +82,14 @@ export default function AdvisoryPage() {
         ))}
       </div>
 
-      {activeCategory && <IntakeFunnel category={activeCategory} onSubmitted={() => { setActiveCategory(null); load(); }} onCancel={() => setActiveCategory(null)} />}
+      {activeCategory && (
+        <IntakeFunnel
+          category={activeCategory}
+          elderUserId={elderUserId}
+          onSubmitted={() => { setActiveCategory(null); load(); }}
+          onCancel={() => setActiveCategory(null)}
+        />
+      )}
 
       <div className="mt-8">
         <h2 className="text-lg font-bold text-text">Your requests</h2>
@@ -99,7 +109,15 @@ export default function AdvisoryPage() {
   );
 }
 
-function IntakeFunnel({ category, onSubmitted, onCancel }: { category: Category; onSubmitted: () => void; onCancel: () => void }) {
+export default function AdvisoryPage() {
+  return (
+    <Suspense>
+      <AdvisoryPageContent />
+    </Suspense>
+  );
+}
+
+function IntakeFunnel({ category, elderUserId, onSubmitted, onCancel }: { category: Category; elderUserId?: string; onSubmitted: () => void; onCancel: () => void }) {
   const meta = CATEGORY_META[category];
   const [step, setStep] = useState(1);
   const [details, setDetails] = useState<Record<string, string>>({});
@@ -115,7 +133,7 @@ function IntakeFunnel({ category, onSubmitted, onCancel }: { category: Category;
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ category, requirementDetails: details, notes: notes.trim() || undefined }),
+        body: JSON.stringify({ category, requirementDetails: details, notes: notes.trim() || undefined, elderUserId }),
       });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Could not submit request.');
