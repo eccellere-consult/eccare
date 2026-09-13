@@ -1,7 +1,10 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { requireMembership, invalidInput, ok } from '@/lib/community-route';
+import { getAuthUser } from '@/lib/auth';
+import { canAccessElder } from '@/lib/family-access';
+import { getElderNeighborhoodId } from '@/lib/community-access';
 
 const HOME_MAINTENANCE_CATEGORIES = [
   'leakage', 'cleaning', 'maid', 'cook', 'painting', 'gardening', 'electrical', 'carpentry', 'other',
@@ -45,10 +48,35 @@ const schema = z.object({
  *    without full visibility here a mis-tagged listing would become unreachable to
  *    fix once it disappears from the plain view. */
 export async function GET(req: NextRequest) {
-  const guard = await requireMembership(req);
-  if (guard.error) return guard.error;
+  const elderUserId = req.nextUrl.searchParams.get('elderUserId');
+  let neighborhoodId: string;
+  let isManager: boolean;
 
-  const isManager = guard.membership.role === 'committee' || guard.membership.role === 'admin';
+  if (elderUserId) {
+    // Read-only "For [Elder]'s Community" browse — a caregiver viewing the
+    // elder's vendors, never with manage/moderate capability regardless of
+    // the caregiver's own role in their own, unrelated community. Same
+    // isolation rationale as getElderNeighborhoodId's own doc comment.
+    const auth = await getAuthUser(req);
+    if (!auth) {
+      return NextResponse.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Please log in.' } }, { status: 401 });
+    }
+    const resolved = await getElderNeighborhoodId(auth.userId, elderUserId);
+    if (resolved === null) {
+      if (!(await canAccessElder(auth.userId, elderUserId))) {
+        return NextResponse.json({ success: false, error: { code: 'FORBIDDEN', message: 'You do not have access to this elder.' } }, { status: 403 });
+      }
+      return ok([]); // elder hasn't joined a community yet
+    }
+    neighborhoodId = resolved;
+    isManager = false;
+  } else {
+    const guard = await requireMembership(req);
+    if (guard.error) return guard.error;
+    neighborhoodId = guard.neighborhoodId;
+    isManager = guard.membership.role === 'committee' || guard.membership.role === 'admin';
+  }
+
   const category = req.nextUrl.searchParams.get('category');
   const hasHomeMaintenanceParam = req.nextUrl.searchParams.has('homeMaintenanceCategory');
   const hasShopParam = req.nextUrl.searchParams.has('shopCategory');
@@ -68,7 +96,7 @@ export async function GET(req: NextRequest) {
 
   const listings = await prisma.localListing.findMany({
     where: {
-      neighborhoodId: guard.neighborhoodId,
+      neighborhoodId,
       ...(category ? { category } : {}),
       ...(hasHomeMaintenanceParam
         ? { homeMaintenanceCategory: validHomeMaintenanceValue ?? { not: null } }
