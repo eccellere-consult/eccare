@@ -10,6 +10,7 @@ const ml: Record<TranslationKey, string> = {
   'common.by': 'വഴി',
   'common.myPrescriptions': 'എന്റെ കുറിപ്പടികൾ',
   'common.cancel': 'റദ്ദാക്കുക',
+  'common.save': 'സേവ് ചെയ്യുക',
   'common.call': 'വിളിക്കുക',
   'common.all': 'എല്ലാം',
 

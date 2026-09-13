@@ -10,6 +10,7 @@ const kn: Record<TranslationKey, string> = {
   'common.by': 'ಮೂಲಕ',
   'common.myPrescriptions': 'ನನ್ನ ಔಷಧಿ ಚೀಟಿಗಳು',
   'common.cancel': 'ರದ್ದುಮಾಡಿ',
+  'common.save': 'ಉಳಿಸಿ',
   'common.call': 'ಕರೆ ಮಾಡಿ',
   'common.all': 'ಎಲ್ಲಾ',
 

@@ -9,6 +9,7 @@ const en = {
   'common.by': 'By',
   'common.myPrescriptions': 'My prescriptions',
   'common.cancel': 'Cancel',
+  'common.save': 'Save',
   'common.call': 'Call',
   'common.all': 'All',
 
