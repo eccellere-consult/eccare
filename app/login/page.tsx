@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { isValidEmail, isValidPhone, EMAIL_FORMAT_MESSAGE, PHONE_FORMAT_MESSAGE } from '@/lib/validation';
@@ -111,9 +112,8 @@ function SignInForm({ onSuccess, t }: { onSuccess: (role: string) => void; t: (k
             {t('login.signIn.forgotPassword')}
           </Link>
         </div>
-        <Input
+        <PasswordInput
           id="password"
-          type="password"
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -306,9 +306,8 @@ function CreateAccountForm({
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="reg-password">{t('login.register.password')}</Label>
-        <Input
+        <PasswordInput
           id="reg-password"
-          type="password"
           autoComplete="new-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}

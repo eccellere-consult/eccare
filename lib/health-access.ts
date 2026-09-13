@@ -70,6 +70,12 @@ export async function requireHealthAccess(
         { status: 400 },
       );
     }
+    // A caregiver managing their OWN health data (elderUserId === their own id,
+    // e.g. the "For myself" tile on /family/health) needs no FamilyRelation —
+    // same self-access precedent as canAccessElder() in lib/family-access.ts.
+    if (elderUserId === user.userId) {
+      return { userId: user.userId, role: 'caregiver', elderUserId: user.userId, canManageMeds: true };
+    }
     const relation = await prisma.familyRelation.findUnique({
       where: { elderUserId_caregiverUserId: { elderUserId, caregiverUserId: user.userId } },
     });
