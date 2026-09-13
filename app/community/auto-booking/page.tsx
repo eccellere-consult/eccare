@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { CommunityPageFrame } from '@/components/community/page-frame';
 import { communityApi, useCommunityData } from '@/lib/community-client';
 import { buildWaLink as waLink } from '@/lib/whatsapp';
+import { renderTemplate, getTemplateDef } from '@/lib/whatsapp-templates-shared';
 import { RatingInput } from '@/components/rating-input';
 import { ProviderRatingSummaryDisplay } from '@/components/provider-rating-summary';
 
@@ -107,6 +108,7 @@ function AutoBookingContent() {
   const { data: rateCard, reload: reloadRateCard } = useCommunityData<RateCard | null>('/community/auto-rate-card');
   const { data: me } = useCommunityData<Me>('/community/me');
   const { data: bookings, reload: reloadBookings } = useCommunityData<Booking[]>('/community/auto-bookings');
+  const { data: messageTemplates } = useCommunityData<Record<string, string>>('/whatsapp-templates');
   const canManage = me?.memberships?.[0]?.role !== 'member';
 
   const [bookingDriverId, setBookingDriverId] = useState<string | null>(null);
@@ -222,16 +224,16 @@ function AutoBookingContent() {
   function bookMessage(driver: Driver): string {
     const tripLabel = tripType === 'drop' ? 'Drop only' : 'Go there & come back';
     const rate = effectiveRate(driver);
-    return [
-      'Hello, I need to book your auto through EC.',
-      `Trip: ${tripLabel}`,
-      `Pickup: ${pickup || '(please confirm)'}`,
-      `Drop: ${drop || '(please confirm)'}`,
-      prefillDate ? `Date: ${prefillDate}${prefillTime ? ` at ${prefillTime}` : ''}` : '',
-      rate ? `Indicative rate: ₹${rate.perKm}/km, ₹${rate.perMinWait}/min waiting.` : '',
-      'Please reply to confirm you can take this trip. Thank you!',
-    ]
-      .filter(Boolean)
+    const body = messageTemplates?.auto_booking_request ?? getTemplateDef('auto_booking_request').defaultBody;
+    return renderTemplate(body, {
+      trip: tripLabel,
+      pickup: pickup || '(please confirm)',
+      drop: drop || '(please confirm)',
+      date_line: prefillDate ? `Date: ${prefillDate}${prefillTime ? ` at ${prefillTime}` : ''}` : '',
+      rate_line: rate ? `Indicative rate: ₹${rate.perKm}/km, ₹${rate.perMinWait}/min waiting.` : '',
+    })
+      .split('\n')
+      .filter((line) => line.trim())
       .join('\n');
   }
 
