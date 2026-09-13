@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db';
 import type { NeighborhoodRole } from '@prisma/client';
+import { canAccessElder } from '@/lib/family-access';
 
 export interface Membership {
   neighborhoodId: string;
@@ -53,4 +54,23 @@ export async function getPrimaryNeighborhoodId(userId: string): Promise<string |
     select: { neighborhoodId: true },
   });
   return member?.neighborhoodId ?? null;
+}
+
+/**
+ * The ELDER's primary neighbourhood, for a caregiver viewing on the elder's behalf —
+ * distinct from getPrimaryNeighborhoodId, which always resolves the caller's own.
+ *
+ * Deliberately narrow and isolated: used only by the two read-only "For [Elder]"
+ * community routes (notices, directory), never by requireMembership itself. Those
+ * ~49 other community routes have no elder concept and this helper must not change
+ * that — a caregiver's own community membership stays entirely independent of any
+ * elder's. Returns null if the caller can't access this elder, or the elder hasn't
+ * joined a neighbourhood — both cases the caller treats as "nothing to show".
+ */
+export async function getElderNeighborhoodId(
+  callerId: string,
+  elderUserId: string,
+): Promise<string | null> {
+  if (!(await canAccessElder(callerId, elderUserId))) return null;
+  return getPrimaryNeighborhoodId(elderUserId);
 }
