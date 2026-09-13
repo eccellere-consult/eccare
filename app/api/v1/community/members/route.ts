@@ -5,13 +5,20 @@ import { requireMembership, ok, compareByFlatNumberAsc } from '@/lib/community-r
 /** Every member of the community — committee/admin only. Unlike the public
  *  directory (`/community/directory`), this ignores `showInDirectory` opt-outs:
  *  managers need to see and act on the full membership regardless of a
- *  resident's privacy preference. */
+ *  resident's privacy preference.
+ *
+ *  Defaults to `approved` members (today's behaviour — a pending join isn't a
+ *  member yet). Pass `?status=pending` to fetch the approval queue instead,
+ *  same shape, so the frontend fires two small calls rather than this route
+ *  changing its response shape. */
 export async function GET(req: NextRequest) {
   const guard = await requireMembership(req, { manage: true });
   if (guard.error) return guard.error;
 
+  const status = req.nextUrl.searchParams.get('status') === 'pending' ? 'pending' : 'approved';
+
   const membersUnsorted = await prisma.neighborhoodMember.findMany({
-    where: { neighborhoodId: guard.neighborhoodId },
+    where: { neighborhoodId: guard.neighborhoodId, status },
     include: { user: { select: { id: true, name: true, phone: true } } },
     orderBy: { createdAt: 'asc' }, // tiebreaker when flat numbers are equal or both unset
   });

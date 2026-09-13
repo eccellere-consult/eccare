@@ -1248,6 +1248,12 @@ enum NeighborhoodRole {
   admin
 }
 
+enum MembershipStatus {
+  pending
+  approved
+  rejected
+}
+
 model NeighborhoodMember {
   id              String           @id @default(cuid())
   neighborhoodId  String
@@ -1257,6 +1263,15 @@ model NeighborhoodMember {
   // Residents can stay in the community but keep themselves out of the public
   // directory — a privacy affordance both reference apps get wrong by default.
   showInDirectory Boolean          @default(true)
+  // Defaults to approved so every existing row (and any brand-new community's
+  // first joiner, who has nobody able to approve them yet — see the join
+  // route) keeps working exactly as before this field existed. Only a join
+  // into a community that already has an approved committee/admin member
+  // gets created pending.
+  status          MembershipStatus @default(approved)
+  approvedAt      DateTime?
+  approvedById    String?
+  rejectionReason String?          @db.Text
   createdAt       DateTime         @default(now())
 
   neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
@@ -1265,6 +1280,7 @@ model NeighborhoodMember {
 
   @@unique([neighborhoodId, userId])
   @@index([neighborhoodId, role])
+  @@index([neighborhoodId, status])
 }
 
 /// A resident's own pin on an entry in the Local Directory (GET

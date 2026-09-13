@@ -135,6 +135,7 @@ const en = {
   'elder.profile.pincode': 'Pincode',
   'elder.profile.saving': 'Saving...',
   'elder.profile.saveChanges': 'Save changes',
+  'elder.profile.mySosHistory': 'My SOS history',
   'elder.profile.saved': 'Saved.',
   'elder.profile.couldNotSave': 'Could not save changes.',
 
@@ -212,6 +213,7 @@ const en = {
   // outside a LanguageProvider, falling back to English — so these keys only
   // ever show up translated on the elder side; family pages are unaffected.
   'shared.contactForm.pickFromContacts': 'Pick from phone contacts',
+  'shared.contactForm.pickMultipleFromContacts': 'Import several from phone',
   'shared.contactForm.name': 'Name',
   'shared.contactForm.namePlaceholder': 'Ramesh',
   'shared.contactForm.phoneNumber': 'Phone number',
@@ -248,6 +250,11 @@ const en = {
   'shared.contactForm.adding': 'Adding…',
   'shared.contactForm.addContact': 'Add contact',
   'shared.contactForm.cancel': 'Cancel',
+  'shared.contactForm.reviewImported': 'Review {count} imported contacts',
+  'shared.contactForm.removeFromImport': 'Remove from import',
+  'shared.contactForm.addNContacts': 'Add {count} contacts',
+  'shared.contactForm.importSummary': 'Added {added} of {total}.',
+  'shared.contactForm.done': 'Done',
 
   'shared.contactList.loading': 'Loading…',
   'shared.contactList.noContacts': 'No contacts added yet.',
@@ -325,6 +332,10 @@ const en = {
     'Remove {name} from this community? They would need to rejoin with the join code.',
   'shared.communityMembers.couldNotUpdateRole': 'Could not update role.',
   'shared.communityMembers.couldNotRemove': 'Could not remove member.',
+  'shared.communityMembers.pendingRequests': 'Pending requests',
+  'shared.communityMembers.approve': 'Approve',
+  'shared.communityMembers.reject': 'Reject',
+  'shared.communityMembers.couldNotDecideRequest': 'Could not update this request.',
   'shared.communityMembers.role.member': 'Member',
   'shared.communityMembers.role.committee': 'Committee',
   'shared.communityMembers.role.admin': 'Admin',
@@ -360,6 +371,8 @@ const en = {
   'community.hub.joinIntro':
     "Your neighbourhood shares announcements, events, trusted vendors and helpline numbers here. Ask your management committee for the community code.",
   'community.hub.enterCommunityCode': 'Enter community code',
+  'community.hub.pendingApprovalTitle': 'Awaiting approval',
+  'community.hub.pendingApprovalBody': 'Your request to join {name} is waiting for a committee member to approve it.',
   'community.hub.resident': 'Resident',
   'community.hub.managementCommittee': 'Management committee',
   'community.hub.codePrefix': 'Code: {code}',
@@ -421,6 +434,7 @@ const en = {
   'community.join.joining': 'Joining…',
   'community.join.joinCommunity': 'Join community',
   'community.join.couldNotJoin': 'Could not join.',
+  'community.join.requestSent': 'Your request to join has been sent. A committee member will approve it soon.',
   'community.join.noCodeYet': "Don't have a code yet?",
   'community.join.registerYourCommunity': 'Register your community',
 
@@ -511,6 +525,11 @@ const en = {
     'Fellow members can see and call you directly. Turn this off to stay a member without appearing in the list.',
   'community.settings.saving': 'Saving…',
   'community.settings.notifications': 'Notifications',
+  'community.settings.leaveSection': 'Your communities',
+  'community.settings.leaveCommunity': 'Leave this community',
+  'community.settings.leaving': 'Leaving…',
+  'community.settings.confirmLeave': 'Leave {name}? You would need the join code to come back.',
+  'community.settings.couldNotLeave': 'Could not leave this community.',
 
   'community.documents.title': 'Documents',
   'community.documents.subtitle': 'Bylaws, AGM minutes, and notices — kept in one place.',

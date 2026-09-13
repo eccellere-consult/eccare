@@ -19,8 +19,12 @@ export async function getMembership(
 ): Promise<Membership | null> {
   const member = await prisma.neighborhoodMember.findUnique({
     where: { neighborhoodId_userId: { neighborhoodId, userId } },
-    select: { neighborhoodId: true, role: true },
+    select: { neighborhoodId: true, role: true, status: true },
   });
+  // A pending or rejected row grants nothing — it isn't a real membership yet
+  // (or wasn't approved). See requireMembership for the caller-facing
+  // PENDING_APPROVAL distinction.
+  if (!member || member.status !== 'approved') return null;
   return member;
 }
 
@@ -49,7 +53,7 @@ export async function canManageCommunity(
  */
 export async function getPrimaryNeighborhoodId(userId: string): Promise<string | null> {
   const member = await prisma.neighborhoodMember.findFirst({
-    where: { userId },
+    where: { userId, status: 'approved' },
     orderBy: { createdAt: 'asc' },
     select: { neighborhoodId: true },
   });
