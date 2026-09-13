@@ -361,6 +361,7 @@ const hi: Record<TranslationKey, string> = {
   'community.hub.joinIntro':
     'आपका पड़ोस यहां घोषणाएं, कार्यक्रम, विश्वसनीय विक्रेता और हेल्पलाइन नंबर साझा करता है। कम्युनिटी कोड के लिए अपनी प्रबंधन समिति से पूछें।',
   'community.hub.enterCommunityCode': 'कम्युनिटी कोड दर्ज करें',
+  'community.hub.leaveThisCommunity': 'यह कम्युनिटी छोड़ें',
   'community.hub.pendingApprovalTitle': 'स्वीकृति की प्रतीक्षा में',
   'community.hub.pendingApprovalBody': '{name} में शामिल होने का आपका अनुरोध एक समिति सदस्य की स्वीकृति की प्रतीक्षा कर रहा है।',
   'community.hub.resident': 'निवासी',
