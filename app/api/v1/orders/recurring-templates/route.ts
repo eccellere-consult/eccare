@@ -16,8 +16,11 @@ export async function GET(req: NextRequest) {
     return fail('FORBIDDEN', "You don't have access to this elder's reorders.", 403);
   }
 
+  // Includes paused (isActive: false) templates too — the frontend needs them
+  // to offer a "Resume" action; ensureRecurringOrderSuggestions is what
+  // actually respects isActive when deciding what to suggest next.
   const templates = await prisma.recurringOrderTemplate.findMany({
-    where: { elderUserId, isActive: true },
+    where: { elderUserId },
     include: { catalogItem: { select: { name: true, price: true } }, provider: { select: { businessName: true } } },
     orderBy: { createdAt: 'desc' },
   });
