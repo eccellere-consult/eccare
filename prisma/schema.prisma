@@ -1158,6 +1158,22 @@ enum BacklogPriority {
   high
 }
 
+// ─── Admin: WhatsApp message templates ──────────────────────────
+// One row per customized template — the fixed set of keys and their default
+// bodies live in code (lib/whatsapp-templates.ts), not the database. A
+// missing row for a key just means "using the default"; editing in the admin
+// UI upserts a row here, and "Reset to default" deletes it. updatedByName is
+// a plain denormalized snapshot (not a User relation) — this is an audit
+// hint for the admin UI, not something ever queried from the User side.
+model WhatsAppMessageTemplate {
+  id            String   @id @default(cuid())
+  key           String   @unique
+  body          String   @db.Text
+  updatedById   String?
+  updatedByName String?
+  updatedAt     DateTime @updatedAt
+}
+
 // ─── Community (Phase 1) ─────────────────────────────────────────
 // Modelled on Adda.io / MyGate. Everything here is scoped to a Neighborhood — there
 // are no open/global social surfaces, which keeps moderation tractable for what is

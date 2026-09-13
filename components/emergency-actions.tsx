@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 import { buildWaLink } from '@/lib/whatsapp';
+import { renderTemplate } from '@/lib/whatsapp-templates-shared';
 
 const AMBULANCE_NUMBER = '108';
 const POLICE_NUMBER = '100';
@@ -37,6 +38,17 @@ export function EmergencyActions() {
     fetch('/api/v1/emergency/contacts', { credentials: 'include' })
       .then((r) => r.json())
       .then((j) => { if (j.success) setPrimaryContact(j.data?.find((c: EmergencyContactRef) => c.phone) ?? null); })
+      .catch(() => {});
+  }, []);
+
+  // Fetched once up front (not at send time) so a slow network never delays
+  // the actual WhatsApp send — falls back to the hardcoded default if the
+  // fetch hasn't resolved yet or failed.
+  const [emergencyTemplate, setEmergencyTemplate] = useState('This is an emergency, I need help.{{location}}');
+  useEffect(() => {
+    fetch('/api/v1/whatsapp-templates', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((j) => { if (j.success && j.data.emergency_help) setEmergencyTemplate(j.data.emergency_help); })
       .catch(() => {});
   }, []);
 
@@ -110,8 +122,8 @@ export function EmergencyActions() {
     getLocation().then(({ lat, lng }) => {
       logEmergencyDial('police', lat, lng);
       if (primaryContact?.phone) {
-        const locationLine = lat != null && lng != null ? ` My location: https://www.google.com/maps?q=${lat},${lng}` : '';
-        const message = `This is an emergency, I need help.${locationLine}`;
+        const location = lat != null && lng != null ? ` My location: https://www.google.com/maps?q=${lat},${lng}` : '';
+        const message = renderTemplate(emergencyTemplate, { location });
         window.open(buildWaLink(primaryContact.phone, message), '_blank');
       }
     });

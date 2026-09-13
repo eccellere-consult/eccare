@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useCommunityData } from '@/lib/community-client';
 import { buildWaLink, toWhatsAppNumber } from '@/lib/whatsapp';
+import { renderTemplate, getTemplateDef } from '@/lib/whatsapp-templates-shared';
 
 interface Neighborhood {
   id: string;
@@ -23,26 +24,19 @@ interface UserRow {
   role: 'elder' | 'caregiver' | 'admin' | 'provider';
 }
 
-const DEFAULT_BENEFITS = [
-  '✅ One-tap SOS with live location, straight to family',
-  '✅ Medicine reminders that actually notify family too',
-  '✅ A neighbours directory and community notices',
-  '✅ Local shops, services, and doctors in one place',
-].join('\n');
-
-function buildDefaultMessage(registrationLink: string, community: Neighborhood | undefined) {
-  return [
-    'EC — Just Easy. 👵👴',
-    '',
-    'Hi {{name}},',
-    '',
-    DEFAULT_BENEFITS,
-    '',
-    `Register here: ${registrationLink}`,
-    community ? `Then join our community "${community.name}" with code: ${community.joinCode}` : '',
-  ]
-    .filter(Boolean)
-    .join('\n');
+/** `inviteTemplate` is the current "invite" template body — the persisted
+ *  default from Admin → WhatsApp Messages (falls back to the code default
+ *  before that fetch resolves), not a hardcoded string. {{name}} is left
+ *  unfilled here on purpose — callers fill it per-recipient. */
+function buildDefaultMessage(inviteTemplate: string, registrationLink: string, community: Neighborhood | undefined) {
+  const rendered = renderTemplate(inviteTemplate, {
+    link: registrationLink,
+    community_line: community ? `Then join our community "${community.name}" with code: ${community.joinCode}` : '',
+  });
+  // Trims a trailing blank line left behind when {{community_line}} renders
+  // empty (the default template's last line) — keeps any other intentional
+  // blank lines an admin's edited template might have in the middle.
+  return rendered.replace(/\n+$/, '');
 }
 
 /** No paid WhatsApp Business API or SMS gateway — every send here is still a
@@ -57,6 +51,8 @@ function buildDefaultMessage(registrationLink: string, community: Neighborhood |
 export default function AdminInvitePage() {
   const [mode, setMode] = useState<'single' | 'bulk'>('single');
   const { data: communities } = useCommunityData<Neighborhood[]>('/community/neighborhoods');
+  const { data: messageTemplates } = useCommunityData<Record<string, string>>('/whatsapp-templates');
+  const inviteTemplate = messageTemplates?.invite ?? getTemplateDef('invite').defaultBody;
   const [neighborhoodId, setNeighborhoodId] = useState('');
 
   useEffect(() => {
@@ -81,15 +77,16 @@ export default function AdminInvitePage() {
       </div>
 
       {mode === 'single' ? (
-        <SingleInvite registrationLink={registrationLink} communities={communities} neighborhoodId={neighborhoodId} setNeighborhoodId={setNeighborhoodId} selectedCommunity={selectedCommunity} />
+        <SingleInvite inviteTemplate={inviteTemplate} registrationLink={registrationLink} communities={communities} neighborhoodId={neighborhoodId} setNeighborhoodId={setNeighborhoodId} selectedCommunity={selectedCommunity} />
       ) : (
-        <BulkInvite registrationLink={registrationLink} communities={communities} neighborhoodId={neighborhoodId} setNeighborhoodId={setNeighborhoodId} selectedCommunity={selectedCommunity} />
+        <BulkInvite inviteTemplate={inviteTemplate} registrationLink={registrationLink} communities={communities} neighborhoodId={neighborhoodId} setNeighborhoodId={setNeighborhoodId} selectedCommunity={selectedCommunity} />
       )}
     </div>
   );
 }
 
 interface SharedProps {
+  inviteTemplate: string;
   registrationLink: string;
   communities: Neighborhood[] | null;
   neighborhoodId: string;
@@ -116,11 +113,11 @@ function CommunityPicker({ communities, neighborhoodId, setNeighborhoodId }: Pic
   );
 }
 
-function SingleInvite({ registrationLink, communities, neighborhoodId, setNeighborhoodId, selectedCommunity }: SharedProps) {
+function SingleInvite({ inviteTemplate, registrationLink, communities, neighborhoodId, setNeighborhoodId, selectedCommunity }: SharedProps) {
   const [phone, setPhone] = useState('');
   const [copied, setCopied] = useState(false);
 
-  const message = buildDefaultMessage(registrationLink, selectedCommunity).replace('{{name}}', 'there');
+  const message = buildDefaultMessage(inviteTemplate, registrationLink, selectedCommunity).replace('{{name}}', 'there');
   const waLink = phone.trim()
     ? buildWaLink(phone, message)
     : `https://wa.me/?text=${encodeURIComponent(message)}`;
@@ -173,7 +170,7 @@ function SingleInvite({ registrationLink, communities, neighborhoodId, setNeighb
   );
 }
 
-function BulkInvite({ registrationLink, communities, neighborhoodId, setNeighborhoodId, selectedCommunity }: SharedProps) {
+function BulkInvite({ inviteTemplate, registrationLink, communities, neighborhoodId, setNeighborhoodId, selectedCommunity }: SharedProps) {
   const { data: users, loading } = useCommunityData<UserRow[]>('/admin/users');
   const [message, setMessage] = useState('');
   const [search, setSearch] = useState('');
@@ -184,9 +181,9 @@ function BulkInvite({ registrationLink, communities, neighborhoodId, setNeighbor
   const nextButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (!message) setMessage(buildDefaultMessage(registrationLink, selectedCommunity));
+    if (!message) setMessage(buildDefaultMessage(inviteTemplate, registrationLink, selectedCommunity));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCommunity]);
+  }, [selectedCommunity, inviteTemplate]);
 
   const withPhone = useMemo(() => (users ?? []).filter((u) => !!u.phone), [users]);
   const withoutPhoneCount = (users?.length ?? 0) - withPhone.length;
