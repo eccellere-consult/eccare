@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { RatingInput } from '@/components/rating-input';
+import { ProviderRatingSummaryDisplay } from '@/components/provider-rating-summary';
 
 type Category = 'legal_will' | 'reverse_mortgage' | 'senior_insurance';
 interface Expert {
@@ -17,20 +19,28 @@ interface Expert {
   firmName: string | null;
   phone: string;
   bio: string | null;
+  consultationFee: string | null;
 }
 interface VaultDoc {
   id: string;
   fileName: string;
   filePath: string;
 }
+interface Rating {
+  stars: number;
+  comment: string | null;
+}
 interface Consultation {
   id: string;
   category: Category;
-  status: 'submitted' | 'in_progress' | 'completed';
+  status: 'submitted' | 'in_progress' | 'completed' | 'closed';
   requirementDetails: Record<string, unknown>;
   assignedExpert: Expert | null;
   documents: VaultDoc[];
   createdAt: string;
+  paidAt: string | null;
+  razorpayOrderId: string | null;
+  rating: Rating | null;
 }
 
 const CATEGORY_META: Record<Category, { label: string; description: string; icon: LucideIcon }> = {
@@ -38,7 +48,28 @@ const CATEGORY_META: Record<Category, { label: string; description: string; icon
   reverse_mortgage: { label: 'Reverse Mortgage Advisory', description: 'Understand eligibility based on property value', icon: Home },
   senior_insurance: { label: 'Senior Insurance', description: 'Health, life, and critical illness coverage', icon: ShieldCheck },
 };
-const STATUS_VARIANT: Record<Consultation['status'], 'accent' | 'success'> = { submitted: 'accent', in_progress: 'accent', completed: 'success' };
+const STATUS_VARIANT: Record<Consultation['status'], 'accent' | 'success'> = {
+  submitted: 'accent',
+  in_progress: 'accent',
+  completed: 'success',
+  closed: 'success',
+};
+
+declare global {
+  interface Window {
+    Razorpay: new (options: Record<string, unknown>) => { open: () => void };
+  }
+}
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (window.Razorpay) return resolve(true);
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
 
 function AdvisoryPageContent() {
   const elderUserId = useSearchParams().get('elderUserId') || undefined;
@@ -100,7 +131,7 @@ function AdvisoryPageContent() {
         ) : (
           <div className="mt-3 flex flex-col gap-3">
             {consultations.map((c) => (
-              <ConsultationCard key={c.id} consultation={c} onDocumentUploaded={load} />
+              <ConsultationCard key={c.id} consultation={c} onUpdate={load} />
             ))}
           </div>
         )}
@@ -211,9 +242,13 @@ function IntakeFunnel({ category, elderUserId, onSubmitted, onCancel }: { catego
   );
 }
 
-function ConsultationCard({ consultation, onDocumentUploaded }: { consultation: Consultation; onDocumentUploaded: () => void }) {
-  const meta = CATEGORY_META[consultation.category];
+function ConsultationCard({ consultation: c, onUpdate }: { consultation: Consultation; onUpdate: () => void }) {
+  const meta = CATEGORY_META[c.category];
   const [uploading, setUploading] = useState(false);
+  const [paying, setPaying] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [showRating, setShowRating] = useState(false);
+  const [actionError, setActionError] = useState('');
 
   async function uploadDoc(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -222,13 +257,79 @@ function ConsultationCard({ consultation, onDocumentUploaded }: { consultation: 
     try {
       const body = new FormData();
       body.append('file', file);
-      await fetch(`/api/v1/advisory/consultations/${consultation.id}/documents`, { method: 'POST', credentials: 'include', body });
-      onDocumentUploaded();
+      await fetch(`/api/v1/advisory/consultations/${c.id}/documents`, { method: 'POST', credentials: 'include', body });
+      onUpdate();
     } finally {
       setUploading(false);
       e.target.value = '';
     }
   }
+
+  async function pay() {
+    setPaying(true);
+    setActionError('');
+    try {
+      const payRes = await fetch(`/api/v1/advisory/consultations/${c.id}/pay`, { method: 'POST', credentials: 'include' }).then((r) => r.json());
+      if (!payRes.success) throw new Error(payRes.error?.message || 'Could not start payment.');
+      const { razorpayOrderId, amount, keyId } = payRes.data;
+
+      const loaded = await loadRazorpayScript();
+      if (!loaded) throw new Error('Could not load the payment page. Please check your connection and try again.');
+
+      const razorpay = new window.Razorpay({
+        key: keyId,
+        amount,
+        currency: 'INR',
+        order_id: razorpayOrderId,
+        name: 'EC',
+        description: `Consultation fee — ${c.assignedExpert?.name ?? 'your advisor'}`,
+        theme: { color: '#0B5563' },
+        handler: async (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
+          const verifyRes = await fetch(`/api/v1/advisory/consultations/${c.id}/verify-payment`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpaySignature: response.razorpay_signature,
+            }),
+          }).then((r) => r.json());
+          if (!verifyRes.success) setActionError(verifyRes.error?.message || 'Payment could not be verified.');
+          onUpdate();
+          setPaying(false);
+        },
+        modal: { ondismiss: () => setPaying(false) },
+      });
+      razorpay.open();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not start payment.');
+      setPaying(false);
+    }
+  }
+
+  async function close(stars: number, comment: string) {
+    setClosing(true);
+    setActionError('');
+    try {
+      const res = await fetch(`/api/v1/advisory/consultations/${c.id}/close`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ stars, comment: comment.trim() || undefined }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Could not confirm this request is resolved.');
+      setShowRating(false);
+      onUpdate();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not confirm this request is resolved.');
+    } finally {
+      setClosing(false);
+    }
+  }
+
+  const needsPayment = c.assignedExpert?.consultationFee != null && !c.paidAt;
 
   return (
     <Card>
@@ -240,23 +341,34 @@ function ConsultationCard({ consultation, onDocumentUploaded }: { consultation: 
             </span>
             <p className="font-bold text-text">{meta.label}</p>
           </div>
-          <Badge variant={STATUS_VARIANT[consultation.status]}>{consultation.status.replace('_', ' ')}</Badge>
+          <Badge variant={STATUS_VARIANT[c.status]}>{c.status.replace('_', ' ')}</Badge>
         </div>
 
-        {consultation.assignedExpert && (
+        {c.assignedExpert && (
           <div className="mt-3 rounded-xl border border-border p-3">
-            <p className="text-sm font-semibold text-text">Your advisor: {consultation.assignedExpert.name}</p>
-            {consultation.assignedExpert.firmName && <p className="text-xs text-text-secondary">{consultation.assignedExpert.firmName}</p>}
-            <a href={`tel:${consultation.assignedExpert.phone}`} className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-primary-600 hover:underline">
-              <Phone className="h-3 w-3" /> {consultation.assignedExpert.phone}
+            <p className="text-sm font-semibold text-text">Your advisor: {c.assignedExpert.name}</p>
+            {c.assignedExpert.firmName && <p className="text-xs text-text-secondary">{c.assignedExpert.firmName}</p>}
+            <a href={`tel:${c.assignedExpert.phone}`} className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-primary-600 hover:underline">
+              <Phone className="h-3 w-3" /> {c.assignedExpert.phone}
             </a>
+            {c.assignedExpert.consultationFee != null && (
+              <p className="mt-2 text-sm text-text-secondary">
+                Consultation fee: ₹{c.assignedExpert.consultationFee}{' '}
+                {c.paidAt ? <Badge variant="success">Paid</Badge> : <Badge variant="muted">Unpaid</Badge>}
+              </p>
+            )}
+            {needsPayment && (
+              <Button size="sm" className="mt-2" disabled={paying} onClick={pay}>
+                {paying ? 'Opening…' : `Pay ₹${c.assignedExpert.consultationFee}`}
+              </Button>
+            )}
           </div>
         )}
 
         <div className="mt-3 border-t border-border pt-3">
           <p className="text-xs font-bold uppercase text-text-secondary">Document vault</p>
           <div className="mt-2 flex flex-col gap-1">
-            {consultation.documents.map((doc) => (
+            {c.documents.map((doc) => (
               <a key={doc.id} href={doc.filePath} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm text-primary-600 hover:underline">
                 <FileText className="h-3.5 w-3.5" /> {doc.fileName}
               </a>
@@ -267,6 +379,24 @@ function ConsultationCard({ consultation, onDocumentUploaded }: { consultation: 
             <input type="file" accept="application/pdf,image/jpeg,image/png" className="hidden" disabled={uploading} onChange={uploadDoc} />
           </label>
         </div>
+
+        {c.status === 'completed' && !showRating && (
+          <div className="mt-3 border-t border-border pt-3">
+            <Button size="sm" onClick={() => setShowRating(true)}>Confirm resolved</Button>
+          </div>
+        )}
+        {c.status === 'completed' && showRating && (
+          <div className="mt-3 border-t border-border pt-3">
+            <RatingInput busy={closing} submitLabel="Confirm resolved" onSubmit={close} />
+          </div>
+        )}
+        {c.status === 'closed' && c.rating && (
+          <div className="mt-3 border-t border-border pt-3">
+            <ProviderRatingSummaryDisplay summary={{ average: c.rating.stars, count: 1 }} />
+            {c.rating.comment && <p className="mt-1 text-sm text-text-secondary">{c.rating.comment}</p>}
+          </div>
+        )}
+        {actionError && <p className="mt-2 text-sm text-danger-600">{actionError}</p>}
       </CardContent>
     </Card>
   );

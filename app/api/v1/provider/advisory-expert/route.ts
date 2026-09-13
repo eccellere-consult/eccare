@@ -13,6 +13,7 @@ const schema = z.object({
   email: z.string().email().nullable().optional(),
   bio: z.string().max(2000).nullable().optional(),
   isActive: z.boolean().optional(),
+  consultationFee: z.number().min(0).nullable().optional(),
 });
 
 /** The caller's own AdvisoryExpert profile — created automatically when

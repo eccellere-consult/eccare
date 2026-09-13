@@ -25,6 +25,7 @@ export async function GET(req: NextRequest) {
     include: {
       elderUser: { select: { name: true, phone: true } },
       documents: { select: { id: true, fileName: true, filePath: true, fileType: true, createdAt: true } },
+      rating: true,
     },
     orderBy: { createdAt: 'desc' },
   });

@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
 
   const bookings = await prisma.doctorBooking.findMany({
     where: { OR: [{ elderUserId: guard.auth.userId }, { bookedById: guard.auth.userId }] },
-    include: { doctor: { select: { name: true, specialty: true, phone: true, locality: true, clinicName: true, mapsLink: true } }, slot: true },
+    include: { doctor: { select: { name: true, specialty: true, phone: true, locality: true, clinicName: true, mapsLink: true } }, slot: true, rating: true },
     orderBy: { createdAt: 'desc' },
   });
 

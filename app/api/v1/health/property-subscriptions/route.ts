@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
     where: { elderUserId: guard.elderUserId },
     include: {
       provider: { select: { id: true, businessName: true, phone: true } },
-      inspections: { orderBy: { inspectedAt: 'desc' }, include: { repairEstimates: { include: { invoice: true } } } },
+      inspections: { orderBy: { inspectedAt: 'desc' }, include: { repairEstimates: { include: { invoice: { include: { rating: true } } } } } },
     },
     orderBy: { createdAt: 'desc' },
   });

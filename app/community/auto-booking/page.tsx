@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Car, Phone, Plus, Trash2, IndianRupee, MessageCircle, ShieldCheck, EyeOff } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,6 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { CommunityPageFrame } from '@/components/community/page-frame';
 import { communityApi, useCommunityData } from '@/lib/community-client';
 import { buildWaLink as waLink } from '@/lib/whatsapp';
+import { RatingInput } from '@/components/rating-input';
+import { ProviderRatingSummaryDisplay } from '@/components/provider-rating-summary';
 
 type VerificationStatus = 'pending' | 'verified' | 'rejected';
 interface Driver {
@@ -32,6 +34,47 @@ interface RateCard {
 interface Me {
   memberships: { role: string }[];
 }
+interface Booking {
+  id: string;
+  status: 'pending_confirmation' | 'confirmed' | 'paid' | 'closed' | 'cancelled';
+  fareAmount: string;
+  pickupAddress: string;
+  dropAddress: string;
+  createdAt: string;
+  driver: { name: string; phone: string; vehicleNumber: string | null };
+  rating: { stars: number; comment: string | null } | null;
+}
+
+declare global {
+  interface Window {
+    Razorpay: new (options: Record<string, unknown>) => { open: () => void };
+  }
+}
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (window.Razorpay) return resolve(true);
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
+
+const BOOKING_STATUS_LABEL: Record<Booking['status'], string> = {
+  pending_confirmation: 'Waiting for driver to confirm',
+  confirmed: 'Confirmed — payment due',
+  paid: 'Paid',
+  closed: 'Ride confirmed',
+  cancelled: 'Cancelled',
+};
+const BOOKING_STATUS_VARIANT: Record<Booking['status'], 'accent' | 'success' | 'danger' | 'muted'> = {
+  pending_confirmation: 'accent',
+  confirmed: 'accent',
+  paid: 'success',
+  closed: 'success',
+  cancelled: 'muted',
+};
 
 type TripType = 'drop' | 'wait_and_return';
 const VERIFICATION_VARIANT: Record<VerificationStatus, 'accent' | 'success' | 'danger'> = {
@@ -47,15 +90,25 @@ function AutoBookingContent() {
   const prefillDate = searchParams.get('date');
   const prefillTime = searchParams.get('time');
 
+  const [tab, setTab] = useState<'directory' | 'bookings'>('directory');
   const { data: drivers, loading, error, reload } = useCommunityData<Driver[]>('/community/auto-drivers');
   const { data: rateCard, reload: reloadRateCard } = useCommunityData<RateCard | null>('/community/auto-rate-card');
   const { data: me } = useCommunityData<Me>('/community/me');
+  const { data: bookings, reload: reloadBookings } = useCommunityData<Booking[]>('/community/auto-bookings');
   const canManage = me?.memberships?.[0]?.role !== 'member';
 
   const [bookingDriverId, setBookingDriverId] = useState<string | null>(null);
   const [tripType, setTripType] = useState<TripType>('drop');
   const [pickup, setPickup] = useState(prefillPickup);
   const [drop, setDrop] = useState(prefillDrop);
+  const [fareAmount, setFareAmount] = useState('');
+  const [requesting, setRequesting] = useState(false);
+  const [requestError, setRequestError] = useState('');
+
+  const [payingId, setPayingId] = useState<string | null>(null);
+  const [ratingBookingId, setRatingBookingId] = useState<string | null>(null);
+  const [closingId, setClosingId] = useState<string | null>(null);
+  const [bookingActionError, setBookingActionError] = useState('');
 
   const [showAddDriver, setShowAddDriver] = useState(false);
   const [driverForm, setDriverForm] = useState({ name: '', phone: '', whatsapp: '', vehicleNumber: '', serviceArea: '', perKmRate: '', perMinWaitRate: '' });
@@ -155,6 +208,112 @@ function AutoBookingContent() {
       .join('\n');
   }
 
+  async function requestBooking(driver: Driver) {
+    setRequesting(true);
+    setRequestError('');
+    try {
+      await communityApi.post('/community/auto-bookings', {
+        driverId: driver.id,
+        pickupAddress: pickup.trim(),
+        dropAddress: drop.trim(),
+        fareAmount: Number(fareAmount),
+      });
+      setBookingDriverId(null);
+      setFareAmount('');
+      reloadBookings();
+      setTab('bookings');
+    } catch (err) {
+      setRequestError(err instanceof Error ? err.message : 'Could not request this booking.');
+    } finally {
+      setRequesting(false);
+    }
+  }
+
+  async function confirmBooking(id: string) {
+    setBookingActionError('');
+    try {
+      await communityApi.patch(`/community/auto-bookings/${id}`, { action: 'confirm' });
+      reloadBookings();
+    } catch (err) {
+      setBookingActionError(err instanceof Error ? err.message : 'Could not update booking.');
+    }
+  }
+
+  async function cancelBooking(id: string) {
+    if (!confirm('Cancel this booking?')) return;
+    setBookingActionError('');
+    try {
+      await communityApi.patch(`/community/auto-bookings/${id}`, { action: 'cancel' });
+      reloadBookings();
+    } catch (err) {
+      setBookingActionError(err instanceof Error ? err.message : 'Could not cancel booking.');
+    }
+  }
+
+  const payBooking = useCallback(async (booking: Booking) => {
+    setPayingId(booking.id);
+    setBookingActionError('');
+    try {
+      const payRes = await fetch(`/api/v1/community/auto-bookings/${booking.id}/pay`, { method: 'POST', credentials: 'include' }).then((r) => r.json());
+      if (!payRes.success) throw new Error(payRes.error?.message || 'Could not start payment.');
+      const { razorpayOrderId, amount, keyId } = payRes.data;
+
+      const loaded = await loadRazorpayScript();
+      if (!loaded) throw new Error('Could not load the payment page. Please check your connection and try again.');
+
+      const razorpay = new window.Razorpay({
+        key: keyId,
+        amount,
+        currency: 'INR',
+        order_id: razorpayOrderId,
+        name: 'EC',
+        description: `Auto ride — ${booking.driver.name}`,
+        theme: { color: '#0B5563' },
+        handler: async (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
+          const verifyRes = await fetch(`/api/v1/community/auto-bookings/${booking.id}/verify-payment`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpaySignature: response.razorpay_signature,
+            }),
+          }).then((r) => r.json());
+          if (!verifyRes.success) setBookingActionError(verifyRes.error?.message || 'Payment could not be verified.');
+          reloadBookings();
+          setPayingId(null);
+        },
+        modal: { ondismiss: () => setPayingId(null) },
+      });
+      razorpay.open();
+    } catch (err) {
+      setBookingActionError(err instanceof Error ? err.message : 'Could not start payment.');
+      setPayingId(null);
+    }
+  }, [reloadBookings]);
+
+  async function closeBooking(id: string, stars: number, comment: string) {
+    setClosingId(id);
+    setBookingActionError('');
+    try {
+      const res = await fetch(`/api/v1/community/auto-bookings/${id}/close`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ stars, comment: comment.trim() || undefined }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Could not confirm the ride.');
+      setRatingBookingId(null);
+      reloadBookings();
+    } catch (err) {
+      setBookingActionError(err instanceof Error ? err.message : 'Could not confirm the ride.');
+    } finally {
+      setClosingId(null);
+    }
+  }
+
   const visibleDrivers = drivers?.filter((d) => canManage || d.isAvailable);
 
   return (
@@ -164,6 +323,14 @@ function AutoBookingContent() {
       loading={loading}
       error={error}
     >
+      <div className="flex gap-2">
+        <Button size="sm" variant={tab === 'directory' ? 'primary' : 'outline'} onClick={() => setTab('directory')}>Directory</Button>
+        <Button size="sm" variant={tab === 'bookings' ? 'primary' : 'outline'} onClick={() => setTab('bookings')}>My Bookings</Button>
+      </div>
+      {bookingActionError && <p className="mt-3 text-sm text-danger-600">{bookingActionError}</p>}
+
+      {tab === 'directory' && (
+      <>
       {(prefillPickup || prefillDrop) && (
         <Card className="border-accent-100 bg-accent-50">
           <CardContent className="py-4">
@@ -362,6 +529,30 @@ function AutoBookingContent() {
                     <p className="text-xs text-text-secondary">
                       Opens WhatsApp with your trip details filled in — the driver will reply to confirm.
                     </p>
+
+                    <div className="mt-1 flex flex-col gap-2 border-t border-border pt-3">
+                      <Label htmlFor={`fare-${driver.id}`}>Agreed fare (₹)</Label>
+                      <Input
+                        id={`fare-${driver.id}`}
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={fareAmount}
+                        onChange={(e) => setFareAmount(e.target.value)}
+                        placeholder="Agree this with the driver first"
+                      />
+                      <Button
+                        size="sm"
+                        disabled={requesting || !pickup.trim() || !drop.trim() || !fareAmount}
+                        onClick={() => requestBooking(driver)}
+                      >
+                        {requesting ? 'Requesting…' : 'Request booking in EC'}
+                      </Button>
+                      <p className="text-xs text-text-secondary">
+                        Tracks this booking, payment, and confirmation right here — recommended once you and the driver have agreed a fare.
+                      </p>
+                      {requestError && <p className="text-sm text-danger-600">{requestError}</p>}
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -376,6 +567,61 @@ function AutoBookingContent() {
             No drivers listed yet.{canManage ? ' Add one above.' : ''}
           </CardContent>
         </Card>
+      )}
+      </>
+      )}
+
+      {tab === 'bookings' && (
+        <div className="mt-4 flex flex-col gap-3">
+          {(!bookings || bookings.length === 0) ? (
+            <Card><CardContent className="py-12 text-center text-text-secondary">No bookings yet.</CardContent></Card>
+          ) : (
+            bookings.map((b) => (
+              <Card key={b.id}>
+                <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+                  <div>
+                    <p className="font-bold text-text">{b.driver.name}{b.driver.vehicleNumber ? ` · ${b.driver.vehicleNumber}` : ''}</p>
+                    <p className="text-sm text-text-secondary">{b.pickupAddress} → {b.dropAddress}</p>
+                    <p className="text-sm text-text-secondary">₹{b.fareAmount}</p>
+                    <Badge variant={BOOKING_STATUS_VARIANT[b.status]} className="mt-1">{BOOKING_STATUS_LABEL[b.status]}</Badge>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {b.status === 'pending_confirmation' && (
+                      <>
+                        <Button size="sm" onClick={() => confirmBooking(b.id)}>Driver confirmed — mark confirmed</Button>
+                        <Button size="sm" variant="outline" onClick={() => cancelBooking(b.id)}>Cancel</Button>
+                      </>
+                    )}
+                    {b.status === 'confirmed' && (
+                      <>
+                        <Button size="sm" disabled={payingId === b.id} onClick={() => payBooking(b)}>{payingId === b.id ? 'Opening…' : `Pay ₹${b.fareAmount}`}</Button>
+                        <Button size="sm" variant="outline" onClick={() => cancelBooking(b.id)}>Cancel</Button>
+                      </>
+                    )}
+                    {b.status === 'paid' && ratingBookingId !== b.id && (
+                      <Button size="sm" onClick={() => setRatingBookingId(b.id)}>Confirm ride happened</Button>
+                    )}
+                  </div>
+                  {b.status === 'paid' && ratingBookingId === b.id && (
+                    <div className="w-full">
+                      <RatingInput
+                        busy={closingId === b.id}
+                        submitLabel="Confirm ride happened"
+                        onSubmit={(stars, comment) => closeBooking(b.id, stars, comment)}
+                      />
+                    </div>
+                  )}
+                  {b.status === 'closed' && b.rating && (
+                    <div className="w-full">
+                      <ProviderRatingSummaryDisplay summary={{ average: b.rating.stars, count: 1 }} />
+                      {b.rating.comment && <p className="mt-1 text-sm text-text-secondary">{b.rating.comment}</p>}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
       )}
     </CommunityPageFrame>
   );

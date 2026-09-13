@@ -85,6 +85,10 @@ model User {
   doctorsAdded LocalDoctor[]
   doctorBookingsAsElder DoctorBooking[] @relation("DoctorBookingElder")
   doctorBookingsAsBooker DoctorBooking[] @relation("DoctorBookingBooker")
+  autoBookingsAsElder  AutoBooking[] @relation("AutoBookingElder")
+  autoBookingsAsBooker AutoBooking[] @relation("AutoBookingBooker")
+  providerRatingsGiven ProviderRating[]
+  recurringOrderTemplates RecurringOrderTemplate[]
   rentalListingsPosted   RentalListing[] @relation("RentalListingPoster")
   rentalInquiriesMade    RentalInquiry[] @relation("RentalInquiryInquirer")
   newslettersAuthored    Newsletter[]
@@ -586,6 +590,11 @@ model AdvisoryExpert {
   phone     String
   email     String?
   bio       String?          @db.Text
+  // Flat per-consultation fee — advisory had no pricing at all before this;
+  // optional because an existing expert row predates this field. Once set,
+  // the elder/caregiver pays it in-app before the expert can move a request
+  // past `submitted` (see ConsultationRequest.razorpayOrderId below).
+  consultationFee Decimal?   @db.Decimal(10, 2)
   isActive  Boolean          @default(true)
   createdAt DateTime         @default(now())
 
@@ -601,6 +610,10 @@ enum ConsultationStatus {
   submitted
   in_progress
   completed
+  // Customer-confirmed (elder or whoever requested it) after `completed` —
+  // triggers a ProviderRating, same "closed" convention added across every
+  // other provider category in this batch.
+  closed
 }
 
 /// One consultation intake per submission. requirementDetails is a JSON blob
@@ -618,6 +631,12 @@ model ConsultationRequest {
   notes              String?             @db.Text
   assignedExpertId   String?
   status             ConsultationStatus  @default(submitted)
+  // Same create-pending-order -> verify-payment pattern as Order/DoctorBooking
+  // (see lib/razorpay.ts) — only set once AdvisoryExpert.consultationFee
+  // exists and the customer pays it.
+  razorpayOrderId    String?             @unique
+  razorpayPaymentId  String?
+  paidAt             DateTime?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 
@@ -625,6 +644,7 @@ model ConsultationRequest {
   requestedBy    User            @relation("ConsultationRequester", fields: [requestedById], references: [id], onDelete: Cascade)
   assignedExpert AdvisoryExpert? @relation(fields: [assignedExpertId], references: [id], onDelete: SetNull)
   documents      VaultDocument[]
+  rating         ProviderRating?
 
   @@index([elderUserId])
 }
@@ -758,6 +778,10 @@ model RepairEstimate {
 enum PropertyInvoiceStatus {
   pending
   paid
+  // Customer-confirmed the repair job is done, after `paid` — triggers a
+  // ProviderRating. The invoice IS the delivered-service record for this
+  // inspection cycle, so no separate "delivered" state is needed here.
+  closed
 }
 
 /// The invoice record itself is the ledger entry for this repair — same
@@ -776,6 +800,7 @@ model PropertyInvoice {
   createdAt         DateTime               @default(now())
 
   repairEstimate RepairEstimate @relation(fields: [repairEstimateId], references: [id], onDelete: Cascade)
+  rating         ProviderRating?
 }
 
 // ─── Health & Medicine ──────────────────────────────────────────
@@ -804,6 +829,7 @@ model Medication {
   user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   prescription Prescription?        @relation("PrescriptionMeds", fields: [prescriptionId], references: [id], onDelete: SetNull)
   reminders    MedicationReminder[]
+  recurringOrderTemplates RecurringOrderTemplate[]
 
   @@index([userId, isActive])
 }
@@ -1496,6 +1522,7 @@ model AutoDriver {
   provider   ServiceProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull, map: "AutoDriver_providerId_fkey2")
 
   neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  bookings     AutoBooking[]
 
   @@index([providerId])
 
@@ -1512,6 +1539,44 @@ model AutoRateCard {
   updatedAt      DateTime @updatedAt
 
   neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+}
+
+/// pending_confirmation -> confirmed -> paid -> closed is the same manual
+/// chain as DoctorBookingStatus, for the same reason: a driver may have no
+/// app login, so confirmation happens by phone/WhatsApp reply to whoever
+/// booked, and *they* mark it confirmed in-app. The pre-existing WhatsApp
+/// deep-link "contact the driver" button stays as a quick-contact affordance
+/// alongside this real persisted booking, not replaced by it.
+enum AutoBookingStatus {
+  pending_confirmation
+  confirmed
+  paid
+  closed
+  cancelled
+}
+
+model AutoBooking {
+  id                String            @id @default(cuid())
+  driverId          String
+  elderUserId       String
+  bookedById        String
+  pickupAddress     String            @db.Text
+  dropAddress       String            @db.Text
+  fareAmount        Decimal           @db.Decimal(10, 2)
+  status            AutoBookingStatus @default(pending_confirmation)
+  razorpayOrderId   String?           @unique
+  razorpayPaymentId String?
+  paidAt            DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  driver    AutoDriver @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  elderUser User       @relation("AutoBookingElder", fields: [elderUserId], references: [id], onDelete: Cascade)
+  bookedBy  User       @relation("AutoBookingBooker", fields: [bookedById], references: [id], onDelete: Cascade)
+  rating    ProviderRating?
+
+  @@index([elderUserId])
+  @@index([driverId])
 }
 
 /// Local doctors directory. Two ways a row gets created: (a) admin/committee
@@ -1585,6 +1650,10 @@ enum DoctorBookingStatus {
   pending_confirmation
   confirmed
   paid
+  // Customer-confirmed the visit happened, once the slot's startsAt has
+  // passed — triggers a ProviderRating. No separate "delivered" state: the
+  // appointment's own scheduled time is the delivery signal.
+  closed
   cancelled
 }
 
@@ -1605,6 +1674,7 @@ model DoctorBooking {
   slot      DoctorSlot  @relation(fields: [slotId], references: [id], onDelete: Cascade)
   elderUser User        @relation("DoctorBookingElder", fields: [elderUserId], references: [id], onDelete: Cascade)
   bookedBy  User        @relation("DoctorBookingBooker", fields: [bookedById], references: [id], onDelete: Cascade)
+  rating    ProviderRating?
 
   @@index([elderUserId])
   @@index([doctorId])
@@ -2112,6 +2182,18 @@ model ServiceProvider {
   address               String?                    @db.Text
   certificationFileName String?
   certificationFilePath String?
+  // Backup/emergency contact for the BUSINESS itself (distinct from the
+  // account holder's own phone above) — a second person EC or a customer can
+  // reach if the primary contact is unavailable. Optional: collected at
+  // registration going forward, but every existing row predates this.
+  backupContactName     String?
+  backupContactPhone    String?
+  // Same precision/shape as User.lat/lng. Captured via a plain "share current
+  // location" button (navigator.geolocation), same pattern already used by
+  // SOS and community-registration — no map UI or geocoding anywhere in this
+  // app, so none is introduced here either.
+  lat                   Decimal?                   @db.Decimal(10, 7)
+  lng                   Decimal?                   @db.Decimal(10, 7)
   verificationStatus    ProviderVerificationStatus @default(pending)
   rejectionReason       String?
   verifiedAt            DateTime?
@@ -2146,6 +2228,8 @@ model ServiceProvider {
   advisoryExpert AdvisoryExpert?
   propertyManagementProfile PropertyManagementProfile?
   propertySubscriptions     PropertySubscription[]
+  ratings                   ProviderRating[]
+  recurringOrderTemplates   RecurringOrderTemplate[]
 
   @@index([verificationStatus])
   @@index([elderCareCategory])
@@ -2209,6 +2293,7 @@ model CatalogItem {
 
   provider   ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
   orderItems OrderItem[]
+  recurringOrderTemplates RecurringOrderTemplate[]
 
   @@index([providerId])
 }
@@ -2244,6 +2329,8 @@ model Order {
   placedBy  User            @relation("OrderPlacer", fields: [placedByUserId], references: [id], onDelete: Cascade)
   provider  ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
   items     OrderItem[]
+  rating    ProviderRating?
+  recurringSuggestion RecurringOrderSuggestion?
 
   @@index([elderUserId])
   @@index([providerId])
@@ -2266,11 +2353,104 @@ model OrderItem {
 enum OrderStatus {
   pending
   paid
+  // Provider accepted/is fulfilling the order (existing terminal state before
+  // this batch — kept as-is, "delivered" below is the new physical-handoff
+  // signal).
   confirmed
+  // Provider marks the physical handoff done.
+  delivered
+  // Customer confirms receipt, once `delivered` — triggers a ProviderRating.
+  closed
   cancelled
 }
 
 enum PaymentMethod {
   razorpay
   cod
+}
+
+/// Shared across every provider category — one row per completed
+/// transaction, left by whoever placed/booked it (elder or caregiver). This
+/// is the one genuinely cross-cutting model in this batch: unlike the
+/// per-domain status enums above (deliberately kept independent, matching
+/// this codebase's existing style), a rating's shape doesn't vary by
+/// domain — who rated, who's rated, stars, comment — so one shared table
+/// beats five near-identical ones. Exactly one of the transaction FKs below
+/// is set per row (enforced in lib/ratings.ts, not a DB constraint — this
+/// app doesn't use DB-level check constraints elsewhere either); the
+/// per-FK @unique guarantees one rating per transaction.
+model ProviderRating {
+  id                String   @id @default(cuid())
+  providerId        String
+  raterUserId       String
+  stars             Int
+  comment           String?  @db.Text
+  orderId           String?  @unique
+  doctorBookingId   String?  @unique
+  consultationId    String?  @unique
+  propertyInvoiceId String?  @unique
+  autoBookingId     String?  @unique
+  createdAt         DateTime @default(now())
+
+  provider        ServiceProvider      @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  rater           User                 @relation(fields: [raterUserId], references: [id], onDelete: Cascade)
+  order           Order?               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  doctorBooking   DoctorBooking?       @relation(fields: [doctorBookingId], references: [id], onDelete: Cascade)
+  consultation    ConsultationRequest? @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+  propertyInvoice PropertyInvoice?     @relation(fields: [propertyInvoiceId], references: [id], onDelete: Cascade)
+  autoBooking     AutoBooking?         @relation(fields: [autoBookingId], references: [id], onDelete: Cascade)
+
+  @@index([providerId])
+}
+
+enum RecurringOrderSuggestionStatus {
+  pendingApproval
+  approved
+  declined
+}
+
+/// Pharmacy auto-reorder: one row per (elder, pharmacy catalog item) the
+/// elder/caregiver has opted into recurring suggestions for. unitsPerMonth is
+/// a plain editable number, deliberately NOT derived from
+/// Medication.dosage/frequency (free-text/loosely-typed fields — not safe to
+/// parse for a dosage calculation) — it defaults to the quantity from the
+/// elder's most recent order of the same catalog item, and the elder/
+/// caregiver can adjust it. medicationId is optional context only (which
+/// active medication this restocks), not something the reorder math reads.
+model RecurringOrderTemplate {
+  id            String   @id @default(cuid())
+  elderUserId   String
+  providerId    String
+  catalogItemId String
+  medicationId  String?
+  unitsPerMonth Int
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  elderUser   User        @relation(fields: [elderUserId], references: [id], onDelete: Cascade)
+  provider    ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  catalogItem CatalogItem @relation(fields: [catalogItemId], references: [id], onDelete: Cascade)
+  medication  Medication? @relation(fields: [medicationId], references: [id], onDelete: SetNull)
+  suggestions RecurringOrderSuggestion[]
+
+  @@index([elderUserId])
+}
+
+/// One row per monthly reorder cycle. Mirrors RepairEstimate.isApproved's
+/// boolean-gate-then-cascade pattern: nothing charges or ships until
+/// approved, at which point the real Order is created and linked back here —
+/// "order is placed once okayed by the elder or caregiver," never
+/// automatically.
+model RecurringOrderSuggestion {
+  id          String                         @id @default(cuid())
+  templateId  String
+  suggestedAt DateTime                       @default(now())
+  status      RecurringOrderSuggestionStatus @default(pendingApproval)
+  orderId     String?                        @unique
+
+  template RecurringOrderTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  order    Order?                 @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([templateId])
 }
