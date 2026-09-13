@@ -5,6 +5,7 @@ import { KeyRound } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
@@ -70,9 +71,8 @@ export function ChangePasswordCard() {
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Label htmlFor="current-password">{t('shared.changePassword.current')}</Label>
-            <Input
+            <PasswordInput
               id="current-password"
-              type="password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
               autoComplete="current-password"
@@ -80,9 +80,8 @@ export function ChangePasswordCard() {
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="new-password">{t('shared.changePassword.new')}</Label>
-            <Input
+            <PasswordInput
               id="new-password"
-              type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               autoComplete="new-password"
@@ -90,9 +89,8 @@ export function ChangePasswordCard() {
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="confirm-password">{t('shared.changePassword.confirm')}</Label>
-            <Input
+            <PasswordInput
               id="confirm-password"
-              type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               autoComplete="new-password"
