@@ -18,6 +18,19 @@ interface FeeCharge {
   razorpayOrderId: string | null;
   communityFee: { label: string };
   neighborhoodMember: { flatNumber: string | null };
+  resident: { name: string };
+  /** false when this charge belongs to a housemate who is the flat's
+   *  designated billing contact — visible for transparency, not payable here. */
+  payable: boolean;
+}
+
+interface Household {
+  flatNumber: string;
+  myMembershipId: string;
+  payerUserId: string;
+  payerName: string;
+  isMePayer: boolean;
+  memberCount: number;
 }
 
 interface Me {
@@ -50,10 +63,12 @@ export function PaymentsDue({ elderUserId }: { elderUserId: string }) {
   const lang = useLanguage();
   const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   const [charges, setCharges] = useState<FeeCharge[]>([]);
+  const [household, setHousehold] = useState<Household | null>(null);
   const [me, setMe] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [payingId, setPayingId] = useState<string | null>(null);
+  const [claimingPayer, setClaimingPayer] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -62,13 +77,32 @@ export function PaymentsDue({ elderUserId }: { elderUserId: string }) {
       const res = await fetch(`/api/v1/community/fee-charges?elderUserId=${elderUserId}`, { credentials: 'include' });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json?.error?.message || t('shared.paymentsDue.couldNotLoad'));
-      setCharges(json.data);
+      setCharges(json.data.charges);
+      setHousehold(json.data.household);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('shared.paymentsDue.couldNotLoad'));
     } finally {
       setLoading(false);
     }
   }, [elderUserId]);
+
+  async function claimBillingContact() {
+    if (!household) return;
+    setClaimingPayer(true);
+    try {
+      const res = await fetch(`/api/v1/community/members/${household.myMembershipId}/billing-contact`, {
+        method: 'PATCH',
+        credentials: 'include',
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json?.error?.message || t('shared.paymentsDue.couldNotSetPayer'));
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('shared.paymentsDue.couldNotSetPayer'));
+    } finally {
+      setClaimingPayer(false);
+    }
+  }
 
   useEffect(() => {
     load();
@@ -139,6 +173,26 @@ export function PaymentsDue({ elderUserId }: { elderUserId: string }) {
     <div className="flex flex-col gap-6">
       {error && <p className="text-sm text-danger-600">{error}</p>}
 
+      {household && household.memberCount > 1 && (
+        <Card className="border-accent-100 bg-accent-50">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+            <p className="text-sm text-text">
+              {t('shared.paymentsDue.householdIntro').replace('{flat}', household.flatNumber)}{' '}
+              {household.isMePayer ? (
+                <span className="font-bold">{t('shared.paymentsDue.billedToMe')}</span>
+              ) : (
+                <span className="font-bold">{t('shared.paymentsDue.billedTo').replace('{name}', household.payerName)}</span>
+              )}
+            </p>
+            {!household.isMePayer && (
+              <Button size="sm" variant="outline" disabled={claimingPayer} onClick={claimBillingContact}>
+                {claimingPayer ? t('shared.paymentsDue.opening') : t('shared.paymentsDue.billThisToMe')}
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       <section>
         <h2 className="text-lg font-bold text-text">{t('shared.paymentsDue.due')}</h2>
         {due.length === 0 ? (
@@ -159,6 +213,7 @@ export function PaymentsDue({ elderUserId }: { elderUserId: string }) {
                       <p className="font-bold text-text">{c.communityFee.label}</p>
                       <p className="text-sm text-text-secondary">
                         {c.period}{c.neighborhoodMember.flatNumber ? ` · ${c.neighborhoodMember.flatNumber}` : ''}
+                        {!c.payable ? ` · ${t('shared.paymentsDue.viewOnlyBilledTo').replace('{name}', c.resident.name)}` : ''}
                       </p>
                       <p className={`mt-1 flex items-center gap-1 text-sm ${overdue ? 'font-semibold text-danger-600' : 'text-text-secondary'}`}>
                         {overdue && <AlertCircle className="h-4 w-4" />}
@@ -168,9 +223,13 @@ export function PaymentsDue({ elderUserId }: { elderUserId: string }) {
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-lg font-bold text-text">₹{c.amount}</span>
-                      <Button size="sm" disabled={payingId === c.id} onClick={() => pay(c)}>
-                        {payingId === c.id ? t('shared.paymentsDue.opening') : t('shared.paymentsDue.payNow')}
-                      </Button>
+                      {c.payable ? (
+                        <Button size="sm" disabled={payingId === c.id} onClick={() => pay(c)}>
+                          {payingId === c.id ? t('shared.paymentsDue.opening') : t('shared.paymentsDue.payNow')}
+                        </Button>
+                      ) : (
+                        <Badge variant="muted">{t('shared.paymentsDue.viewOnly')}</Badge>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
