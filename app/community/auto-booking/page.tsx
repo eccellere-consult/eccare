@@ -2,7 +2,7 @@
 
 import { useState, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Car, Phone, Plus, Trash2, IndianRupee, MessageCircle, ShieldCheck, EyeOff } from 'lucide-react';
+import { Car, Phone, Plus, Trash2, IndianRupee, MessageCircle, ShieldCheck, EyeOff, MapPin, ExternalLink } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,10 +39,22 @@ interface Booking {
   status: 'pending_confirmation' | 'confirmed' | 'paid' | 'closed' | 'cancelled';
   fareAmount: string;
   pickupAddress: string;
+  pickupLat: string | null;
+  pickupLng: string | null;
   dropAddress: string;
+  dropLat: string | null;
+  dropLng: string | null;
   createdAt: string;
   driver: { name: string; phone: string; vehicleNumber: string | null };
   rating: { stars: number; comment: string | null } | null;
+}
+
+/** Same "share current location" pattern used for doctor/provider
+ *  registration (navigator.geolocation, no maps/geocoding dependency) —
+ *  here tagging pickup and drop points on a Google Maps link, like Uber. */
+function mapsLinkFor(lat: string | null, lng: string | null): string | null {
+  if (!lat || !lng) return null;
+  return `https://maps.google.com/?q=${lat},${lng}`;
 }
 
 declare global {
@@ -101,9 +113,24 @@ function AutoBookingContent() {
   const [tripType, setTripType] = useState<TripType>('drop');
   const [pickup, setPickup] = useState(prefillPickup);
   const [drop, setDrop] = useState(prefillDrop);
+  const [pickupGeo, setPickupGeo] = useState<{ lat: number; lng: number } | null>(null);
+  const [dropGeo, setDropGeo] = useState<{ lat: number; lng: number } | null>(null);
   const [fareAmount, setFareAmount] = useState('');
   const [requesting, setRequesting] = useState(false);
   const [requestError, setRequestError] = useState('');
+
+  function tagPickupLocation() {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setPickupGeo({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => setRequestError('Could not get your location. You can still request the booking without it.'),
+    );
+  }
+  function tagDropLocation() {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setDropGeo({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => setRequestError('Could not get your location. You can still request the booking without it.'),
+    );
+  }
 
   const [payingId, setPayingId] = useState<string | null>(null);
   const [ratingBookingId, setRatingBookingId] = useState<string | null>(null);
@@ -215,11 +242,17 @@ function AutoBookingContent() {
       await communityApi.post('/community/auto-bookings', {
         driverId: driver.id,
         pickupAddress: pickup.trim(),
+        pickupLat: pickupGeo?.lat,
+        pickupLng: pickupGeo?.lng,
         dropAddress: drop.trim(),
+        dropLat: dropGeo?.lat,
+        dropLng: dropGeo?.lng,
         fareAmount: Number(fareAmount),
       });
       setBookingDriverId(null);
       setFareAmount('');
+      setPickupGeo(null);
+      setDropGeo(null);
       reloadBookings();
       setTab('bookings');
     } catch (err) {
@@ -515,8 +548,20 @@ function AutoBookingContent() {
                         Go there &amp; come back
                       </button>
                     </div>
-                    <Input value={pickup} onChange={(e) => setPickup(e.target.value)} placeholder="Pickup location" />
-                    <Input value={drop} onChange={(e) => setDrop(e.target.value)} placeholder="Drop location" />
+                    <div className="flex gap-2">
+                      <Input value={pickup} onChange={(e) => setPickup(e.target.value)} placeholder="Pickup location" />
+                      <Button type="button" size="sm" variant="outline" onClick={tagPickupLocation}>
+                        <MapPin className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    {pickupGeo && <span className="text-xs text-success-600">Pickup point tagged on map ✓</span>}
+                    <div className="flex gap-2">
+                      <Input value={drop} onChange={(e) => setDrop(e.target.value)} placeholder="Drop location" />
+                      <Button type="button" size="sm" variant="outline" onClick={tagDropLocation}>
+                        <MapPin className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    {dropGeo && <span className="text-xs text-success-600">Drop point tagged on map ✓</span>}
                     <a
                       href={waLink(driver.whatsapp || driver.phone, bookMessage(driver))}
                       target="_blank"
@@ -582,6 +627,18 @@ function AutoBookingContent() {
                   <div>
                     <p className="font-bold text-text">{b.driver.name}{b.driver.vehicleNumber ? ` · ${b.driver.vehicleNumber}` : ''}</p>
                     <p className="text-sm text-text-secondary">{b.pickupAddress} → {b.dropAddress}</p>
+                    <div className="mt-0.5 flex flex-wrap gap-3 text-xs">
+                      {mapsLinkFor(b.pickupLat, b.pickupLng) && (
+                        <a href={mapsLinkFor(b.pickupLat, b.pickupLng)!} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary-600 hover:underline">
+                          <MapPin className="h-3 w-3" /> Pickup on map <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                      {mapsLinkFor(b.dropLat, b.dropLng) && (
+                        <a href={mapsLinkFor(b.dropLat, b.dropLng)!} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary-600 hover:underline">
+                          <MapPin className="h-3 w-3" /> Drop on map <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                    </div>
                     <p className="text-sm text-text-secondary">₹{b.fareAmount}</p>
                     <Badge variant={BOOKING_STATUS_VARIANT[b.status]} className="mt-1">{BOOKING_STATUS_LABEL[b.status]}</Badge>
                   </div>

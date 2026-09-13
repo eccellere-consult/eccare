@@ -11,12 +11,19 @@ const schema = z.object({
   driverId: z.string(),
   elderUserId: z.string().optional(),
   pickupAddress: z.string().min(1).max(500),
+  pickupLat: z.number().min(-90).max(90).optional(),
+  pickupLng: z.number().min(-180).max(180).optional(),
   dropAddress: z.string().min(1).max(500),
+  dropLat: z.number().min(-90).max(90).optional(),
+  dropLng: z.number().min(-180).max(180).optional(),
   // No route/distance calculation exists anywhere in this app (no maps or
   // geocoding dependency) — same "agree the exact fare with the driver"
   // reality the existing WhatsApp-handoff copy already states. The
   // caregiver/elder enters the agreed fare themselves, same trust level as
   // the indicative per-km rate already shown before this booking existed.
+  // Pickup/drop coordinates are optional map tags (like sharing a pin in
+  // Uber) captured via the browser's geolocation API — purely informational
+  // for the driver, no routing/ETA is computed from them.
   fareAmount: z.number().positive(),
 });
 
@@ -65,7 +72,11 @@ export async function POST(req: NextRequest) {
       elderUserId,
       bookedById: guard.auth.userId,
       pickupAddress: parsed.data.pickupAddress,
+      pickupLat: parsed.data.pickupLat,
+      pickupLng: parsed.data.pickupLng,
       dropAddress: parsed.data.dropAddress,
+      dropLat: parsed.data.dropLat,
+      dropLng: parsed.data.dropLng,
       fareAmount: parsed.data.fareAmount,
     },
     include: { driver: { select: { name: true, phone: true, vehicleNumber: true } }, rating: true },

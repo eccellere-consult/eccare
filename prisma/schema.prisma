@@ -1561,7 +1561,11 @@ model AutoBooking {
   elderUserId       String
   bookedById        String
   pickupAddress     String            @db.Text
+  pickupLat         Decimal?          @db.Decimal(10, 7)
+  pickupLng         Decimal?          @db.Decimal(10, 7)
   dropAddress       String            @db.Text
+  dropLat           Decimal?          @db.Decimal(10, 7)
+  dropLng           Decimal?          @db.Decimal(10, 7)
   fareAmount        Decimal           @db.Decimal(10, 2)
   status            AutoBookingStatus @default(pending_confirmation)
   razorpayOrderId   String?           @unique
