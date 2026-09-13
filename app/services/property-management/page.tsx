@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { ArrowLeft, Home, CheckCircle2, XCircle, AlertTriangle, Image as ImageIcon, IndianRupee, Building2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -76,7 +77,8 @@ function loadRazorpayScript(): Promise<boolean> {
   });
 }
 
-export default function PropertyManagementPage() {
+function PropertyManagementPageContent() {
+  const elderUserId = useSearchParams().get('elderUserId') || undefined;
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [providers, setProviders] = useState<Provider[]>([]);
   const [selectedProviderId, setSelectedProviderId] = useState<string>('');
@@ -88,12 +90,13 @@ export default function PropertyManagementPage() {
 
   const load = useCallback(() => {
     setLoading(true);
-    fetch('/api/v1/health/property-subscriptions', { credentials: 'include' })
+    const qs = elderUserId ? `?elderUserId=${elderUserId}` : '';
+    fetch(`/api/v1/health/property-subscriptions${qs}`, { credentials: 'include' })
       .then((r) => r.json())
       .then((j) => { if (j.success) setSubscriptions(j.data); })
       .catch(() => setError('Could not load subscriptions.'))
       .finally(() => setLoading(false));
-  }, []);
+  }, [elderUserId]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -119,7 +122,7 @@ export default function PropertyManagementPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ frequency, providerId: selectedProviderId || undefined }),
+        body: JSON.stringify({ frequency, providerId: selectedProviderId || undefined, elderUserId }),
       });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Could not subscribe.');
@@ -341,5 +344,13 @@ export default function PropertyManagementPage() {
         ))
       )}
     </div>
+  );
+}
+
+export default function PropertyManagementPage() {
+  return (
+    <Suspense>
+      <PropertyManagementPageContent />
+    </Suspense>
   );
 }

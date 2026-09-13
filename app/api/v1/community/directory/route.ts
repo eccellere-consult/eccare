@@ -1,15 +1,93 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireMembership, ok, compareByFlatNumberAsc } from '@/lib/community-route';
 import { canAccessElder } from '@/lib/family-access';
+import { getAuthUser } from '@/lib/auth';
+import { getElderNeighborhoodId } from '@/lib/community-access';
 
 /** Neighbour directory. Only members can read it, and only members who haven't opted
  *  out of the directory appear in it. Alongside registered members, also surfaces
  *  personal "neighbor" contacts that an elder or their family opted to share (see
  *  Contact.shareWithNeighbours) — a phone-book entry someone typed in by hand rather
  *  than a registered account, scoped to the same community via the elder's own
- *  membership. */
+ *  membership.
+ *
+ *  With ?elderUserId=, a caregiver reads THEIR elder's directory instead of their
+ *  own — read-only (no favoriting, managing, or moderating "as" the elder), and
+ *  deliberately bypasses requireMembership. See getElderNeighborhoodId. */
 export async function GET(req: NextRequest) {
+  const elderUserId = req.nextUrl.searchParams.get('elderUserId');
+  if (elderUserId) {
+    const auth = await getAuthUser(req);
+    if (!auth) {
+      return NextResponse.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Please log in.' } }, { status: 401 });
+    }
+    const neighborhoodId = await getElderNeighborhoodId(auth.userId, elderUserId);
+    if (neighborhoodId === null) {
+      if (!(await canAccessElder(auth.userId, elderUserId))) {
+        return NextResponse.json({ success: false, error: { code: 'FORBIDDEN', message: 'You do not have access to this elder.' } }, { status: 403 });
+      }
+      return ok([]); // elder hasn't joined a community yet
+    }
+
+    const [membersUnsorted, sharedContacts] = await Promise.all([
+      prisma.neighborhoodMember.findMany({
+        where: { neighborhoodId, showInDirectory: true },
+        include: { user: { select: { id: true, name: true, phone: true, avatarUrl: true } } },
+        orderBy: { createdAt: 'asc' },
+      }),
+      prisma.contact.findMany({
+        where: {
+          category: 'neighbor',
+          shareWithNeighbours: true,
+          elderUser: { memberships: { some: { neighborhoodId } } },
+        },
+        orderBy: { createdAt: 'asc' },
+      }),
+    ]);
+
+    const members = [...membersUnsorted].sort(compareByFlatNumberAsc);
+
+    const memberEntries = members.map((m) => ({
+      id: `member:${m.user.id}`,
+      userId: m.user.id,
+      contactId: null,
+      memberId: m.id,
+      name: m.user.name,
+      phone: m.user.phone,
+      avatarUrl: m.user.avatarUrl,
+      flatNumber: m.flatNumber,
+      role: m.role,
+      isSelf: m.user.id === elderUserId,
+      source: 'member' as const,
+      isFavorite: false,
+      // Read-only view: a caregiver browsing the elder's directory never gets
+      // manage/moderate controls here, regardless of the elder's own role or
+      // the caregiver's role in their own, unrelated community.
+      canManage: false,
+      canModerate: false,
+    }));
+
+    const contactEntries = sharedContacts.map((c) => ({
+      id: `contact:${c.id}`,
+      userId: null,
+      contactId: c.id,
+      memberId: null,
+      name: c.name,
+      phone: c.phone,
+      avatarUrl: null,
+      flatNumber: null,
+      role: null,
+      isSelf: false,
+      source: 'contact' as const,
+      isFavorite: false,
+      canManage: false,
+      canModerate: false,
+    }));
+
+    return ok([...memberEntries, ...contactEntries]);
+  }
+
   const guard = await requireMembership(req);
   if (guard.error) return guard.error;
 
