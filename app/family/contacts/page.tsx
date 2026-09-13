@@ -1,44 +1,37 @@
-import Link from 'next/link';
 import { prisma } from '@/lib/db';
-import { getServerSession } from '@/lib/server-session';
+import { getServerUser } from '@/lib/server-session';
 import { getPrimaryNeighborhoodId } from '@/lib/community-access';
-import { Card, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { ContactsTabs } from './contacts-tabs';
 
 export const dynamic = 'force-dynamic';
 
+/** A caregiver's own emergency/all contacts are already fully supported by the
+ *  underlying routes (canAccessElder(callerId, callerId) is true, and
+ *  EmergencyContact/Contact are keyed by a generic userId) — this page just
+ *  needs to stop dead-ending when there's no elder yet, and let the caregiver
+ *  pick "for myself" instead of only ever showing the first linked elder. */
 export default async function FamilyContactsPage() {
-  const session = await getServerSession();
+  const user = await getServerUser();
+  if (!user) return null;
 
-  const relation = session
-    ? await prisma.familyRelation.findFirst({
-        where: { caregiverUserId: session.userId, inviteStatus: 'accepted' },
-        include: { elderUser: true },
-      })
-    : null;
+  const relation = await prisma.familyRelation.findFirst({
+    where: { caregiverUserId: user.id, inviteStatus: 'accepted' },
+    include: { elderUser: true },
+  });
 
-  if (!relation) {
-    return (
-      <Card>
-        <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-          <CardTitle>No elder connected yet</CardTitle>
-          <CardDescription>Invite an elder to start managing their emergency contacts.</CardDescription>
-          <Button asChild className="mt-2">
-            <Link href="/family/invite">Invite an elder</Link>
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const inCommunity = Boolean(await getPrimaryNeighborhoodId(relation.elderUserId));
+  const [elderInCommunity, selfInCommunity] = await Promise.all([
+    relation ? getPrimaryNeighborhoodId(relation.elderUserId).then(Boolean) : Promise.resolve(false),
+    getPrimaryNeighborhoodId(user.id).then(Boolean),
+  ]);
 
   return (
     <ContactsTabs
-      elderUserId={relation.elderUserId}
-      elderName={relation.elderUser.name}
-      inCommunity={inCommunity}
+      elder={
+        relation
+          ? { id: relation.elderUserId, name: relation.elderUser.name, inCommunity: elderInCommunity }
+          : null
+      }
+      self={{ id: user.id, name: user.name, inCommunity: selfInCommunity }}
     />
   );
 }

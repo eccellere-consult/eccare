@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, use } from 'react';
+import { useState, useEffect, use } from 'react';
 import {
   Pill,
   CalendarDays,
@@ -106,8 +106,22 @@ export default function FamilyHealthPage({
 }: {
   params: Promise<{ elderId: string }>;
 }) {
-  const { elderId } = use(params);
-  const qs = `?elderUserId=${elderId}`;
+  // "self" is a literal URL segment (the "Myself" tile on /family/health),
+  // not a real id — resolve it to the caregiver's own session id client-side
+  // (this page has no server wrapper). requireHealthAccess() already grants
+  // full self-access once elderUserId === the caller's own id.
+  const { elderId: rawElderId } = use(params);
+  const isSelf = rawElderId === 'self';
+  const [selfId, setSelfId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isSelf) return;
+    fetch('/api/v1/auth/me', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((j) => { if (j.success) setSelfId(j.data.id); });
+  }, [isSelf]);
+
+  const elderId = isSelf ? selfId : rawElderId;
+  const qs = `?elderUserId=${elderId ?? ''}`;
 
   // &all=1 — without it, GET /medications defaults to isActive-only, so a paused
   // medication would vanish from this list entirely with no way back (the
@@ -310,6 +324,10 @@ export default function FamilyHealthPage({
     } catch { /* ignore */ }
   }
 
+  if (!elderId) {
+    return <p className="text-text-secondary">Loading…</p>;
+  }
+
   return (
     <div>
       <Link href="/family/health" className="mb-4 inline-flex items-center gap-1 text-sm font-semibold text-primary-600 hover:underline">
@@ -317,7 +335,9 @@ export default function FamilyHealthPage({
       </Link>
 
       <h1 className="text-2xl font-bold text-text">Health management</h1>
-      <p className="mt-1 text-text-secondary">Manage medicines, appointments, and notes for your elder.</p>
+      <p className="mt-1 text-text-secondary">
+        {isSelf ? 'Manage your own medicines, appointments, and notes.' : 'Manage medicines, appointments, and notes for your elder.'}
+      </p>
 
       <HealthEssentials elderUserId={elderId} />
 
@@ -332,7 +352,7 @@ export default function FamilyHealthPage({
         </span>
         <div>
           <p className="font-bold text-text">Bill Pay</p>
-          <p className="text-sm text-text-secondary">Manage {"this elder's"} linked billers in Services</p>
+          <p className="text-sm text-text-secondary">Manage {isSelf ? 'your own' : "this elder's"} linked billers in Services</p>
         </div>
       </Link>
 
