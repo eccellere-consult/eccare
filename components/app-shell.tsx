@@ -43,6 +43,7 @@ import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 import { VoiceAssistant } from '@/components/voice-assistant';
 import { ReminderAlerts } from '@/components/reminder-alerts';
 import { MedicineAlerts } from '@/components/medicine-alerts';
+import { SosAlertBanner } from '@/components/sos-alert-banner';
 
 export type PortalRole = 'elder' | 'family' | 'admin' | 'provider';
 
@@ -345,6 +346,17 @@ export function AppShell({ role, userName, providerCategory, children }: AppShel
           <ReminderAlerts />
           <MedicineAlerts />
           <VoiceAssistant />
+          {/* An elder can themselves be a community's committee/admin —
+              self-gates via GET /community/me, renders nothing otherwise. */}
+          <SosAlertBanner source="committee" />
+        </>
+      )}
+      {role === 'family' && (
+        <>
+          <SosAlertBanner source="family" />
+          {/* Same self-gating as above — a caregiver can also be committee/admin
+              in their own residents' community. */}
+          <SosAlertBanner source="committee" />
         </>
       )}
     </div>
