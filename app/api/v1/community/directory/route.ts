@@ -92,9 +92,9 @@ export async function GET(req: NextRequest) {
   if (guard.error) return guard.error;
 
   // A community's own committee/admin, or a platform admin (who reaches this same
-  // 'admin' role via requireMembership()'s bypass), can manage every entry — not
-  // just ones they personally added. Ordinary residents still only manage their own
-  // shared contacts, via the canAccessElder check below.
+  // 'admin' role via requireMembership()'s bypass), manages the directory. Ordinary
+  // residents get favourite/hello/call only, even for a contact they shared
+  // themselves — see the contact-entry mapping below.
   const isManager = guard.membership.role === 'committee' || guard.membership.role === 'admin';
 
   const [membersUnsorted, sharedContacts, favorites] = await Promise.all([
@@ -162,15 +162,17 @@ export async function GET(req: NextRequest) {
       isSelf: false,
       source: 'contact' as const,
       isFavorite: favoriteKeys.has(`contact:${c.id}`),
-      // Full edit/delete of the actual contact record — same authorization as the
-      // Contacts page itself (canAccessElder). Never true for a manager who isn't
-      // also family — a moderator shouldn't be able to rename or delete someone
-      // else's private contact-book entry outright.
-      canManage: await canAccessElder(guard.auth.userId, c.elderUserId),
-      // A community's own committee/admin (or platform admin) can instead moderate
+      // The Local Directory itself is committee/admin-managed only — a resident who
+      // shared their own contact no longer gets an edit/delete affordance for it
+      // here (they can still manage the underlying contact from their own Contacts
+      // page; canAccessElder still gates that route). Everyone else in the
+      // directory gets favourite/hello/call only.
+      canManage: false,
+      // A community's own committee/admin (or platform admin) instead moderates
       // what's published in *their* directory — remove-from-directory only (see
       // DELETE /api/v1/community/directory/[contactId], which unpublishes rather
-      // than deleting the owner's personal contact).
+      // than deleting the owner's personal contact — a moderator still shouldn't be
+      // able to rename or delete someone else's private contact-book entry outright).
       canModerate: isManager,
     })),
   );
