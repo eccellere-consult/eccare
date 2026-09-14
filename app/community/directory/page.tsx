@@ -15,12 +15,13 @@ interface Neighbour {
   userId: string | null;
   contactId: string | null;
   memberId: string | null;
+  unregisteredId: string | null;
   name: string;
   phone: string | null;
   flatNumber: string | null;
   role: 'member' | 'committee' | 'admin' | null;
   isSelf: boolean;
-  source: 'member' | 'contact';
+  source: 'member' | 'contact' | 'unregistered';
   isFavorite: boolean;
   canManage: boolean;
   canModerate: boolean;
@@ -106,6 +107,24 @@ export default function DirectoryPage() {
         setData((prev) =>
           prev?.map((x) => (x.id === n.id ? { ...x, name: editName.trim(), flatNumber: editFlatNumber || null } : x)) ?? prev,
         );
+      } else if (n.source === 'unregistered' && n.unregisteredId) {
+        if (!editName.trim()) {
+          setEditError('Please enter a name.');
+          setBusyId(null);
+          return;
+        }
+        await communityApi.patch(`/community/directory/unregistered/${n.unregisteredId}`, {
+          name: editName.trim(),
+          phone: editPhone.trim() || null,
+          flatNumber: editFlatNumber.trim() || null,
+        });
+        setData((prev) =>
+          prev?.map((x) =>
+            x.id === n.id
+              ? { ...x, name: editName.trim(), phone: editPhone.trim() || null, flatNumber: editFlatNumber.trim() || null }
+              : x,
+          ) ?? prev,
+        );
       }
       setEditingId(null);
     } catch (err) {
@@ -126,6 +145,12 @@ export default function DirectoryPage() {
           return;
         }
         await communityApi.delete(`/community/members/${n.memberId}`);
+      } else if (n.source === 'unregistered' && n.unregisteredId) {
+        if (!confirm(`Remove ${n.name} from the directory?`)) {
+          setBusyId(null);
+          return;
+        }
+        await communityApi.delete(`/community/directory/unregistered/${n.unregisteredId}`);
       }
       setData((prev) => prev?.filter((x) => x.id !== n.id) ?? prev);
     } catch (err) {
@@ -176,6 +201,26 @@ export default function DirectoryPage() {
                       <Input id={`nb-phone-${n.id}`} value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
                     </div>
                   </>
+                ) : n.source === 'unregistered' ? (
+                  <>
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor={`nb-name-${n.id}`}>Name</Label>
+                      <Input id={`nb-name-${n.id}`} value={editName} onChange={(e) => setEditName(e.target.value)} />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor={`nb-phone-${n.id}`}>Phone number (optional)</Label>
+                      <Input id={`nb-phone-${n.id}`} value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor={`nb-flat-${n.id}`}>Flat / house number</Label>
+                      <Input
+                        id={`nb-flat-${n.id}`}
+                        value={editFlatNumber}
+                        onChange={(e) => setEditFlatNumber(e.target.value)}
+                        placeholder="A-101"
+                      />
+                    </div>
+                  </>
                 ) : (
                   <>
                     <div className="flex flex-col gap-2">
@@ -221,6 +266,7 @@ export default function DirectoryPage() {
                       <span className="truncate">{n.flatNumber ?? '—'}</span>
                       {n.role && n.role !== 'member' && <Badge variant="accent">Committee</Badge>}
                       {n.source === 'contact' && <Badge variant="muted">Added by neighbour</Badge>}
+                      {n.source === 'unregistered' && <Badge variant="muted">Not yet registered</Badge>}
                     </div>
                   </div>
                 </div>
