@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db';
 import { sendGenericEmail } from '@/lib/email';
-import { sendPushToTokens } from '@/lib/fcm';
+import { sendPushToTokens } from '@/lib/push';
 import type { Newsletter, NewsletterAudience } from '@prisma/client';
 
 /** Resolves a target audience into the actual users to reach — 'everyone' is

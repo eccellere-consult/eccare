@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db';
-import { sendPushToTokens } from '@/lib/fcm';
+import { sendPushToTokens } from '@/lib/push';
 import { type ConfirmRequiredAction } from '@/lib/voice-shared';
 import { buildSwiggySearchUrl, type SwiggyCategory } from '@/lib/swiggy';
 

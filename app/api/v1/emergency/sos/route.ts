@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthUser } from '@/lib/auth';
-import { sendPushToTokens } from '@/lib/fcm';
+import { sendPushToTokens } from '@/lib/push';
+import { getPrimaryNeighborhoodId } from '@/lib/community-access';
 import { z } from 'zod';
 
 const schema = z.object({
@@ -39,20 +40,40 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // Notify all emergency contacts and family caregivers
-  const contacts = await prisma.emergencyContact.findMany({
-    where: { userId: auth.userId, notifyOnSos: true },
-  });
-  const familyCaregivers = await prisma.familyRelation.findMany({
-    where: { elderUserId: auth.userId, receivesSos: true, inviteStatus: 'accepted' },
-    include: { caregiverUser: { include: { deviceTokens: true } } },
-  });
+  // Same three audiences a community panic alert reaches (see
+  // /api/v1/community/panic) — a personal SOS is the same emergency, just
+  // raised from the elder's own "Need help now" / ambulance / police
+  // buttons instead of the community one, so it notifies the same people:
+  // family caregivers, this elder's own emergency contacts (when they're
+  // also linked to an EC account, so there's a device to push to), and —
+  // if the elder belongs to a residents' community — that community's
+  // committee/admin, same as a panic alert would reach them.
+  const [contacts, familyCaregivers, neighborhoodId] = await Promise.all([
+    prisma.emergencyContact.findMany({
+      where: { userId: auth.userId, notifyOnSos: true },
+      include: { linkedUser: { include: { deviceTokens: true } } },
+    }),
+    prisma.familyRelation.findMany({
+      where: { elderUserId: auth.userId, receivesSos: true, inviteStatus: 'accepted' },
+      include: { caregiverUser: { include: { deviceTokens: true } } },
+    }),
+    getPrimaryNeighborhoodId(auth.userId),
+  ]);
 
-  const caregiverTokens = familyCaregivers.flatMap((rel) =>
-    rel.caregiverUser.deviceTokens.map((dt) => dt.token),
-  );
+  const committee = neighborhoodId
+    ? await prisma.neighborhoodMember.findMany({
+        where: { neighborhoodId, role: { in: ['committee', 'admin'] }, userId: { not: auth.userId } },
+        include: { user: { include: { deviceTokens: true } } },
+      })
+    : [];
 
-  const pushResult = await sendPushToTokens(caregiverTokens, {
+  const pushTokens = [
+    ...familyCaregivers.flatMap((rel) => rel.caregiverUser.deviceTokens.map((dt) => dt.token)),
+    ...contacts.flatMap((c) => c.linkedUser?.deviceTokens.map((dt) => dt.token) ?? []),
+    ...committee.flatMap((m) => m.user.deviceTokens.map((dt) => dt.token)),
+  ];
+
+  const pushResult = await sendPushToTokens([...new Set(pushTokens)], {
     title: `${elder?.name ?? 'Your family member'} needs help`,
     body:
       parsed.data.lat && parsed.data.lng
@@ -62,7 +83,17 @@ export async function POST(req: NextRequest) {
     data: { type: 'sos', sosEventId: sosEvent.id },
   });
 
-  // TODO: Send SMS to emergency contacts once an SMS provider is chosen
+  // Recipients for the client to auto-open a pre-filled WhatsApp chat to
+  // (see components/emergency-actions.tsx) — everyone above who has a phone
+  // number on file, regardless of whether they're also linked to an EC
+  // account (unlike push, WhatsApp only needs a number). Deduped by phone
+  // so the same person on two lists (e.g. a caregiver who's also saved as
+  // an emergency contact) isn't messaged twice.
+  const whatsappRecipients = dedupeByPhone([
+    ...contacts.map((c) => ({ name: c.name, phone: c.phone })),
+    ...familyCaregivers.map((rel) => ({ name: rel.caregiverUser.name, phone: rel.caregiverUser.phone })),
+    ...committee.map((m) => ({ name: m.user.name, phone: m.user.phone })),
+  ]);
 
   return NextResponse.json({
     success: true,
@@ -70,9 +101,22 @@ export async function POST(req: NextRequest) {
       sosEvent,
       notifiedContacts: contacts.length,
       notifiedCaregivers: familyCaregivers.length,
+      notifiedCommittee: committee.length,
       pushSent: pushResult.sent,
+      whatsappRecipients,
     },
   });
+}
+
+function dedupeByPhone(list: Array<{ name: string; phone: string | null }>) {
+  const seen = new Set<string>();
+  const out: Array<{ name: string; phone: string }> = [];
+  for (const { name, phone } of list) {
+    if (!phone || seen.has(phone)) continue;
+    seen.add(phone);
+    out.push({ name, phone });
+  }
+  return out;
 }
 
 export async function GET(req: NextRequest) {

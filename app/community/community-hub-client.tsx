@@ -26,6 +26,7 @@ import {
   Stethoscope,
   HeartHandshake,
   Mail,
+  MessageCircle,
   type LucideIcon,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -33,6 +34,8 @@ import { Button } from '@/components/ui/button';
 import { communityApi, useCommunityData } from '@/lib/community-client';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
+import { buildWaLink } from '@/lib/whatsapp';
+import { buildSosMessage, openFirstAndReturnRest, type WhatsAppRecipient } from '@/lib/emergency-notify';
 
 interface Membership {
   role: 'member' | 'committee' | 'admin';
@@ -92,6 +95,17 @@ export function CommunityHubClient() {
   const { data, loading } = useCommunityData<MeResponse>('/community/me');
   const [panicBusy, setPanicBusy] = useState(false);
   const [panicMsg, setPanicMsg] = useState('');
+  // Same auto-open-first-then-list-the-rest WhatsApp pattern as the elder's
+  // personal SOS (see components/emergency-actions.tsx / lib/emergency-notify.ts).
+  const [waRemaining, setWaRemaining] = useState<WhatsAppRecipient[]>([]);
+  const [waMessage, setWaMessage] = useState('');
+  const [emergencyTemplate, setEmergencyTemplate] = useState('This is an emergency, I need help.{{location}}');
+  useEffect(() => {
+    fetch('/api/v1/whatsapp-templates', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((j) => { if (j.success && j.data.emergency_help) setEmergencyTemplate(j.data.emergency_help); })
+      .catch(() => {});
+  }, []);
 
   // Accounts is association bookkeeping — a caregiver-managed concern, not something
   // an elder needs on their own home screen. Fetched separately from community
@@ -140,11 +154,20 @@ export function CommunityHubClient() {
     if (!confirm(t('community.hub.confirmPanic'))) return;
     setPanicBusy(true);
     setPanicMsg('');
+    setWaRemaining([]);
 
     const send = async (lat?: number, lng?: number) => {
       try {
-        await communityApi.post('/community/panic', { lat, lng });
+        const result = await communityApi.post<{ whatsappRecipients?: WhatsAppRecipient[] }>(
+          '/community/panic',
+          { lat, lng },
+        );
         setPanicMsg(t('community.hub.alertSent'));
+        if (result.whatsappRecipients?.length) {
+          const message = buildSosMessage(emergencyTemplate, lat, lng);
+          setWaMessage(message);
+          setWaRemaining(openFirstAndReturnRest(result.whatsappRecipients, message));
+        }
       } catch (err) {
         setPanicMsg(err instanceof Error ? err.message : t('community.hub.couldNotSendAlert'));
       } finally {
@@ -199,6 +222,25 @@ export function CommunityHubClient() {
           </Button>
         </div>
         {panicMsg && <p className="mt-3 font-semibold text-danger-900">{panicMsg}</p>}
+        {waRemaining.length > 0 && (
+          <div className="mt-3 flex flex-col gap-2">
+            <p className="text-sm font-semibold text-text">Also notify by WhatsApp:</p>
+            <div className="flex flex-wrap gap-2">
+              {waRemaining.map((r) => (
+                <a
+                  key={r.phone}
+                  href={buildWaLink(r.phone, waMessage)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 rounded-full bg-success-50 px-3 py-1.5 text-sm font-semibold text-success-600"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  {r.name}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
       </Card>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
