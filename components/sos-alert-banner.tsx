@@ -25,6 +25,35 @@ const TRIGGER_LABEL: Record<string, string> = {
   community_panic: 'Panic alert',
 };
 
+/** Dismissal is persisted to localStorage (not just component state) so it
+ *  survives a remount — navigating between top-level sections (e.g.
+ *  /family to /community, each its own layout.tsx) unmounts this component,
+ *  and an in-memory-only Set would forget the dismissal and siren again for
+ *  the same event on the next mount. Keyed per source since family/committee
+ *  event ids never collide, but this keeps the two feeds' storage separate
+ *  regardless. Entries are pruned to ACTIVE_WINDOW_MS on read/write so this
+ *  never grows unbounded — an event outside that window is never alerted on
+ *  again anyway (see the `active` filter below), dismissed or not. */
+function loadDismissed(source: string): Map<string, number> {
+  try {
+    const raw = localStorage.getItem(`ec_sos_dismissed_${source}`);
+    const parsed: Array<[string, number]> = raw ? JSON.parse(raw) : [];
+    const cutoff = Date.now() - ACTIVE_WINDOW_MS;
+    return new Map(parsed.filter(([, dismissedAt]) => dismissedAt > cutoff));
+  } catch {
+    return new Map();
+  }
+}
+
+function saveDismissed(source: string, dismissed: Map<string, number>) {
+  try {
+    localStorage.setItem(`ec_sos_dismissed_${source}`, JSON.stringify([...dismissed.entries()]));
+  } catch {
+    // Private browsing / storage disabled — dismissal just won't survive a
+    // remount this session, same as before this fix.
+  }
+}
+
 /** Live SOS/panic alert: polls for new events and, when one is active and
  *  unacknowledged, plays a loud siren (Web Audio, see lib/beep.ts),
  *  vibrates on devices that support it, and shows a banner with a Google
@@ -42,8 +71,20 @@ const TRIGGER_LABEL: Record<string, string> = {
 export function SosAlertBanner({ source }: { source: 'family' | 'committee' }) {
   const [eligible, setEligible] = useState(source === 'family');
   const [events, setEvents] = useState<SosEvent[]>([]);
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  // Lazy initializer so this reads localStorage exactly once, synchronously,
+  // before the first render's `active` filter runs — otherwise a dismissed
+  // event still sirens for one tick every remount before the effect below
+  // could load it.
+  const [dismissed, setDismissed] = useState<Map<string, number>>(() => loadDismissed(source));
   const lastAlertedRef = useRef<{ id: string | null; at: number }>({ id: null, at: 0 });
+
+  function dismiss(id: string) {
+    setDismissed((prev) => {
+      const next = new Map(prev).set(id, Date.now());
+      saveDismissed(source, next);
+      return next;
+    });
+  }
 
   // Committee eligibility check — once, not on every poll.
   useEffect(() => {
@@ -123,7 +164,7 @@ export function SosAlertBanner({ source }: { source: 'family' | 'committee' }) {
             </p>
           </div>
           <button
-            onClick={() => setDismissed((prev) => new Set(prev).add(latest.id))}
+            onClick={() => dismiss(latest.id)}
             aria-label="Dismiss alert"
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-danger-900/60 hover:bg-danger-100"
           >
