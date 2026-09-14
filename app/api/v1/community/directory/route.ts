@@ -6,11 +6,16 @@ import { getAuthUser } from '@/lib/auth';
 import { getElderNeighborhoodId } from '@/lib/community-access';
 
 /** Neighbour directory. Only members can read it, and only members who haven't opted
- *  out of the directory appear in it. Alongside registered members, also surfaces
- *  personal "neighbor" contacts that an elder or their family opted to share (see
- *  Contact.shareWithNeighbours) — a phone-book entry someone typed in by hand rather
- *  than a registered account, scoped to the same community via the elder's own
- *  membership.
+ *  out of the directory appear in it. Combines three sources:
+ *  - registered NeighborhoodMember rows;
+ *  - personal "neighbor" contacts an elder or their family opted to share (see
+ *    Contact.shareWithNeighbours) — a phone-book entry someone typed in by hand
+ *    rather than a registered account, scoped to the same community via the
+ *    elder's own membership;
+ *  - UnregisteredResident rows — an admin's bulk directory-only import (see
+ *    lib/directory-import.ts), for people with no EC account at all. Unlike the
+ *    other two, committee/admin fully manage these (edit/delete), since there's
+ *    no owner to defer to.
  *
  *  With ?elderUserId=, a caregiver reads THEIR elder's directory instead of their
  *  own — read-only (no favoriting, managing, or moderating "as" the elder), and
@@ -30,7 +35,7 @@ export async function GET(req: NextRequest) {
       return ok([]); // elder hasn't joined a community yet
     }
 
-    const [membersUnsorted, sharedContacts] = await Promise.all([
+    const [membersUnsorted, sharedContacts, unregistered] = await Promise.all([
       prisma.neighborhoodMember.findMany({
         where: { neighborhoodId, showInDirectory: true },
         include: { user: { select: { id: true, name: true, phone: true, avatarUrl: true } } },
@@ -44,6 +49,7 @@ export async function GET(req: NextRequest) {
         },
         orderBy: { createdAt: 'asc' },
       }),
+      prisma.unregisteredResident.findMany({ where: { neighborhoodId }, orderBy: { createdAt: 'asc' } }),
     ]);
 
     const members = [...membersUnsorted].sort(compareByFlatNumberAsc);
@@ -53,6 +59,7 @@ export async function GET(req: NextRequest) {
       userId: m.user.id,
       contactId: null,
       memberId: m.id,
+      unregisteredId: null,
       name: m.user.name,
       phone: m.user.phone,
       avatarUrl: m.user.avatarUrl,
@@ -73,6 +80,7 @@ export async function GET(req: NextRequest) {
       userId: null,
       contactId: c.id,
       memberId: null,
+      unregisteredId: null,
       name: c.name,
       phone: c.phone,
       avatarUrl: null,
@@ -85,7 +93,25 @@ export async function GET(req: NextRequest) {
       canModerate: false,
     }));
 
-    return ok([...memberEntries, ...contactEntries]);
+    const unregisteredEntries = unregistered.map((u) => ({
+      id: `unregistered:${u.id}`,
+      userId: null,
+      contactId: null,
+      memberId: null,
+      unregisteredId: u.id,
+      name: u.name,
+      phone: u.phone,
+      avatarUrl: null,
+      flatNumber: u.flatNumber,
+      role: null,
+      isSelf: false,
+      source: 'unregistered' as const,
+      isFavorite: false,
+      canManage: false,
+      canModerate: false,
+    }));
+
+    return ok([...memberEntries, ...contactEntries, ...unregisteredEntries]);
   }
 
   const guard = await requireMembership(req);
@@ -97,7 +123,7 @@ export async function GET(req: NextRequest) {
   // themselves — see the contact-entry mapping below.
   const isManager = guard.membership.role === 'committee' || guard.membership.role === 'admin';
 
-  const [membersUnsorted, sharedContacts, favorites] = await Promise.all([
+  const [membersUnsorted, sharedContacts, unregistered, favorites] = await Promise.all([
     prisma.neighborhoodMember.findMany({
       where: { neighborhoodId: guard.neighborhoodId, showInDirectory: true },
       include: {
@@ -111,6 +137,10 @@ export async function GET(req: NextRequest) {
         shareWithNeighbours: true,
         elderUser: { memberships: { some: { neighborhoodId: guard.neighborhoodId } } },
       },
+      orderBy: { createdAt: 'asc' },
+    }),
+    prisma.unregisteredResident.findMany({
+      where: { neighborhoodId: guard.neighborhoodId },
       orderBy: { createdAt: 'asc' },
     }),
     // The current viewer's own pins — personal, never visible to anyone else
@@ -131,6 +161,7 @@ export async function GET(req: NextRequest) {
     userId: m.user.id,
     contactId: null,
     memberId: m.id,
+    unregisteredId: null,
     name: m.user.name,
     // Phone is deliberately included — "call direct" is the point of the directory,
     // and it's already scoped to fellow members who opted in.
@@ -154,6 +185,7 @@ export async function GET(req: NextRequest) {
       userId: null,
       contactId: c.id,
       memberId: null,
+      unregisteredId: null,
       name: c.name,
       phone: c.phone,
       avatarUrl: null,
@@ -177,9 +209,30 @@ export async function GET(req: NextRequest) {
     })),
   );
 
+  const unregisteredEntries = unregistered.map((u) => ({
+    id: `unregistered:${u.id}`,
+    userId: null,
+    contactId: null,
+    memberId: null,
+    unregisteredId: u.id,
+    name: u.name,
+    phone: u.phone,
+    avatarUrl: null,
+    flatNumber: u.flatNumber,
+    role: null,
+    isSelf: false,
+    source: 'unregistered' as const,
+    isFavorite: favoriteKeys.has(`unregistered:${u.id}`),
+    // No owner to defer to (unlike a shared Contact) — committee/admin fully
+    // manage these: edit via PATCH /community/directory/unregistered/[id],
+    // delete outright rather than just unpublish.
+    canManage: isManager,
+    canModerate: false,
+  }));
+
   // Stable sort (Node's Array#sort has been stable since ES2019) — favorites float
   // to the top, everything else keeps its existing relative order underneath.
-  const entries = [...memberEntries, ...contactEntries].sort(
+  const entries = [...memberEntries, ...contactEntries, ...unregisteredEntries].sort(
     (a, b) => Number(b.isFavorite) - Number(a.isFavorite),
   );
 

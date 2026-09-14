@@ -1213,6 +1213,7 @@ model Neighborhood {
   doctors        LocalDoctor[]
   rentalListings RentalListing[]
   application    CommunityApplication?
+  unregisteredResidents UnregisteredResident[]
 
   @@index([pincode])
 }
@@ -1332,6 +1333,31 @@ model NeighborhoodMember {
   @@unique([neighborhoodId, userId])
   @@index([neighborhoodId, role])
   @@index([neighborhoodId, status])
+}
+
+/// A Local Directory entry for someone who hasn't registered an EC account at
+/// all — distinct from both NeighborhoodMember (requires a real User) and a
+/// shared Contact (requires an owning elder User). Created by an admin's bulk
+/// upload (see lib/directory-import.ts / POST /api/v1/community/import-directory)
+/// when the point is to populate the directory without creating accounts —
+/// pairs with a WhatsApp invite to actually register later. `importedById` is
+/// a bare id (no relation), same pattern as WhatsAppMessageTemplate.updatedById
+/// — this is audit trivia, not something ever queried by joining to User.
+model UnregisteredResident {
+  id             String    @id @default(cuid())
+  neighborhoodId String
+  name           String
+  phone          String?
+  flatNumber     String?
+  importedById   String
+  // Set when an admin has stepped through the WhatsApp-invite queue for this
+  // row (see the import page) — purely informational, doesn't gate anything.
+  invitedAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+
+  @@index([neighborhoodId])
 }
 
 /// A resident's own pin on an entry in the Local Directory (GET

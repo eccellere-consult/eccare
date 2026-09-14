@@ -90,13 +90,22 @@ export default function AdminCommunityDetailPage({ params }: { params: Promise<{
             {tab === 'Overview' && <OverviewTab neighborhood={data} onSaved={reload} />}
             {tab === 'Members' && (
               <>
-                <Link
-                  href={`/admin/communities/${id}/import-residents`}
-                  className="mb-4 flex w-fit items-center gap-1.5 rounded-xl border border-primary-600 px-4 py-2 text-sm font-semibold text-primary-600 hover:bg-primary-50"
-                >
-                  <UploadIcon className="h-4 w-4" />
-                  Bulk-register residents from a spreadsheet
-                </Link>
+                <div className="mb-4 flex flex-wrap gap-2">
+                  <Link
+                    href={`/admin/communities/${id}/import-residents`}
+                    className="flex w-fit items-center gap-1.5 rounded-xl border border-primary-600 px-4 py-2 text-sm font-semibold text-primary-600 hover:bg-primary-50"
+                  >
+                    <UploadIcon className="h-4 w-4" />
+                    Bulk-register residents from a spreadsheet
+                  </Link>
+                  <Link
+                    href={`/admin/communities/${id}/import-directory`}
+                    className="flex w-fit items-center gap-1.5 rounded-xl border border-border px-4 py-2 text-sm font-semibold text-text-secondary hover:bg-primary-50 hover:text-primary-600"
+                  >
+                    <UploadIcon className="h-4 w-4" />
+                    Bulk-add to Local Directory (no registration)
+                  </Link>
+                </div>
                 <CommunityMembers neighborhoodId={id} viewerRole="admin" />
               </>
             )}
