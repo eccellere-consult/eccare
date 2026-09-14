@@ -231,8 +231,11 @@ export default function DirectoryPage() {
                     single row. flex-wrap is a safety net for anything narrower
                     still. Edit/Delete/Remove match the same 44px circular
                     footprint as the others instead of the wider default Button,
-                    so the row takes less width to begin with. */}
-                <div className="flex flex-wrap justify-end gap-2 sm:shrink-0">
+                    so the row takes less width to begin with. Left-aligned on
+                    mobile so the icon row starts under the name/avatar above it
+                    instead of jumping to the opposite edge; right-aligned again
+                    on sm+ where it sits inline with the name on a single row. */}
+                <div className="flex flex-wrap justify-start gap-2 sm:justify-end sm:shrink-0">
                   {!n.isSelf && (
                     <button
                       onClick={() => toggleFavorite(n)}
