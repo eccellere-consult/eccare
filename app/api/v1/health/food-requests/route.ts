@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { requireHealthAccess, ok, fail } from '@/lib/health-access';
-import { sendPushToTokens } from '@/lib/fcm';
+import { sendPushToTokens } from '@/lib/push';
 
 const createSchema = z.object({
   elderUserId: z.string().optional(),
