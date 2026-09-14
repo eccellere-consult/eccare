@@ -206,24 +206,33 @@ export default function DirectoryPage() {
             </Card>
           ) : (
             <Card key={n.id}>
-              <CardContent className="flex items-center gap-4 py-4">
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-50 text-lg font-bold text-primary-900">
-                  {n.name.charAt(0).toUpperCase()}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-bold text-text">
-                    {n.name} {n.isSelf && <span className="text-text-secondary">(you)</span>}
-                  </p>
-                  {/* A div, not a p — Badge renders a div, which is invalid inside a
-                      paragraph and causes a React hydration error. */}
-                  <div className="flex items-center gap-2 text-sm text-text-secondary">
-                    <span className="truncate">{n.flatNumber ?? '—'}</span>
-                    {n.role && n.role !== 'member' && <Badge variant="accent">Committee</Badge>}
-                    {n.source === 'contact' && <Badge variant="muted">Added by neighbour</Badge>}
+              <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:gap-4">
+                <div className="flex min-w-0 flex-1 items-center gap-4">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-50 text-lg font-bold text-primary-900">
+                    {n.name.charAt(0).toUpperCase()}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-bold text-text">
+                      {n.name} {n.isSelf && <span className="text-text-secondary">(you)</span>}
+                    </p>
+                    {/* A div, not a p — Badge renders a div, which is invalid inside a
+                        paragraph and causes a React hydration error. */}
+                    <div className="flex items-center gap-2 text-sm text-text-secondary">
+                      <span className="truncate">{n.flatNumber ?? '—'}</span>
+                      {n.role && n.role !== 'member' && <Badge variant="accent">Committee</Badge>}
+                      {n.source === 'contact' && <Badge variant="muted">Added by neighbour</Badge>}
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex shrink-0 gap-2">
+                {/* Its own row on mobile (flex-col above splits this out), inline
+                    on sm+ — up to 5 icons here (favourite/hello/call/edit/delete)
+                    crushed the name column to near-nothing on a phone-width
+                    single row. flex-wrap is a safety net for anything narrower
+                    still. Edit/Delete/Remove match the same 44px circular
+                    footprint as the others instead of the wider default Button,
+                    so the row takes less width to begin with. */}
+                <div className="flex flex-wrap justify-end gap-2 sm:shrink-0">
                   {!n.isSelf && (
                     <button
                       onClick={() => toggleFavorite(n)}
@@ -257,37 +266,34 @@ export default function DirectoryPage() {
                   )}
                   {n.canManage && (
                     <>
-                      <Button
-                        variant="outline"
-                        size="sm"
+                      <button
                         disabled={busyId === n.id}
                         onClick={() => startEdit(n)}
                         aria-label={`Edit ${n.name}`}
+                        className="flex h-11 w-11 items-center justify-center rounded-full border border-border text-text-secondary hover:bg-primary-50 hover:text-primary-600 disabled:opacity-50"
                       >
                         <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
+                      </button>
+                      <button
                         disabled={busyId === n.id}
                         onClick={() => handleDelete(n)}
                         aria-label={`Remove ${n.name}`}
+                        className="flex h-11 w-11 items-center justify-center rounded-full border border-border text-text-secondary hover:bg-danger-50 hover:text-danger-600 disabled:opacity-50"
                       >
                         <Trash2 className="h-4 w-4" />
-                      </Button>
+                      </button>
                     </>
                   )}
                   {!n.canManage && n.canModerate && n.source === 'contact' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
+                    <button
                       disabled={busyId === n.id}
                       onClick={() => handleModerateRemove(n)}
                       aria-label={`Remove ${n.name} from directory`}
                       title="Remove from community directory"
+                      className="flex h-11 w-11 items-center justify-center rounded-full border border-border text-text-secondary hover:bg-danger-50 hover:text-danger-600 disabled:opacity-50"
                     >
                       <ShieldX className="h-4 w-4" />
-                    </Button>
+                    </button>
                   )}
                 </div>
               </CardContent>
