@@ -31,15 +31,6 @@ export async function POST(req: NextRequest) {
 
   const elder = await prisma.user.findUnique({ where: { id: auth.userId } });
 
-  const sosEvent = await prisma.sOSEvent.create({
-    data: {
-      userId: auth.userId,
-      triggerType: parsed.data.triggerType,
-      lat: parsed.data.lat,
-      lng: parsed.data.lng,
-    },
-  });
-
   // Same three audiences a community panic alert reaches (see
   // /api/v1/community/panic) — a personal SOS is the same emergency, just
   // raised from the elder's own "Need help now" / ambulance / police
@@ -59,6 +50,21 @@ export async function POST(req: NextRequest) {
     }),
     getPrimaryNeighborhoodId(auth.userId),
   ]);
+
+  const sosEvent = await prisma.sOSEvent.create({
+    data: {
+      userId: auth.userId,
+      triggerType: parsed.data.triggerType,
+      lat: parsed.data.lat,
+      lng: parsed.data.lng,
+      // Set whenever the elder belongs to a community, same as a panic
+      // alert always does — the committee is notified either way (see
+      // below), so this keeps "neighborhoodId is set" in sync with "the
+      // community's committee was told about this event," which is what
+      // the committee's live alert banner (GET /community/panic) polls by.
+      neighborhoodId: neighborhoodId ?? undefined,
+    },
+  });
 
   const committee = neighborhoodId
     ? await prisma.neighborhoodMember.findMany({
