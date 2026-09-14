@@ -1,23 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { AlertTriangle, Ambulance, Shield } from 'lucide-react';
+import { AlertTriangle, Ambulance, Shield, MessageCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 import { buildWaLink } from '@/lib/whatsapp';
-import { renderTemplate } from '@/lib/whatsapp-templates-shared';
+import { buildSosMessage, openFirstAndReturnRest, type WhatsAppRecipient } from '@/lib/emergency-notify';
 
 const AMBULANCE_NUMBER = '108';
 const POLICE_NUMBER = '100';
-
-interface EmergencyContactRef {
-  id: string;
-  name: string;
-  phone: string;
-  callOrder: number;
-}
 
 /** Shared between the elder's home hub and the caregiver dashboard's own
  *  "emergency" card — extracted from app/elder/elder-home-client.tsx, which
@@ -33,14 +26,6 @@ export function EmergencyActions() {
   const lang = useLanguage();
   const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
 
-  const [primaryContact, setPrimaryContact] = useState<EmergencyContactRef | null>(null);
-  useEffect(() => {
-    fetch('/api/v1/emergency/contacts', { credentials: 'include' })
-      .then((r) => r.json())
-      .then((j) => { if (j.success) setPrimaryContact(j.data?.find((c: EmergencyContactRef) => c.phone) ?? null); })
-      .catch(() => {});
-  }, []);
-
   // Fetched once up front (not at send time) so a slow network never delays
   // the actual WhatsApp send — falls back to the hardcoded default if the
   // fetch hasn't resolved yet or failed.
@@ -54,6 +39,15 @@ export function EmergencyActions() {
 
   const [sosSending, setSosSending] = useState(false);
   const [sosMessage, setSosMessage] = useState('');
+  // Everyone the SOS/dial route notified who has a phone on file, minus
+  // whoever's WhatsApp chat just auto-opened — rendered as one-tap "Send"
+  // buttons, since only the first chat can open without a further tap (see
+  // lib/emergency-notify.ts). waMessage is the exact text sent to the first
+  // recipient (location included when available) — kept alongside so the
+  // remaining buttons send the same wording instead of rebuilding it
+  // without the location captured at trigger time.
+  const [waRemaining, setWaRemaining] = useState<WhatsAppRecipient[]>([]);
+  const [waMessage, setWaMessage] = useState('');
 
   function getLocation(): Promise<{ lat?: number; lng?: number }> {
     return new Promise((resolve) => {
@@ -66,20 +60,36 @@ export function EmergencyActions() {
     });
   }
 
+  /** Fires the SOS/dial route and, on success, auto-opens the first
+   *  WhatsApp recipient's chat and queues the rest as one-tap buttons — see
+   *  lib/emergency-notify.ts. Shared by handleSOS and logEmergencyDial so
+   *  every trigger (the SOS button, ambulance, police) notifies the same
+   *  way, not just the SOS button. */
+  async function triggerAndQueueWhatsApp(triggerType: string, lat?: number, lng?: number) {
+    const res = await fetch('/api/v1/emergency/sos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ triggerType, lat, lng }),
+    });
+    const json = await res.json();
+    if (json.success && Array.isArray(json.data?.whatsappRecipients)) {
+      const message = buildSosMessage(emergencyTemplate, lat, lng);
+      setWaMessage(message);
+      setWaRemaining(openFirstAndReturnRest(json.data.whatsappRecipients, message));
+    }
+    return json;
+  }
+
   async function handleSOS() {
     if (!confirm(t('elder.home.confirmSOS'))) return;
     setSosSending(true);
     setSosMessage('');
+    setWaRemaining([]);
     try {
       const { lat, lng } = await getLocation();
-      const res = await fetch('/api/v1/emergency/sos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ triggerType: 'manual', lat, lng }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json?.error?.message || t('elder.home.sosErrorGeneric'));
+      const json = await triggerAndQueueWhatsApp('manual', lat, lng);
+      if (!json.success) throw new Error(json?.error?.message || t('elder.home.sosErrorGeneric'));
       setSosMessage(t('elder.home.sosSuccess'));
     } catch (err) {
       setSosMessage(err instanceof Error ? err.message : t('elder.home.sosErrorGeneric'));
@@ -90,19 +100,15 @@ export function EmergencyActions() {
 
   /** Logs an SOSEvent (same route the "I need help" button uses, just a
    *  different triggerType) so an ambulance/police dial shows up in the
-   *  elder's and family's SOS history with a map link and pushes a
-   *  notification to caregivers — previously only the manual SOS button did
-   *  this, so calling 108/100 directly left family with no idea it happened.
-   *  Deliberately fire-and-forget, never awaited before dialing: the phone
-   *  call itself is the priority action and must not wait on a network
-   *  request or a slow GPS fix. */
+   *  elder's and family's SOS history with a map link, pushes a
+   *  notification to caregivers/contacts/committee, and queues the same
+   *  WhatsApp send as the SOS button — previously only the manual SOS
+   *  button did any of this, so calling 108/100 directly left family with
+   *  no idea it happened. Deliberately fire-and-forget, never awaited
+   *  before dialing: the phone call itself is the priority action and must
+   *  not wait on a network request or a slow GPS fix. */
   function logEmergencyDial(triggerType: 'ambulance' | 'police', lat?: number, lng?: number) {
-    fetch('/api/v1/emergency/sos', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ triggerType, lat, lng }),
-    }).catch(() => {});
+    triggerAndQueueWhatsApp(triggerType, lat, lng).catch(() => {});
   }
 
   function handleAmbulance() {
@@ -111,22 +117,10 @@ export function EmergencyActions() {
     getLocation().then(({ lat, lng }) => logEmergencyDial('ambulance', lat, lng));
   }
 
-  /** Dials the police helpline and, when a primary emergency contact with a phone
-   *  number is on file, also opens a pre-filled WhatsApp message with the current
-   *  location to that contact — same wa.me share-intent pattern as
-   *  app/admin/invite/page.tsx, a one-tap "Send" the caller does themselves.
-   *  Skips the WhatsApp step gracefully when no contact has a phone on file. */
   function handlePolice() {
     if (!confirm(t('elder.home.confirmPolice').replace('{number}', POLICE_NUMBER))) return;
     window.location.href = `tel:${POLICE_NUMBER}`;
-    getLocation().then(({ lat, lng }) => {
-      logEmergencyDial('police', lat, lng);
-      if (primaryContact?.phone) {
-        const location = lat != null && lng != null ? ` My location: https://www.google.com/maps?q=${lat},${lng}` : '';
-        const message = renderTemplate(emergencyTemplate, { location });
-        window.open(buildWaLink(primaryContact.phone, message), '_blank');
-      }
-    });
+    getLocation().then(({ lat, lng }) => logEmergencyDial('police', lat, lng));
   }
 
   return (
@@ -150,6 +144,25 @@ export function EmergencyActions() {
         </Button>
       </CardContent>
       {sosMessage && <CardContent className="pt-0 text-sm font-semibold text-text">{sosMessage}</CardContent>}
+      {waRemaining.length > 0 && (
+        <CardContent className="flex flex-col gap-2 pt-0">
+          <p className="text-sm font-semibold text-text">Also notify by WhatsApp:</p>
+          <div className="flex flex-wrap gap-2">
+            {waRemaining.map((r) => (
+              <a
+                key={r.phone}
+                href={buildWaLink(r.phone, waMessage)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 rounded-full bg-success-50 px-3 py-1.5 text-sm font-semibold text-success-600"
+              >
+                <MessageCircle className="h-4 w-4" />
+                {r.name}
+              </a>
+            ))}
+          </div>
+        </CardContent>
+      )}
     </Card>
   );
 }
