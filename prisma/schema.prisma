@@ -2525,3 +2525,19 @@ model LoginOtp {
 
   @@index([phone, createdAt])
 }
+
+/// A non-English version of an editable WhatsApp message (see
+/// WhatsAppMessageTemplate, which holds the English text). One row per
+/// (template key, language) an admin has customised; when there's no row the
+/// built-in translated default from lib/whatsapp-templates-shared.ts is used.
+model WhatsAppTemplateTranslation {
+  id            String   @id @default(cuid())
+  key           String
+  language      String
+  body          String   @db.Text
+  updatedById   String?
+  updatedByName String?
+  updatedAt     DateTime @updatedAt
+
+  @@unique([key, language])
+}

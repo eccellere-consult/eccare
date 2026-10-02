@@ -11,7 +11,9 @@ import { Badge } from '@/components/ui/badge';
 import { CommunityPageFrame } from '@/components/community/page-frame';
 import { communityApi, useCommunityData } from '@/lib/community-client';
 import { buildWaLink as waLink } from '@/lib/whatsapp';
-import { renderTemplate, getTemplateDef } from '@/lib/whatsapp-templates-shared';
+import { renderTemplate, getDefaultBody, messageFragments, toMessageLanguage } from '@/lib/whatsapp-templates-shared';
+import { SUPPORTED_LANGUAGES } from '@/lib/i18n/languages';
+import { useLanguage } from '@/lib/i18n/language-context';
 import { RatingInput } from '@/components/rating-input';
 import { ProviderRatingSummaryDisplay } from '@/components/provider-rating-summary';
 
@@ -108,7 +110,11 @@ function AutoBookingContent() {
   const { data: rateCard, reload: reloadRateCard } = useCommunityData<RateCard | null>('/community/auto-rate-card');
   const { data: me } = useCommunityData<Me>('/community/me');
   const { data: bookings, reload: reloadBookings } = useCommunityData<Booking[]>('/community/auto-bookings');
-  const { data: messageTemplates } = useCommunityData<Record<string, string>>('/whatsapp-templates');
+  // Every language's wording at once — the driver may read a different language than the
+  // person booking, so the message language is its own choice (defaulting to theirs).
+  const { data: messageTemplates } = useCommunityData<Record<string, Record<string, string>>>('/whatsapp-templates?lang=all');
+  const uiLanguage = useLanguage();
+  const [msgLang, setMsgLang] = useState(toMessageLanguage(uiLanguage?.language));
   const canManage = me?.memberships?.[0]?.role !== 'member';
 
   const [bookingDriverId, setBookingDriverId] = useState<string | null>(null);
@@ -222,15 +228,16 @@ function AutoBookingContent() {
   }
 
   function bookMessage(driver: Driver): string {
-    const tripLabel = tripType === 'drop' ? 'Drop only' : 'Go there & come back';
+    const f = messageFragments(msgLang);
+    const tripLabel = tripType === 'drop' ? f.tripDrop : f.tripRoundTrip;
     const rate = effectiveRate(driver);
-    const body = messageTemplates?.auto_booking_request ?? getTemplateDef('auto_booking_request').defaultBody;
+    const body = messageTemplates?.[msgLang]?.auto_booking_request ?? getDefaultBody('auto_booking_request', msgLang);
     return renderTemplate(body, {
       trip: tripLabel,
       pickup: pickup || '(please confirm)',
       drop: drop || '(please confirm)',
-      date_line: prefillDate ? `Date: ${prefillDate}${prefillTime ? ` at ${prefillTime}` : ''}` : '',
-      rate_line: rate ? `Indicative rate: ₹${rate.perKm}/km, ₹${rate.perMinWait}/min waiting.` : '',
+      date_line: prefillDate ? f.dateLine(prefillDate, prefillTime ?? undefined) : '',
+      rate_line: rate ? f.rateLine(rate.perKm, rate.perMinWait) : '',
     })
       .split('\n')
       .filter((line) => line.trim())
@@ -564,6 +571,19 @@ function AutoBookingContent() {
                       </Button>
                     </div>
                     {dropGeo && <span className="text-xs text-success-600">Drop point tagged on map ✓</span>}
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor={`msg-lang-${driver.id}`} className="shrink-0 text-xs">Message language</Label>
+                      <select
+                        id={`msg-lang-${driver.id}`}
+                        value={msgLang}
+                        onChange={(e) => setMsgLang(toMessageLanguage(e.target.value))}
+                        className="h-9 flex-1 rounded-xl border border-border bg-surface px-3 text-sm text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+                      >
+                        {SUPPORTED_LANGUAGES.map((l) => (
+                          <option key={l.code} value={l.code}>{l.native}</option>
+                        ))}
+                      </select>
+                    </div>
                     <a
                       href={waLink(driver.whatsapp || driver.phone, bookMessage(driver))}
                       target="_blank"

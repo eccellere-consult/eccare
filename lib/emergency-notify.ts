@@ -1,5 +1,5 @@
 import { buildWaLink } from '@/lib/whatsapp';
-import { renderTemplate } from '@/lib/whatsapp-templates-shared';
+import { renderTemplate, messageFragments } from '@/lib/whatsapp-templates-shared';
 
 export interface WhatsAppRecipient {
   name: string;
@@ -9,8 +9,11 @@ export interface WhatsAppRecipient {
 /** Same {{location}} substitution the admin-editable `emergency_help`
  *  template already uses — reused here rather than inventing a second SOS
  *  message, so there's still exactly one wording an admin can edit. */
-export function buildSosMessage(template: string, lat?: number, lng?: number): string {
-  const location = lat != null && lng != null ? ` My location: https://www.google.com/maps?q=${lat},${lng}` : '';
+export function buildSosMessage(template: string, lat?: number, lng?: number, language = 'en'): string {
+  const location =
+    lat != null && lng != null
+      ? messageFragments(language).locationLine(`https://www.google.com/maps?q=${lat},${lng}`)
+      : '';
   return renderTemplate(template, { location });
 }
 
