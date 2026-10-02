@@ -2509,3 +2509,19 @@ model RecurringOrderSuggestion {
 
   @@index([templateId])
 }
+
+/// A short-lived sign-in code sent to a user's WhatsApp (see lib/otp.ts and
+/// /api/v1/auth/send-otp). Only the HMAC of the code is stored, never the code
+/// itself. A new send invalidates any earlier unconsumed code for the same phone,
+/// so only the latest one ever verifies. `phone` is the normalized 10-digit form.
+model LoginOtp {
+  id         String    @id @default(cuid())
+  phone      String
+  codeHash   String
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([phone, createdAt])
+}
