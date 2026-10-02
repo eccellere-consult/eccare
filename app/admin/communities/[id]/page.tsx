@@ -103,7 +103,7 @@ export default function AdminCommunityDetailPage({ params }: { params: Promise<{
                     className="flex w-fit items-center gap-1.5 rounded-xl border border-border px-4 py-2 text-sm font-semibold text-text-secondary hover:bg-primary-50 hover:text-primary-600"
                   >
                     <UploadIcon className="h-4 w-4" />
-                    Bulk-add to Local Directory (no registration)
+                    Local Directory import &amp; WhatsApp invites (no registration)
                   </Link>
                 </div>
                 <CommunityMembers neighborhoodId={id} viewerRole="admin" />
