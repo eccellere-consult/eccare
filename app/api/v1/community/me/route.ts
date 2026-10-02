@@ -45,10 +45,15 @@ export async function GET(req: NextRequest) {
 
 const patchSchema = z.object({
   neighborhoodId: z.string().optional(),
-  showInDirectory: z.boolean(),
+  showInDirectory: z.boolean().optional(),
+  // The resident's own house / flat number — the one thing the Local Directory
+  // shows for everyone, and the join form's field is optional, so many members
+  // never set it. An empty string clears it.
+  flatNumber: z.string().trim().max(32).optional(),
 });
 
-/** Self-service: a resident opts their own registered listing in/out of their
+/** Self-service: a resident sets their own house/flat number, and/or opts their
+ *  registered listing in/out of their
  *  community's "Your neighbours" directory. Distinct from Contact.shareWithNeighbours
  *  (opting a personal contact IN) — this is the flip side, opting the caller's own
  *  membership row out. No manage permission needed; it's their own row. */
@@ -62,7 +67,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   const parsed = patchSchema.safeParse(await req.json());
-  if (!parsed.success) return invalidInput();
+  if (!parsed.success || Object.keys(parsed.data).filter((k) => k !== 'neighborhoodId').length === 0) return invalidInput();
 
   const neighborhoodId = parsed.data.neighborhoodId || (await getPrimaryNeighborhoodId(auth.userId));
   if (!neighborhoodId) {
@@ -74,8 +79,15 @@ export async function PATCH(req: NextRequest) {
 
   const updated = await prisma.neighborhoodMember.update({
     where: { neighborhoodId_userId: { neighborhoodId, userId: auth.userId } },
-    data: { showInDirectory: parsed.data.showInDirectory },
+    data: {
+      ...(parsed.data.showInDirectory !== undefined ? { showInDirectory: parsed.data.showInDirectory } : {}),
+      ...(parsed.data.flatNumber !== undefined ? { flatNumber: parsed.data.flatNumber || null } : {}),
+    },
   });
 
-  return ok({ neighborhoodId: updated.neighborhoodId, showInDirectory: updated.showInDirectory });
+  return ok({
+    neighborhoodId: updated.neighborhoodId,
+    showInDirectory: updated.showInDirectory,
+    flatNumber: updated.flatNumber,
+  });
 }

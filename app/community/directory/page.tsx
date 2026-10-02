@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Phone, Hand, Pencil, Trash2, ShieldX, Star } from 'lucide-react';
+import { Phone, Hand, Pencil, Trash2, ShieldX, Star, Home } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -263,7 +263,21 @@ export default function DirectoryPage() {
                     {/* A div, not a p — Badge renders a div, which is invalid inside a
                         paragraph and causes a React hydration error. */}
                     <div className="flex items-center gap-2 text-sm text-text-secondary">
-                      <span className="truncate">{n.flatNumber ?? '—'}</span>
+                      {/* The house number is the main thing a neighbour looks up here,
+                          so it gets its own icon and weight rather than a faint trailing
+                          dash. A neighbour-added contact has no house concept at all. */}
+                      {n.source !== 'contact' &&
+                        (n.flatNumber ? (
+                          <span className="flex items-center gap-1 truncate font-semibold text-text">
+                            <Home className="h-3.5 w-3.5 shrink-0" />
+                            {n.flatNumber}
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 truncate">
+                            <Home className="h-3.5 w-3.5 shrink-0" />
+                            House no. not added
+                          </span>
+                        ))}
                       {n.role && n.role !== 'member' && <Badge variant="accent">Committee</Badge>}
                       {n.source === 'contact' && <Badge variant="muted">Added by neighbour</Badge>}
                       {n.source === 'unregistered' && <Badge variant="muted">Not yet registered</Badge>}
