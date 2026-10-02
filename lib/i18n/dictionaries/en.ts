@@ -560,6 +560,10 @@ const en = {
   'community.settings.directoryHelper':
     'Fellow members can see and call you directly. Turn this off to stay a member without appearing in the list.',
   'community.settings.saving': 'Saving…',
+  'community.settings.houseNumber': 'Your house / flat number',
+  'community.settings.houseNumberHelper': 'Shown next to your name in the Local Directory, so neighbours know where you live.',
+  'community.settings.houseNumberPlaceholder': 'A-101',
+  'community.settings.houseNumberSaved': 'Saved ✓',
   'community.settings.notifications': 'Notifications',
   'community.settings.leaveSection': 'Your communities',
   'community.settings.leaveCommunity': 'Leave this community',

@@ -542,6 +542,10 @@ const ml: Record<TranslationKey, string> = {
   'community.settings.directoryHelper':
     'സഹ അംഗങ്ങൾക്ക് നിങ്ങളെ കാണാനും നേരിട്ട് വിളിക്കാനും കഴിയും. പട്ടികയിൽ പ്രത്യക്ഷപ്പെടാതെ അംഗമായി തുടരാൻ ഇത് ഓഫ് ചെയ്യുക.',
   'community.settings.saving': 'സേവ് ചെയ്യുന്നു…',
+  'community.settings.houseNumber': 'നിങ്ങളുടെ വീട് / ഫ്ലാറ്റ് നമ്പർ',
+  'community.settings.houseNumberHelper': 'ലോക്കൽ ഡയറക്ടറിയിൽ നിങ്ങളുടെ പേരിനൊപ്പം കാണിക്കും, അയൽക്കാർക്ക് നിങ്ങൾ എവിടെ താമസിക്കുന്നു എന്ന് അറിയാൻ.',
+  'community.settings.houseNumberPlaceholder': 'A-101',
+  'community.settings.houseNumberSaved': 'സേവ് ചെയ്തു ✓',
   'community.settings.notifications': 'അറിയിപ്പുകൾ',
   'community.settings.leaveSection': 'നിങ്ങളുടെ കമ്മ്യൂണിറ്റികൾ',
   'community.settings.leaveCommunity': 'ഈ കമ്മ്യൂണിറ്റി വിടുക',

@@ -542,6 +542,10 @@ const kn: Record<TranslationKey, string> = {
   'community.settings.directoryHelper':
     'ಸಹ ಸದಸ್ಯರು ನಿಮ್ಮನ್ನು ನೋಡಬಹುದು ಮತ್ತು ನೇರವಾಗಿ ಕರೆ ಮಾಡಬಹುದು. ಪಟ್ಟಿಯಲ್ಲಿ ಕಾಣಿಸಿಕೊಳ್ಳದೆ ಸದಸ್ಯರಾಗಿ ಉಳಿಯಲು ಇದನ್ನು ಆಫ್ ಮಾಡಿ.',
   'community.settings.saving': 'ಉಳಿಸಲಾಗುತ್ತಿದೆ…',
+  'community.settings.houseNumber': 'ನಿಮ್ಮ ಮನೆ / ಫ್ಲಾಟ್ ಸಂಖ್ಯೆ',
+  'community.settings.houseNumberHelper': 'ಲೋಕಲ್ ಡೈರೆಕ್ಟರಿಯಲ್ಲಿ ನಿಮ್ಮ ಹೆಸರಿನ ಜೊತೆ ಕಾಣಿಸುತ್ತದೆ, ಹೀಗಾಗಿ ನೆರೆಹೊರೆಯವರಿಗೆ ನೀವು ಎಲ್ಲಿ ವಾಸಿಸುತ್ತೀರಿ ಎಂದು ತಿಳಿಯುತ್ತದೆ.',
+  'community.settings.houseNumberPlaceholder': 'A-101',
+  'community.settings.houseNumberSaved': 'ಉಳಿಸಲಾಗಿದೆ ✓',
   'community.settings.notifications': 'ಅಧಿಸೂಚನೆಗಳು',
   'community.settings.leaveSection': 'ನಿಮ್ಮ ಕಮ್ಯುನಿಟಿಗಳು',
   'community.settings.leaveCommunity': 'ಈ ಕಮ್ಯುನಿಟಿಯನ್ನು ಬಿಡಿ',
