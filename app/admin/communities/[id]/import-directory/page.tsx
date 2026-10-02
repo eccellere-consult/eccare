@@ -10,7 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useCommunityData } from '@/lib/community-client';
 import { buildWaLink, toWhatsAppNumber } from '@/lib/whatsapp';
-import { renderTemplate, getTemplateDef } from '@/lib/whatsapp-templates-shared';
+import { renderTemplate, getDefaultBody, messageFragments, combineLanguages } from '@/lib/whatsapp-templates-shared';
+import { WhatsAppLanguagePicker } from '@/components/whatsapp-language-picker';
 
 interface DirectoryImportRow {
   rowNumber: number;
@@ -57,8 +58,7 @@ const STATUS_VARIANT: Record<DirectoryImportRow['status'], 'success' | 'danger' 
 export default function ImportDirectoryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: neighborhoodId } = use(params);
   const { data: neighborhood } = useCommunityData<NeighborhoodDetail>(`/community/neighborhoods/${neighborhoodId}`);
-  const { data: messageTemplates } = useCommunityData<Record<string, string>>('/whatsapp-templates');
-  const inviteTemplate = messageTemplates?.invite ?? getTemplateDef('invite').defaultBody;
+  const { data: messageTemplates } = useCommunityData<Record<string, Record<string, string>>>('/whatsapp-templates?lang=all');
 
   const [file, setFile] = useState<File | null>(null);
   const [rows, setRows] = useState<DirectoryImportRow[] | null>(null);
@@ -234,7 +234,7 @@ export default function ImportDirectoryPage({ params }: { params: Promise<{ id: 
           key={importVersion}
           neighborhoodId={neighborhoodId}
           community={neighborhood ?? null}
-          inviteTemplate={inviteTemplate}
+          templates={messageTemplates}
         />
       )}
     </div>
@@ -246,11 +246,11 @@ export default function ImportDirectoryPage({ params }: { params: Promise<{ id: 
 function PendingInvites({
   neighborhoodId,
   community,
-  inviteTemplate,
+  templates,
 }: {
   neighborhoodId: string;
   community: NeighborhoodDetail | null;
-  inviteTemplate: string;
+  templates: Record<string, Record<string, string>> | null;
 }) {
   const { data, loading, reload } = useCommunityData<PendingEntry[]>(
     `/community/directory/unregistered?neighborhoodId=${neighborhoodId}`,
@@ -258,6 +258,7 @@ function PendingInvites({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [queue, setQueue] = useState<Recipient[] | null>(null);
   const [initialised, setInitialised] = useState(false);
+  const [languages, setLanguages] = useState<string[]>(['en']);
 
   // Pre-select everyone with a phone who hasn't been invited yet — the usual
   // "invite the rest" case — once, on first load, so later manual ticks and
@@ -285,7 +286,8 @@ function PendingInvites({
       <InviteQueue
         recipients={queue}
         community={community}
-        inviteTemplate={inviteTemplate}
+        templates={templates}
+        languages={languages}
         onClose={() => {
           setQueue(null);
           reload();
@@ -375,6 +377,8 @@ function PendingInvites({
               </table>
             </div>
 
+            <WhatsAppLanguagePicker languages={languages} setLanguages={setLanguages} />
+
             <div className="flex flex-wrap items-center gap-3">
               <Button onClick={startQueue} disabled={selected.size === 0 || !community} className="w-fit">
                 <MessageCircle className="h-4 w-4" /> Start inviting {selected.size || ''}{' '}
@@ -400,12 +404,14 @@ function PendingInvites({
 function InviteQueue({
   recipients,
   community,
-  inviteTemplate,
+  templates,
+  languages,
   onClose,
 }: {
   recipients: Recipient[];
   community: NeighborhoodDetail | null;
-  inviteTemplate: string;
+  templates: Record<string, Record<string, string>> | null;
+  languages: string[];
   onClose: () => void;
 }) {
   const [queueIndex, setQueueIndex] = useState(0);
@@ -413,10 +419,17 @@ function InviteQueue({
   const nextButtonRef = useRef<HTMLButtonElement>(null);
 
   const registrationLink = typeof window !== 'undefined' ? `${window.location.origin}/login` : 'https://eccare.in/login';
-  const baseMessage = renderTemplate(inviteTemplate, {
-    link: registrationLink,
-    community_line: community ? `Then join our community "${community.name}" with code: ${community.joinCode}` : '',
-  }).replace(/\n+$/, '');
+  // One block per selected language (stacked when more than one), each with its
+  // own wording and its own "join our community" line; {{name}} is filled per
+  // recipient below.
+  const baseMessage = combineLanguages(
+    languages.map((lang) =>
+      renderTemplate(templates?.[lang]?.invite ?? getDefaultBody('invite', lang), {
+        link: registrationLink,
+        community_line: community ? messageFragments(lang).communityLine(community.name, community.joinCode) : '',
+      }).replace(/\n+$/, ''),
+    ),
+  );
 
   const recipient = recipients[queueIndex];
   const isLast = queueIndex === recipients.length - 1;

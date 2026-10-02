@@ -9,7 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useCommunityData } from '@/lib/community-client';
 import { buildWaLink, toWhatsAppNumber } from '@/lib/whatsapp';
-import { renderTemplate, getTemplateDef } from '@/lib/whatsapp-templates-shared';
+import { renderTemplate, getDefaultBody, messageFragments, combineLanguages } from '@/lib/whatsapp-templates-shared';
+import { WhatsAppLanguagePicker } from '@/components/whatsapp-language-picker';
 
 interface Neighborhood {
   id: string;
@@ -24,19 +25,37 @@ interface UserRow {
   role: 'elder' | 'caregiver' | 'admin' | 'provider';
 }
 
-/** `inviteTemplate` is the current "invite" template body — the persisted
- *  default from Admin → WhatsApp Messages (falls back to the code default
- *  before that fetch resolves), not a hardcoded string. {{name}} is left
- *  unfilled here on purpose — callers fill it per-recipient. */
-function buildDefaultMessage(inviteTemplate: string, registrationLink: string, community: Neighborhood | undefined) {
-  const rendered = renderTemplate(inviteTemplate, {
-    link: registrationLink,
-    community_line: community ? `Then join our community "${community.name}" with code: ${community.joinCode}` : '',
+type AllTemplates = Record<string, Record<string, string>> | null;
+
+/** Builds the invite in one or more languages. `templates` is every
+ *  language's current "invite" wording (the persisted defaults from Admin →
+ *  WhatsApp Messages, falling back to the built-in ones before that fetch
+ *  resolves). With several languages selected, each language's version is
+ *  stacked in the order chosen, so one message can reach someone who reads
+ *  more than one. {{name}} is left unfilled on purpose for callers that
+ *  personalise per recipient; pass `genericName` to fill a neutral greeting
+ *  instead (single mode, where there's no name). */
+function buildInviteMessage(
+  templates: AllTemplates,
+  languages: string[],
+  registrationLink: string,
+  community: Neighborhood | undefined,
+  genericName = false,
+) {
+  const parts = languages.map((lang) => {
+    const f = messageFragments(lang);
+    const body = templates?.[lang]?.invite ?? getDefaultBody('invite', lang);
+    const rendered = renderTemplate(body, {
+      link: registrationLink,
+      community_line: community ? f.communityLine(community.name, community.joinCode) : '',
+      ...(genericName ? { name: f.genericName } : {}),
+    });
+    // Trims a trailing blank line left behind when {{community_line}} renders
+    // empty (the default template's last line) — keeps any other intentional
+    // blank lines an admin's edited template might have in the middle.
+    return rendered.replace(/\n+$/, '');
   });
-  // Trims a trailing blank line left behind when {{community_line}} renders
-  // empty (the default template's last line) — keeps any other intentional
-  // blank lines an admin's edited template might have in the middle.
-  return rendered.replace(/\n+$/, '');
+  return combineLanguages(parts);
 }
 
 /** No paid WhatsApp Business API or SMS gateway — every send here is still a
@@ -51,8 +70,8 @@ function buildDefaultMessage(inviteTemplate: string, registrationLink: string, c
 export default function AdminInvitePage() {
   const [mode, setMode] = useState<'single' | 'bulk'>('single');
   const { data: communities } = useCommunityData<Neighborhood[]>('/community/neighborhoods');
-  const { data: messageTemplates } = useCommunityData<Record<string, string>>('/whatsapp-templates');
-  const inviteTemplate = messageTemplates?.invite ?? getTemplateDef('invite').defaultBody;
+  const { data: messageTemplates } = useCommunityData<Record<string, Record<string, string>>>('/whatsapp-templates?lang=all');
+  const [languages, setLanguages] = useState<string[]>(['en']);
   const [neighborhoodId, setNeighborhoodId] = useState('');
 
   useEffect(() => {
@@ -77,16 +96,18 @@ export default function AdminInvitePage() {
       </div>
 
       {mode === 'single' ? (
-        <SingleInvite inviteTemplate={inviteTemplate} registrationLink={registrationLink} communities={communities} neighborhoodId={neighborhoodId} setNeighborhoodId={setNeighborhoodId} selectedCommunity={selectedCommunity} />
+        <SingleInvite templates={messageTemplates} languages={languages} setLanguages={setLanguages} registrationLink={registrationLink} communities={communities} neighborhoodId={neighborhoodId} setNeighborhoodId={setNeighborhoodId} selectedCommunity={selectedCommunity} />
       ) : (
-        <BulkInvite inviteTemplate={inviteTemplate} registrationLink={registrationLink} communities={communities} neighborhoodId={neighborhoodId} setNeighborhoodId={setNeighborhoodId} selectedCommunity={selectedCommunity} />
+        <BulkInvite templates={messageTemplates} languages={languages} setLanguages={setLanguages} registrationLink={registrationLink} communities={communities} neighborhoodId={neighborhoodId} setNeighborhoodId={setNeighborhoodId} selectedCommunity={selectedCommunity} />
       )}
     </div>
   );
 }
 
 interface SharedProps {
-  inviteTemplate: string;
+  templates: AllTemplates;
+  languages: string[];
+  setLanguages: (l: string[]) => void;
   registrationLink: string;
   communities: Neighborhood[] | null;
   neighborhoodId: string;
@@ -113,11 +134,11 @@ function CommunityPicker({ communities, neighborhoodId, setNeighborhoodId }: Pic
   );
 }
 
-function SingleInvite({ inviteTemplate, registrationLink, communities, neighborhoodId, setNeighborhoodId, selectedCommunity }: SharedProps) {
+function SingleInvite({ templates, languages, setLanguages, registrationLink, communities, neighborhoodId, setNeighborhoodId, selectedCommunity }: SharedProps) {
   const [phone, setPhone] = useState('');
   const [copied, setCopied] = useState(false);
 
-  const message = buildDefaultMessage(inviteTemplate, registrationLink, selectedCommunity).replace('{{name}}', 'there');
+  const message = buildInviteMessage(templates, languages, registrationLink, selectedCommunity, true);
   const waLink = phone.trim()
     ? buildWaLink(phone, message)
     : `https://wa.me/?text=${encodeURIComponent(message)}`;
@@ -132,6 +153,7 @@ function SingleInvite({ inviteTemplate, registrationLink, communities, neighborh
     <Card className="mt-6">
       <CardContent className="flex flex-col gap-4 pt-6">
         <CommunityPicker communities={communities} neighborhoodId={neighborhoodId} setNeighborhoodId={setNeighborhoodId} />
+        <WhatsAppLanguagePicker languages={languages} setLanguages={setLanguages} />
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="invite-phone">Their phone number (optional)</Label>
@@ -170,7 +192,7 @@ function SingleInvite({ inviteTemplate, registrationLink, communities, neighborh
   );
 }
 
-function BulkInvite({ inviteTemplate, registrationLink, communities, neighborhoodId, setNeighborhoodId, selectedCommunity }: SharedProps) {
+function BulkInvite({ templates, languages, setLanguages, registrationLink, communities, neighborhoodId, setNeighborhoodId, selectedCommunity }: SharedProps) {
   const { data: users, loading } = useCommunityData<UserRow[]>('/admin/users');
   const [message, setMessage] = useState('');
   const [search, setSearch] = useState('');
@@ -184,7 +206,7 @@ function BulkInvite({ inviteTemplate, registrationLink, communities, neighborhoo
   const lastAutoGeneratedRef = useRef('');
 
   useEffect(() => {
-    const next = buildDefaultMessage(inviteTemplate, registrationLink, selectedCommunity);
+    const next = buildInviteMessage(templates, languages, registrationLink, selectedCommunity);
     // Only regenerate if the textarea still holds what we last auto-filled
     // (including empty, on first mount) — otherwise switching the community
     // dropdown silently overwrote whatever the admin had already typed.
@@ -195,7 +217,7 @@ function BulkInvite({ inviteTemplate, registrationLink, communities, neighborhoo
     setMessage((prev) => (prev === '' || prev === lastAutoGeneratedRef.current ? next : prev));
     lastAutoGeneratedRef.current = next;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCommunity, inviteTemplate]);
+  }, [selectedCommunity, templates, languages]);
 
   const withPhone = useMemo(() => (users ?? []).filter((u) => !!u.phone), [users]);
   const withoutPhoneCount = (users?.length ?? 0) - withPhone.length;
@@ -363,6 +385,7 @@ function BulkInvite({ inviteTemplate, registrationLink, communities, neighborhoo
     <Card className="mt-6">
       <CardContent className="flex flex-col gap-4 pt-6">
         <CommunityPicker communities={communities} neighborhoodId={neighborhoodId} setNeighborhoodId={setNeighborhoodId} />
+        <WhatsAppLanguagePicker languages={languages} setLanguages={setLanguages} />
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="bulk-message">

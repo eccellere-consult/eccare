@@ -24,18 +24,19 @@ const POLICE_NUMBER = '100';
  *  isn't). */
 export function EmergencyActions() {
   const lang = useLanguage();
-  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
+  const language = lang?.language ?? 'en';
+  const t = (key: TranslationKey) => translate(key, language);
 
   // Fetched once up front (not at send time) so a slow network never delays
   // the actual WhatsApp send — falls back to the hardcoded default if the
   // fetch hasn't resolved yet or failed.
   const [emergencyTemplate, setEmergencyTemplate] = useState('This is an emergency, I need help.{{location}}');
   useEffect(() => {
-    fetch('/api/v1/whatsapp-templates', { credentials: 'include' })
+    fetch(`/api/v1/whatsapp-templates?lang=${language}`, { credentials: 'include' })
       .then((r) => r.json())
       .then((j) => { if (j.success && j.data.emergency_help) setEmergencyTemplate(j.data.emergency_help); })
       .catch(() => {});
-  }, []);
+  }, [language]);
 
   const [sosSending, setSosSending] = useState(false);
   const [sosMessage, setSosMessage] = useState('');
@@ -74,7 +75,7 @@ export function EmergencyActions() {
     });
     const json = await res.json();
     if (json.success && Array.isArray(json.data?.whatsappRecipients)) {
-      const message = buildSosMessage(emergencyTemplate, lat, lng);
+      const message = buildSosMessage(emergencyTemplate, lat, lng, language);
       setWaMessage(message);
       setWaRemaining(openFirstAndReturnRest(json.data.whatsappRecipients, message));
     }
