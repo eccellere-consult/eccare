@@ -19,6 +19,11 @@
  */
 export function toWhatsAppNumber(phone: string): string {
   const digits = phone.replace(/[^\d]/g, '');
+  // A leading "+" means the country code is already there (international
+  // numbers are stored as "+<country code><number>" — see lib/validation.ts).
+  // Checked first because e.g. Singapore's "+65 9123 4567" is also 10 digits
+  // and would otherwise be wrongly given an Indian 91 prefix.
+  if (phone.trim().startsWith('+')) return digits;
   return digits.length === 10 ? `91${digits}` : digits;
 }
 

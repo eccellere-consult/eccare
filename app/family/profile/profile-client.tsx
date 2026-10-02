@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ChangePasswordCard } from '@/components/change-password-card';
-import { isValidEmail, isValidPhone, EMAIL_FORMAT_MESSAGE, PHONE_FORMAT_MESSAGE } from '@/lib/validation';
+import { isValidEmail, isValidAnyPhone, EMAIL_FORMAT_MESSAGE, ANY_PHONE_FORMAT_MESSAGE } from '@/lib/validation';
 
 interface Profile {
   name: string;
@@ -34,8 +34,8 @@ export function FamilyProfileClient({ profile }: { profile: Profile }) {
       setMessage(EMAIL_FORMAT_MESSAGE);
       return;
     }
-    if (form.phone && !isValidPhone(form.phone)) {
-      setMessage(PHONE_FORMAT_MESSAGE);
+    if (form.phone && !isValidAnyPhone(form.phone)) {
+      setMessage(ANY_PHONE_FORMAT_MESSAGE);
       return;
     }
     setSaving(true);

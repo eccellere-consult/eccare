@@ -9,7 +9,16 @@ import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { isValidEmail, isValidPhone, EMAIL_FORMAT_MESSAGE, PHONE_FORMAT_MESSAGE } from '@/lib/validation';
+import {
+  isValidEmail,
+  isValidAnyPhone,
+  isInternationalPhone,
+  EMAIL_FORMAT_MESSAGE,
+  PHONE_FORMAT_MESSAGE,
+  ANY_PHONE_FORMAT_MESSAGE,
+  INTERNATIONAL_ROLE_MESSAGE,
+} from '@/lib/validation';
+import { PhoneField } from '@/components/phone-field';
 import { HelpGuidesSection } from '@/components/help-guides-section';
 import { TourButton } from '@/components/tour/TourButton';
 import { DedicationFooter } from '@/components/dedication-footer';
@@ -105,6 +114,7 @@ function SignInForm({ onSuccess, t }: { onSuccess: (role: string) => void; t: (k
           onChange={(e) => setIdentifier(e.target.value)}
           placeholder={t('login.signIn.identifierPlaceholder')}
         />
+        <p className="text-xs text-text-secondary">{t('login.signIn.intlHint')}</p>
       </div>
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
@@ -163,8 +173,8 @@ function OtpSignInForm({ onSuccess, t }: { onSuccess: (role: string) => void; t:
   async function sendCode(e?: React.FormEvent) {
     e?.preventDefault();
     setError('');
-    if (!isValidPhone(phone)) {
-      setError(PHONE_FORMAT_MESSAGE);
+    if (!isValidAnyPhone(phone)) {
+      setError(ANY_PHONE_FORMAT_MESSAGE);
       return;
     }
     setBusy(true);
@@ -248,13 +258,14 @@ function OtpSignInForm({ onSuccess, t }: { onSuccess: (role: string) => void; t:
       <form onSubmit={sendCode} className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <Label htmlFor="otp-phone">{t('login.otp.phone')}</Label>
-          <Input
+          <PhoneField
             id="otp-phone"
-            type="tel"
-            autoComplete="tel"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={setPhone}
+            allowInternational
             placeholder={t('login.signIn.identifierPlaceholder')}
+            countryLabel={t('login.phone.country')}
+            otherLabel={t('login.phone.other')}
           />
         </div>
         {error && <p className="text-sm text-danger-600">{error}</p>}
@@ -400,8 +411,12 @@ function CreateAccountForm({
       setError(t('login.errors.enterPhone'));
       return;
     }
-    if (!isValidPhone(phone)) {
-      setError(PHONE_FORMAT_MESSAGE);
+    if (!isValidAnyPhone(phone)) {
+      setError(role === 'caregiver' ? ANY_PHONE_FORMAT_MESSAGE : PHONE_FORMAT_MESSAGE);
+      return;
+    }
+    if (isInternationalPhone(phone) && role !== 'caregiver') {
+      setError(INTERNATIONAL_ROLE_MESSAGE);
       return;
     }
     if (email.trim() && !isValidEmail(email)) {
@@ -491,15 +506,16 @@ function CreateAccountForm({
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="reg-phone">{t('login.register.phoneNumber')}</Label>
-        <Input
+        <PhoneField
           id="reg-phone"
-          type="tel"
-          autoComplete="tel"
           value={phone}
-          onChange={(e) => setPhone(e.target.value)}
+          onChange={setPhone}
+          allowInternational={role === 'caregiver'}
           placeholder={t('login.register.phoneNumberPlaceholder')}
+          countryLabel={t('login.phone.country')}
+          otherLabel={t('login.phone.other')}
+          helper={role === 'caregiver' ? t('login.phone.intlHelper') : t('login.register.phoneHelper')}
         />
-        <p className="text-xs text-text-secondary">{t('login.register.phoneHelper')}</p>
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="reg-email">{t('login.register.emailOptional')}</Label>

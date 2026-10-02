@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { createToken, hashPassword, setSessionCookie, toSafeUser } from '@/lib/auth';
 import { z } from 'zod';
-import { isValidEmail, isValidPhone, normalizePhone, EMAIL_FORMAT_MESSAGE, PHONE_FORMAT_MESSAGE } from '@/lib/validation';
+import { isValidEmail, isValidAnyPhone, isInternationalPhone, normalizeAnyPhone, EMAIL_FORMAT_MESSAGE, ANY_PHONE_FORMAT_MESSAGE, INTERNATIONAL_ROLE_MESSAGE } from '@/lib/validation';
 import { getPricingContent } from '@/lib/pricing-content';
 import { isSupportedLanguage } from '@/lib/i18n/languages';
 
@@ -19,7 +19,7 @@ const schema = z
       .refine((v) => v === undefined || isValidEmail(v), EMAIL_FORMAT_MESSAGE),
     password: z.string().min(8),
     name: z.string().min(1),
-    phone: z.string().min(1).refine(isValidPhone, PHONE_FORMAT_MESSAGE),
+    phone: z.string().min(1).refine(isValidAnyPhone, ANY_PHONE_FORMAT_MESSAGE),
     role: z.enum(['elder', 'caregiver', 'provider']),
     businessName: z.string().min(1).max(160).optional(),
     category: z.string().min(1).max(80).optional(),
@@ -47,6 +47,11 @@ const schema = z
     language: z.string().optional().refine((v) => v === undefined || isSupportedLanguage(v), 'Invalid language.'),
   })
   .superRefine((data, ctx) => {
+    // Family members often live abroad; elders and providers are local, so a
+    // non-Indian number is only accepted for the caregiver role.
+    if (data.role !== 'caregiver' && isInternationalPhone(data.phone)) {
+      ctx.addIssue({ code: 'custom', path: ['phone'], message: INTERNATIONAL_ROLE_MESSAGE });
+    }
     if (data.role === 'provider') {
       if (!data.businessName) {
         ctx.addIssue({ code: 'custom', path: ['businessName'], message: 'Business name is required.' });
@@ -79,7 +84,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { email, password, name, role, businessName, category, backupContactName, backupContactPhone, lat, lng, isVolunteer, volunteerAvailability, volunteerAssistanceTypes, billingCycle, language } = parsed.data;
-  const phone = normalizePhone(parsed.data.phone);
+  const phone = normalizeAnyPhone(parsed.data.phone);
   const passwordHash = await hashPassword(password);
 
   // A pre-existing row can be a real, already-claimed account, or an unclaimed

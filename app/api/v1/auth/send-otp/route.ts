@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
-import { isValidPhone, normalizePhone, PHONE_FORMAT_MESSAGE } from '@/lib/validation';
+import { isValidAnyPhone, normalizeAnyPhone, ANY_PHONE_FORMAT_MESSAGE } from '@/lib/validation';
 import {
   isOtpConfigured,
   generateOtp,
@@ -30,10 +30,10 @@ export async function POST(req: NextRequest) {
   }
 
   const parsed = schema.safeParse(await req.json().catch(() => null));
-  if (!parsed.success || !isValidPhone(parsed.data.phone)) {
-    return fail('INVALID_PHONE', PHONE_FORMAT_MESSAGE, 400);
+  if (!parsed.success || !isValidAnyPhone(parsed.data.phone)) {
+    return fail('INVALID_PHONE', ANY_PHONE_FORMAT_MESSAGE, 400);
   }
-  const phone = normalizePhone(parsed.data.phone);
+  const phone = normalizeAnyPhone(parsed.data.phone);
 
   const now = Date.now();
   const recent = await prisma.loginOtp.findMany({
