@@ -101,11 +101,11 @@ export function CommunityHubClient() {
   const [waMessage, setWaMessage] = useState('');
   const [emergencyTemplate, setEmergencyTemplate] = useState('This is an emergency, I need help.{{location}}');
   useEffect(() => {
-    fetch('/api/v1/whatsapp-templates', { credentials: 'include' })
+    fetch(`/api/v1/whatsapp-templates?lang=${lang?.language ?? 'en'}`, { credentials: 'include' })
       .then((r) => r.json())
       .then((j) => { if (j.success && j.data.emergency_help) setEmergencyTemplate(j.data.emergency_help); })
       .catch(() => {});
-  }, []);
+  }, [lang?.language]);
 
   // Accounts is association bookkeeping — a caregiver-managed concern, not something
   // an elder needs on their own home screen. Fetched separately from community
@@ -164,7 +164,7 @@ export function CommunityHubClient() {
         );
         setPanicMsg(t('community.hub.alertSent'));
         if (result.whatsappRecipients?.length) {
-          const message = buildSosMessage(emergencyTemplate, lat, lng);
+          const message = buildSosMessage(emergencyTemplate, lat, lng, lang?.language ?? 'en');
           setWaMessage(message);
           setWaRemaining(openFirstAndReturnRest(result.whatsappRecipients, message));
         }
