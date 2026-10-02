@@ -1,4 +1,5 @@
 import { createHmac, randomInt, timingSafeEqual } from 'crypto';
+import { toWhatsAppNumber } from '@/lib/whatsapp';
 
 export const OTP_TTL_MS = 5 * 60_000; // a code is good for 5 minutes
 export const OTP_MAX_ATTEMPTS = 5; // wrong guesses allowed per code
@@ -36,7 +37,7 @@ export function otpMatches(code: string, storedHash: string): boolean {
  *  Cloud API). Authentication templates carry a one-tap "Copy code" button,
  *  which is what the login page's auto-fill picks up from the clipboard.
  *  Throws on any failure so the caller can discard the stored code. */
-export async function sendWhatsAppOtp(phone10: string, code: string): Promise<void> {
+export async function sendWhatsAppOtp(phone: string, code: string): Promise<void> {
   const template = process.env.WHATSAPP_OTP_TEMPLATE || 'ec_login_code';
   const language = process.env.WHATSAPP_OTP_TEMPLATE_LANG || 'en';
 
@@ -50,7 +51,7 @@ export async function sendWhatsAppOtp(phone10: string, code: string): Promise<vo
       },
       body: JSON.stringify({
         messaging_product: 'whatsapp',
-        to: `91${phone10}`,
+        to: toWhatsAppNumber(phone), // bare 10 digits => +91; "+<cc>…" is already international
         type: 'template',
         template: {
           name: template,

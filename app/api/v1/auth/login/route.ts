@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { createToken, comparePassword, setSessionCookie, toSafeUser } from '@/lib/auth';
 import { z } from 'zod';
-import { isValidPhone, normalizePhone } from '@/lib/validation';
+import { isValidAnyPhone, normalizeAnyPhone } from '@/lib/validation';
 
 // `email` is kept as a fallback field name (not just `identifier`) so an
 // already-installed mobile app build — which still posts `{ email, password }` —
@@ -33,8 +33,8 @@ export async function POST(req: NextRequest) {
   // Phone lookup matches both the canonical normalized form (how new accounts are
   // stored) and the raw typed form (how some legacy accounts, stored before phone
   // login existed, may still be saved) — no data backfill needed for old rows.
-  const user = isValidPhone(raw)
-    ? await prisma.user.findFirst({ where: { OR: [{ phone: raw }, { phone: normalizePhone(raw) }] } })
+  const user = isValidAnyPhone(raw)
+    ? await prisma.user.findFirst({ where: { OR: [{ phone: raw }, { phone: normalizeAnyPhone(raw) }] } })
     : await prisma.user.findUnique({ where: { email: raw } });
 
   if (!user || !user.passwordHash) {
