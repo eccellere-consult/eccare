@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { MessageCircle, RotateCcw, Check } from 'lucide-react';
+import { MessageCircle, RotateCcw, Check, Languages, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -35,6 +35,10 @@ export default function AdminWhatsAppMessagesPage() {
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [savedKey, setSavedKey] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  // English edits can also refresh the other languages in the same click.
+  const [autoTranslate, setAutoTranslate] = useState(true);
+  const [translatingKey, setTranslatingKey] = useState<string | null>(null);
 
   const draftId = (key: string, l: string) => `${key}:${l}`;
 
@@ -75,6 +79,25 @@ export default function AdminWhatsAppMessagesPage() {
       if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Could not save.');
       setSavedKey(id);
       setTimeout(() => setSavedKey(null), 2000);
+
+      // The English wording just changed, so the other languages would now be
+      // out of date — translate and save them too unless the admin opted out.
+      if (lang === 'en' && autoTranslate) {
+        setNotice('Saved. Translating into Hindi, Kannada and Malayalam…');
+        try {
+          const tr = await requestTranslation(key, undefined, true);
+          setNotice(
+            tr.failed.length === 0
+              ? 'Saved, and translated into Hindi, Kannada and Malayalam. Check the other tabs to review them.'
+              : `Saved. Could not translate ${tr.failed.map(langName).join(', ')} — use "Translate from English" on that tab to retry.`,
+          );
+        } catch (err) {
+          // The English wording is saved either way; only the translation step failed.
+          setNotice(`Saved in English. ${err instanceof Error ? err.message : 'Could not translate the other languages.'}`);
+        }
+      } else {
+        setNotice('');
+      }
       load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save.');
@@ -100,6 +123,37 @@ export default function AdminWhatsAppMessagesPage() {
       setError(err instanceof Error ? err.message : 'Could not reset.');
     } finally {
       setSavingKey(null);
+    }
+  }
+
+  async function requestTranslation(key: string, languages: string[] | undefined, save: boolean) {
+    const res = await fetch(`/api/v1/admin/whatsapp-templates/${key}/translate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ languages, save }),
+    });
+    const json = await res.json();
+    if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Could not translate.');
+    return json.data as { translations: Record<string, string>; failed: string[] };
+  }
+
+  /** Fills this language's box with a translation of the saved English wording,
+   *  without saving — so it can be read and corrected before it goes live. */
+  async function translateFromEnglish(t: Template) {
+    const id = draftId(t.key, lang);
+    setTranslatingKey(id);
+    setError('');
+    setNotice('');
+    try {
+      const { translations, failed } = await requestTranslation(t.key, [lang], false);
+      if (failed.length > 0 || !translations[lang]) throw new Error(`Could not translate into ${langName(lang)}. Please try again.`);
+      setDrafts((d) => ({ ...d, [id]: translations[lang] }));
+      setNotice(`Translated into ${langName(lang)} from the saved English wording — read it, then press Save to use it.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not translate.');
+    } finally {
+      setTranslatingKey(null);
     }
   }
 
@@ -142,6 +196,22 @@ export default function AdminWhatsAppMessagesPage() {
         </p>
       )}
 
+      {lang === 'en' && (
+        <label className="mt-3 flex items-start gap-2 text-sm text-text-secondary">
+          <input
+            type="checkbox"
+            checked={autoTranslate}
+            onChange={(e) => setAutoTranslate(e.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-border"
+          />
+          <span>
+            When I save an English message, also translate it into Hindi, Kannada and Malayalam (replaces the
+            saved wording in those languages — review them in their tabs afterwards).
+          </span>
+        </label>
+      )}
+
+      {notice && <p className="mt-4 rounded-xl bg-primary-50 p-3 text-sm text-primary-900">{notice}</p>}
       {error && <p className="mt-4 text-sm text-danger-600">{error}</p>}
 
       {!templates ? (
@@ -172,6 +242,13 @@ export default function AdminWhatsAppMessagesPage() {
                     )}
                   </div>
 
+                  {lang !== 'en' && t.languages.en.isCustomized && !version.isCustomized && (
+                    <p className="rounded-xl bg-accent-50 p-3 text-sm text-accent-900">
+                      The English wording was customised, but this language still shows the built-in wording. Use
+                      &ldquo;Translate from English&rdquo; to bring it in line.
+                    </p>
+                  )}
+
                   <textarea
                     value={draft}
                     onChange={(e) => setDrafts((d) => ({ ...d, [id]: e.target.value }))}
@@ -187,6 +264,12 @@ export default function AdminWhatsAppMessagesPage() {
                     {dirty && (
                       <Button size="sm" variant="outline" onClick={() => setDrafts((d) => ({ ...d, [id]: version.body }))}>
                         Discard changes
+                      </Button>
+                    )}
+                    {lang !== 'en' && (
+                      <Button size="sm" variant="outline" disabled={translatingKey === id} onClick={() => translateFromEnglish(t)}>
+                        {translatingKey === id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Languages className="h-4 w-4" />}
+                        {translatingKey === id ? 'Translating…' : 'Translate from English'}
                       </Button>
                     )}
                     {version.isCustomized && (
