@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { createToken, setSessionCookie, toSafeUser } from '@/lib/auth';
-import { isValidPhone, normalizePhone } from '@/lib/validation';
+import { isValidAnyPhone, normalizeAnyPhone } from '@/lib/validation';
 import { isOtpConfigured, otpMatches, OTP_MAX_ATTEMPTS } from '@/lib/otp';
 
 const schema = z.object({
@@ -28,10 +28,10 @@ export async function POST(req: NextRequest) {
   }
 
   const parsed = schema.safeParse(await req.json().catch(() => null));
-  if (!parsed.success || !isValidPhone(parsed.data.phone)) return fail('INVALID_INPUT', WRONG_CODE, 400);
+  if (!parsed.success || !isValidAnyPhone(parsed.data.phone)) return fail('INVALID_INPUT', WRONG_CODE, 400);
 
   const { otp, rememberMe = true } = parsed.data;
-  const phone = normalizePhone(parsed.data.phone);
+  const phone = normalizeAnyPhone(parsed.data.phone);
 
   const record = await prisma.loginOtp.findFirst({
     where: { phone, consumedAt: null, expiresAt: { gt: new Date() } },

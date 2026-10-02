@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthUser, toSafeUser } from '@/lib/auth';
 import { isSupportedLanguage } from '@/lib/i18n/languages';
-import { isValidEmail, isValidPhone, normalizePhone, EMAIL_FORMAT_MESSAGE, PHONE_FORMAT_MESSAGE } from '@/lib/validation';
+import { isValidEmail, isValidAnyPhone, isInternationalPhone, normalizeAnyPhone, EMAIL_FORMAT_MESSAGE, ANY_PHONE_FORMAT_MESSAGE, INTERNATIONAL_ROLE_MESSAGE } from '@/lib/validation';
 
 export async function GET(req: NextRequest) {
   const auth = await getAuthUser(req);
@@ -64,9 +64,16 @@ export async function PUT(req: NextRequest) {
       { status: 400 },
     );
   }
-  if (phone != null && !isValidPhone(phone)) {
+  if (phone != null && !isValidAnyPhone(phone)) {
     return NextResponse.json(
-      { success: false, error: { code: 'VALIDATION_ERROR', message: PHONE_FORMAT_MESSAGE } },
+      { success: false, error: { code: 'VALIDATION_ERROR', message: ANY_PHONE_FORMAT_MESSAGE } },
+      { status: 400 },
+    );
+  }
+  // A non-Indian number is for family accounts only (see register).
+  if (phone != null && isInternationalPhone(phone) && auth.role !== 'caregiver') {
+    return NextResponse.json(
+      { success: false, error: { code: 'VALIDATION_ERROR', message: INTERNATIONAL_ROLE_MESSAGE } },
       { status: 400 },
     );
   }
@@ -77,7 +84,7 @@ export async function PUT(req: NextRequest) {
       data: {
         name: body.name,
         email,
-        phone: phone != null ? normalizePhone(phone) : phone,
+        phone: phone != null ? normalizeAnyPhone(phone) : phone,
         language: body.language,
         secondaryLanguage: body.secondaryLanguage,
         fontSizePref: body.fontSizePref,
