@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { LogOut } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { CommunityPageFrame } from '@/components/community/page-frame';
 import { communityApi, useCommunityData } from '@/lib/community-client';
 import { cn } from '@/lib/utils';
@@ -22,6 +24,7 @@ interface Preference {
 interface Membership {
   id: string;
   neighborhoodId: string;
+  flatNumber: string | null;
   showInDirectory: boolean;
   neighborhood: { name: string };
 }
@@ -116,6 +119,74 @@ function DirectoryVisibilitySection() {
   );
 }
 
+/** The resident's own house/flat number for each community they're in. The join
+ *  form's field is optional, so plenty of members never set one — this is where
+ *  they (or anyone who skipped it) can add it, and it's what the Local Directory
+ *  shows next to their name. */
+function HouseNumberSection() {
+  const lang = useLanguage();
+  const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
+  const { data, loading } = useCommunityData<Me>('/community/me');
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState<string | null>(null);
+  const [saved, setSaved] = useState<string | null>(null);
+  const [error, setError] = useState('');
+
+  if (loading || (data?.memberships.length ?? 0) === 0) return null;
+
+  async function save(m: Membership) {
+    setSaving(m.neighborhoodId);
+    setError('');
+    try {
+      await communityApi.patch('/community/me', {
+        neighborhoodId: m.neighborhoodId,
+        flatNumber: values[m.neighborhoodId] ?? m.flatNumber ?? '',
+      });
+      setSaved(m.neighborhoodId);
+      setTimeout(() => setSaved(null), 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('community.settings.couldNotLeave'));
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  return (
+    <div className="mb-6 flex flex-col gap-3">
+      {data?.memberships.map((m) => (
+        <Card key={m.neighborhoodId}>
+          <CardContent className="flex flex-col gap-3 py-4">
+            <div>
+              <Label htmlFor={`house-${m.neighborhoodId}`} className="text-base font-bold text-text">
+                {t('community.settings.houseNumber')}
+                {data.memberships.length > 1 ? ` — ${m.neighborhood.name}` : ''}
+              </Label>
+              <p className="text-sm text-text-secondary">{t('community.settings.houseNumberHelper')}</p>
+            </div>
+            <div className="flex gap-2">
+              <Input
+                id={`house-${m.neighborhoodId}`}
+                value={values[m.neighborhoodId] ?? m.flatNumber ?? ''}
+                onChange={(e) => setValues((v) => ({ ...v, [m.neighborhoodId]: e.target.value }))}
+                placeholder={t('community.settings.houseNumberPlaceholder')}
+                maxLength={32}
+              />
+              <Button onClick={() => save(m)} disabled={saving === m.neighborhoodId}>
+                {saving === m.neighborhoodId
+                  ? t('community.settings.saving')
+                  : saved === m.neighborhoodId
+                    ? t('community.settings.houseNumberSaved')
+                    : t('common.save')}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+      {error && <p className="text-sm text-danger-600">{error}</p>}
+    </div>
+  );
+}
+
 function LeaveCommunitySection() {
   const router = useRouter();
   const lang = useLanguage();
@@ -198,6 +269,7 @@ export default function NotificationSettingsPage() {
       loading={loading}
       error={error}
     >
+      <HouseNumberSection />
       <DirectoryVisibilitySection />
       <LeaveCommunitySection />
 

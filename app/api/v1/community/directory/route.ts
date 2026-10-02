@@ -5,6 +5,17 @@ import { canAccessElder } from '@/lib/family-access';
 import { getAuthUser } from '@/lib/auth';
 import { getElderNeighborhoodId } from '@/lib/community-access';
 
+/** The house/flat number to show for a registered member. The community-specific
+ *  number wins; the join form's field is optional though, so many members never set
+ *  it — fall back to their profile address when that's short enough to plausibly be
+ *  a house number ("A-101", "House 12", as the resident import stores it) rather than
+ *  a full postal address. */
+function displayFlat(flatNumber: string | null, address: string | null): string | null {
+  if (flatNumber?.trim()) return flatNumber.trim();
+  const a = address?.trim();
+  return a && a.length <= 30 ? a : null;
+}
+
 /** UnregisteredResident rows minus anyone whose phone now matches a registered
  *  member of this community — once an invited resident registers and joins,
  *  their real member entry replaces the placeholder instead of showing up twice.
@@ -55,7 +66,7 @@ export async function GET(req: NextRequest) {
     const [membersUnsorted, sharedContacts, unregistered] = await Promise.all([
       prisma.neighborhoodMember.findMany({
         where: { neighborhoodId, showInDirectory: true },
-        include: { user: { select: { id: true, name: true, phone: true, avatarUrl: true } } },
+        include: { user: { select: { id: true, name: true, phone: true, avatarUrl: true, address: true } } },
         orderBy: { createdAt: 'asc' },
       }),
       prisma.contact.findMany({
@@ -69,7 +80,9 @@ export async function GET(req: NextRequest) {
       findPendingUnregistered(neighborhoodId),
     ]);
 
-    const members = [...membersUnsorted].sort(compareByFlatNumberAsc);
+    const members = membersUnsorted
+      .map((m) => ({ ...m, flatNumber: displayFlat(m.flatNumber, m.user.address) }))
+      .sort(compareByFlatNumberAsc);
 
     const memberEntries = members.map((m) => ({
       id: `member:${m.user.id}`,
@@ -144,7 +157,7 @@ export async function GET(req: NextRequest) {
     prisma.neighborhoodMember.findMany({
       where: { neighborhoodId: guard.neighborhoodId, showInDirectory: true },
       include: {
-        user: { select: { id: true, name: true, phone: true, avatarUrl: true } },
+        user: { select: { id: true, name: true, phone: true, avatarUrl: true, address: true } },
       },
       orderBy: { createdAt: 'asc' }, // tiebreaker when flat numbers are equal or both unset
     }),
@@ -168,7 +181,9 @@ export async function GET(req: NextRequest) {
 
   // MySQL can't natural-sort "2" before "10" for an arbitrary alphanumeric column,
   // so registered members are re-sorted here by house/flat number ascending.
-  const members = [...membersUnsorted].sort(compareByFlatNumberAsc);
+  const members = membersUnsorted
+    .map((m) => ({ ...m, flatNumber: displayFlat(m.flatNumber, m.user.address) }))
+    .sort(compareByFlatNumberAsc);
 
   const memberEntries = members.map((m) => ({
     id: `member:${m.user.id}`,

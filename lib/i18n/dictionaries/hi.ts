@@ -542,6 +542,10 @@ const hi: Record<TranslationKey, string> = {
   'community.settings.directoryHelper':
     'साथी सदस्य आपको देख सकते हैं और सीधे कॉल कर सकते हैं। सूची में दिखाई दिए बिना सदस्य बने रहने के लिए इसे बंद करें।',
   'community.settings.saving': 'सेव हो रहा है…',
+  'community.settings.houseNumber': 'आपका मकान / फ़्लैट नंबर',
+  'community.settings.houseNumberHelper': 'लोकल डायरेक्टरी में आपके नाम के साथ दिखता है, ताकि पड़ोसियों को पता रहे कि आप कहाँ रहते हैं।',
+  'community.settings.houseNumberPlaceholder': 'A-101',
+  'community.settings.houseNumberSaved': 'सहेजा गया ✓',
   'community.settings.notifications': 'सूचनाएं',
   'community.settings.leaveSection': 'आपकी कम्युनिटी',
   'community.settings.leaveCommunity': 'यह कम्युनिटी छोड़ें',
