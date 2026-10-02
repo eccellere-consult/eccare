@@ -5,6 +5,23 @@ import { canAccessElder } from '@/lib/family-access';
 import { getAuthUser } from '@/lib/auth';
 import { getElderNeighborhoodId } from '@/lib/community-access';
 
+/** UnregisteredResident rows minus anyone whose phone now matches a registered
+ *  member of this community — once an invited resident registers and joins,
+ *  their real member entry replaces the placeholder instead of showing up twice.
+ *  Checks ALL members, not just showInDirectory ones: a member who opted out of
+ *  the directory shouldn't resurface as their old placeholder. */
+async function findPendingUnregistered(neighborhoodId: string) {
+  const [entries, members] = await Promise.all([
+    prisma.unregisteredResident.findMany({ where: { neighborhoodId }, orderBy: { createdAt: 'asc' } }),
+    prisma.neighborhoodMember.findMany({
+      where: { neighborhoodId, user: { phone: { not: null } } },
+      select: { user: { select: { phone: true } } },
+    }),
+  ]);
+  const memberPhones = new Set(members.map((m) => m.user.phone));
+  return entries.filter((e) => !e.phone || !memberPhones.has(e.phone));
+}
+
 /** Neighbour directory. Only members can read it, and only members who haven't opted
  *  out of the directory appear in it. Combines three sources:
  *  - registered NeighborhoodMember rows;
@@ -49,7 +66,7 @@ export async function GET(req: NextRequest) {
         },
         orderBy: { createdAt: 'asc' },
       }),
-      prisma.unregisteredResident.findMany({ where: { neighborhoodId }, orderBy: { createdAt: 'asc' } }),
+      findPendingUnregistered(neighborhoodId),
     ]);
 
     const members = [...membersUnsorted].sort(compareByFlatNumberAsc);
@@ -139,10 +156,7 @@ export async function GET(req: NextRequest) {
       },
       orderBy: { createdAt: 'asc' },
     }),
-    prisma.unregisteredResident.findMany({
-      where: { neighborhoodId: guard.neighborhoodId },
-      orderBy: { createdAt: 'asc' },
-    }),
+    findPendingUnregistered(guard.neighborhoodId),
     // The current viewer's own pins — personal, never visible to anyone else
     // looking at the same directory. See NeighborFavorite in schema.prisma.
     prisma.neighborFavorite.findMany({
