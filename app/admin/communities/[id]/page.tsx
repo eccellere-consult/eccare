@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { QueryThread } from '@/components/query-thread';
 import { CommunityMembers } from '@/components/community-members';
+import { DirectoryList } from '@/components/community/directory-list';
 import { communityApi, useCommunityData } from '@/lib/community-client';
 import { cn } from '@/lib/utils';
 
@@ -31,7 +32,7 @@ interface NeighborhoodDetail {
   };
 }
 
-const TABS = ['Overview', 'Members', 'Notices', 'Helplines', 'Vendors', 'Events', 'Queries'] as const;
+const TABS = ['Overview', 'Members', 'Directory', 'Notices', 'Helplines', 'Vendors', 'Events', 'Queries'] as const;
 type Tab = (typeof TABS)[number];
 
 export default function AdminCommunityDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -107,6 +108,24 @@ export default function AdminCommunityDetailPage({ params }: { params: Promise<{
                   </Link>
                 </div>
                 <CommunityMembers neighborhoodId={id} viewerRole="admin" />
+              </>
+            )}
+            {tab === 'Directory' && (
+              <>
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm text-text-secondary">
+                    Everyone in this community&rsquo;s Local Directory — registered members, residents you
+                    bulk-added who haven&rsquo;t registered yet, and contacts neighbours have shared.
+                  </p>
+                  <Link
+                    href={`/admin/communities/${id}/import-directory`}
+                    className="flex w-fit items-center gap-1.5 rounded-xl border border-primary-600 px-4 py-2 text-sm font-semibold text-primary-600 hover:bg-primary-50"
+                  >
+                    <UploadIcon className="h-4 w-4" />
+                    Bulk-add &amp; invite
+                  </Link>
+                </div>
+                <DirectoryList neighborhoodId={id} adminView />
               </>
             )}
             {tab === 'Notices' && <NoticesTab neighborhoodId={id} />}

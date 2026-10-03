@@ -1,6 +1,7 @@
 import ExcelJS from 'exceljs';
 import { prisma } from '@/lib/db';
 import { isValidPhone, isValidEmail, normalizePhone } from '@/lib/validation';
+import { isHouseHeader } from '@/lib/spreadsheet-headers';
 
 export type ImportRowStatus = 'ready' | 'bad-phone' | 'bad-age' | 'duplicate-in-file' | 'duplicate-existing';
 
@@ -20,7 +21,7 @@ export interface ImportRow {
 const HEADER_MATCHERS: Record<string, (label: string) => boolean> = {
   name: (l) => l.includes('name'),
   age: (l) => l === 'age',
-  house: (l) => l.includes('house') || l.includes('flat'),
+  house: isHouseHeader,
   email: (l) => l.includes('email'),
   phone: (l) => l.includes('mobile') || l.includes('phone'),
 };
