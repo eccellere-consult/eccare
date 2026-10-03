@@ -1,8 +1,16 @@
 import ExcelJS from 'exceljs';
 import { prisma } from '@/lib/db';
 import { isValidPhone, normalizePhone } from '@/lib/validation';
+import { isHouseHeader } from '@/lib/spreadsheet-headers';
 
-export type DirectoryImportRowStatus = 'ready' | 'duplicate-in-file' | 'already-registered' | 'already-imported';
+export type DirectoryImportRowStatus =
+  | 'ready'
+  | 'duplicate-in-file'
+  | 'already-registered'
+  | 'already-imported'
+  // Already listed, but with no house number — and this row has one. Re-uploading
+  // fills the blank in (never overwrites a number that's already there).
+  | 'will-add-house';
 
 export interface DirectoryImportRow {
   rowNumber: number; // 1-based spreadsheet row, shown to the admin for cross-reference
@@ -12,11 +20,13 @@ export interface DirectoryImportRow {
   phone: string | null; // normalized; null if nothing usable was found or the column was blank
   status: DirectoryImportRowStatus;
   existingLabel?: string | null; // human-readable "who this collides with", for duplicate statuses
+  /** For 'will-add-house': which existing record gets the house number. */
+  updateTarget?: { type: 'unregistered' | 'member'; id: string } | null;
 }
 
 const HEADER_MATCHERS: Record<string, (label: string) => boolean> = {
   name: (l) => l.includes('name'),
-  house: (l) => l.includes('house') || l.includes('flat'),
+  house: isHouseHeader,
   phone: (l) => l.includes('mobile') || l.includes('phone'),
 };
 
@@ -29,7 +39,7 @@ const HEADER_MATCHERS: Record<string, (label: string) => boolean> = {
  *  it just won't get a WhatsApp-invite button later. */
 export async function parseDirectoryWorkbook(
   buffer: Buffer,
-): Promise<Array<Omit<DirectoryImportRow, 'status' | 'existingLabel'>>> {
+): Promise<Array<Omit<DirectoryImportRow, 'status' | 'existingLabel' | 'updateTarget'>>> {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
   const sheet = workbook.worksheets[0];
@@ -52,7 +62,7 @@ export async function parseDirectoryWorkbook(
     return String(value).trim();
   };
 
-  const rows: Array<Omit<DirectoryImportRow, 'status' | 'existingLabel'>> = [];
+  const rows: Array<Omit<DirectoryImportRow, 'status' | 'existingLabel' | 'updateTarget'>> = [];
   for (let r = 2; r <= sheet.rowCount; r++) {
     const row = sheet.getRow(r);
     const name = cellText(row, colIndex.name);
@@ -76,7 +86,7 @@ export async function parseDirectoryWorkbook(
  *  a real account), then an already-imported UnregisteredResident (don't
  *  create the same directory entry twice on a re-upload). */
 export async function annotateDirectoryRows(
-  rows: Array<Omit<DirectoryImportRow, 'status' | 'existingLabel'>>,
+  rows: Array<Omit<DirectoryImportRow, 'status' | 'existingLabel' | 'updateTarget'>>,
   neighborhoodId: string,
 ): Promise<DirectoryImportRow[]> {
   const seenPhones = new Set<string>();
@@ -95,19 +105,33 @@ export async function annotateDirectoryRows(
 
     const existingMember = await prisma.neighborhoodMember.findFirst({
       where: { neighborhoodId, user: { phone: row.phone } },
-      select: { user: { select: { name: true } } },
+      select: { id: true, flatNumber: true, user: { select: { name: true } } },
     });
     if (existingMember) {
-      out.push({ ...row, status: 'already-registered', existingLabel: existingMember.user.name });
+      // Registered but never gave a house number, and this row has one: offer to
+      // fill it in rather than just reporting a duplicate.
+      const fillHouse = !existingMember.flatNumber?.trim() && row.houseNumber;
+      out.push({
+        ...row,
+        status: fillHouse ? 'will-add-house' : 'already-registered',
+        existingLabel: existingMember.user.name,
+        updateTarget: fillHouse ? { type: 'member', id: existingMember.id } : null,
+      });
       continue;
     }
 
     const existingImport = await prisma.unregisteredResident.findFirst({
       where: { neighborhoodId, phone: row.phone },
-      select: { name: true },
+      select: { id: true, name: true, flatNumber: true },
     });
     if (existingImport) {
-      out.push({ ...row, status: 'already-imported', existingLabel: existingImport.name });
+      const fillHouse = !existingImport.flatNumber?.trim() && row.houseNumber;
+      out.push({
+        ...row,
+        status: fillHouse ? 'will-add-house' : 'already-imported',
+        existingLabel: existingImport.name,
+        updateTarget: fillHouse ? { type: 'unregistered', id: existingImport.id } : null,
+      });
       continue;
     }
 
@@ -118,19 +142,39 @@ export async function annotateDirectoryRows(
 }
 
 /** Creates one UnregisteredResident per included, 'ready' row — no User, no
- *  password, nothing to sign in with. Returns both the count and the created
- *  rows themselves (id/name/phone) so the caller can immediately offer a
- *  WhatsApp-invite step without a second fetch. */
+ *  password, nothing to sign in with — and fills in blank house numbers for
+ *  included 'will-add-house' rows (only ever into an empty field; an existing
+ *  number is never overwritten). Returns the created rows themselves
+ *  (id/name/phone) so the caller can immediately offer a WhatsApp-invite step
+ *  without a second fetch, plus how many existing entries were updated. */
 export async function createUnregisteredResidents(
   rows: DirectoryImportRow[],
   neighborhoodId: string,
   importedById: string,
   includedRowNumbers: Set<number>,
-): Promise<{ created: Array<{ id: string; name: string; phone: string | null }>; skipped: number }> {
+): Promise<{ created: Array<{ id: string; name: string; phone: string | null }>; updated: number; skipped: number }> {
   const created: Array<{ id: string; name: string; phone: string | null }> = [];
+  let updated = 0;
   let skipped = 0;
 
   for (const row of rows) {
+    if (row.status === 'will-add-house' && row.updateTarget && row.houseNumber && includedRowNumbers.has(row.rowNumber)) {
+      // updateMany with the field still null — a concurrent edit that already set a
+      // number wins, and nothing is clobbered.
+      const result =
+        row.updateTarget.type === 'member'
+          ? await prisma.neighborhoodMember.updateMany({
+              where: { id: row.updateTarget.id, neighborhoodId, flatNumber: null },
+              data: { flatNumber: row.houseNumber },
+            })
+          : await prisma.unregisteredResident.updateMany({
+              where: { id: row.updateTarget.id, neighborhoodId, flatNumber: null },
+              data: { flatNumber: row.houseNumber },
+            });
+      if (result.count > 0) updated++;
+      else skipped++;
+      continue;
+    }
     if (row.status !== 'ready' || !includedRowNumbers.has(row.rowNumber)) {
       skipped++;
       continue;
@@ -148,5 +192,5 @@ export async function createUnregisteredResidents(
     created.push(entry);
   }
 
-  return { created, skipped };
+  return { created, updated, skipped };
 }

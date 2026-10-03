@@ -61,6 +61,6 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     success: true,
-    data: { rows, committed: true, created: result.created, skipped: result.skipped },
+    data: { rows, committed: true, created: result.created, updated: result.updated, skipped: result.skipped },
   });
 }
