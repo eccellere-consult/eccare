@@ -181,10 +181,12 @@ interface AppShellProps {
   userName?: string;
   /** Only meaningful when role === 'provider' — see getProviderNavItems. */
   providerCategory?: string | null;
+  /** Account pre-dates the date-of-birth requirement: shows a prompt to add one. */
+  needsDateOfBirth?: boolean;
   children: React.ReactNode;
 }
 
-export function AppShell({ role, userName, providerCategory, children }: AppShellProps) {
+export function AppShell({ role, userName, providerCategory, needsDateOfBirth, children }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -312,6 +314,14 @@ export function AppShell({ role, userName, providerCategory, children }: AppShel
       {/* Main content */}
       <main className="flex-1 pb-20 md:pb-0">
         <div className="mx-auto w-full max-w-5xl p-4 sm:p-6 lg:p-8">
+          {needsDateOfBirth && (role === 'elder' || role === 'family') && (
+            <Link
+              href={role === 'elder' ? '/elder/profile' : '/family/profile'}
+              className="mb-4 block rounded-xl border border-accent-100 bg-accent-50 p-3 text-sm font-semibold text-accent-900 hover:bg-accent-100"
+            >
+              Please add your date of birth — it sets up the right account features for you. Tap here to add it.
+            </Link>
+          )}
           {children}
           <footer className="mt-12 flex justify-center gap-4 border-t border-border pt-6 text-xs text-text-secondary">
             <Link href="/newsletter" className="hover:text-primary-600 hover:underline">Newsletter</Link>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthUser, toSafeUser } from '@/lib/auth';
+import { canAccessElder } from '@/lib/family-access';
 
 export async function GET(
   req: NextRequest,
@@ -16,16 +17,8 @@ export async function GET(
 
   const { elderId } = await params;
 
-  const relation = await prisma.familyRelation.findUnique({
-    where: {
-      elderUserId_caregiverUserId: {
-        elderUserId: elderId,
-        caregiverUserId: auth.userId,
-      },
-    },
-  });
-
-  if (!relation || relation.inviteStatus !== 'accepted') {
+  // Accepted family link AND the age rule (see canAccessElder).
+  if (auth.userId === elderId || !(await canAccessElder(auth.userId, elderId))) {
     return NextResponse.json(
       { success: false, error: { code: 'FORBIDDEN', message: 'You do not have access.' } },
       { status: 403 },
