@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ResetPasswordButton } from '@/components/admin/reset-password-button';
+import { ageOn, parseDateOfBirth, ELDER_AGE } from '@/lib/age';
 
 type Role = 'elder' | 'caregiver' | 'admin' | 'provider';
 interface UserRow {
@@ -18,6 +19,8 @@ interface UserRow {
   role: Role;
   claimed: boolean;
   createdAt: string;
+  dateOfBirth: string | null;
+  caregiverException: boolean;
 }
 
 const ROLE_VARIANT: Record<Role, 'default' | 'accent' | 'muted' | 'success'> = {
@@ -26,6 +29,67 @@ const ROLE_VARIANT: Record<Role, 'default' | 'accent' | 'muted' | 'success'> = {
   admin: 'muted',
   provider: 'success',
 };
+
+/** Date of birth, the age it gives, and — for a family-member account — whether the
+ *  age rule is locking them out (60+ with no exception) and a switch for an admin
+ *  to allow it. Also the only place a date of birth can be corrected, since
+ *  residents can't change their own once set. */
+function AgeCell({ user }: { user: UserRow }) {
+  const [dob, setDob] = useState(user.dateOfBirth);
+  const [exception, setException] = useState(user.caregiverException);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const parsed = dob ? parseDateOfBirth(dob) : null;
+  const age = parsed ? ageOn(parsed) : null;
+  const locked = user.role === 'caregiver' && age !== null && age >= ELDER_AGE && !exception;
+
+  async function patch(body: { caregiverException?: boolean; dateOfBirth?: string }) {
+    setBusy(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/v1/admin/users/${user.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Could not update.');
+      if (body.caregiverException !== undefined) setException(json.data.caregiverException);
+      if (body.dateOfBirth !== undefined) setDob(json.data.dateOfBirth ? String(json.data.dateOfBirth).slice(0, 10) : null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not update.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function editDob() {
+    const typed = prompt('Date of birth (YYYY-MM-DD):', dob ?? '');
+    if (typed && typed.trim()) patch({ dateOfBirth: typed.trim() });
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-text">
+        {age !== null ? `${age} yrs` : 'No DOB'}
+        <button type="button" onClick={editDob} disabled={busy} className="ml-2 text-xs font-semibold text-primary-600 hover:underline disabled:opacity-50">
+          {dob ? 'Edit' : 'Set'}
+        </button>
+      </span>
+      {dob && <span className="text-xs text-text-secondary">{dob}</span>}
+      {user.role === 'caregiver' && age !== null && age >= ELDER_AGE && (
+        <label className="flex items-center gap-1.5 text-xs text-text-secondary">
+          <input type="checkbox" checked={exception} disabled={busy} onChange={(e) => patch({ caregiverException: e.target.checked })} className="h-3.5 w-3.5" />
+          Allow caregiver features
+        </label>
+      )}
+      {locked && <Badge variant="danger">Locked by age rule</Badge>}
+      {error && <span className="text-xs text-danger-600">{error}</span>}
+    </div>
+  );
+}
 
 /** Checkbox column excludes the current admin's own row entirely (not just
  *  disabled) — the fastest way to guarantee "select all" can never catch
@@ -167,6 +231,7 @@ export function UsersTable({ users, currentUserId }: { users: UserRow[]; current
                   <th className="px-4 py-3 font-semibold">Name</th>
                   <th className="px-4 py-3 font-semibold">Contact</th>
                   <th className="px-4 py-3 font-semibold">Role</th>
+                  <th className="px-4 py-3 font-semibold">Age</th>
                   <th className="px-4 py-3 font-semibold">Joined</th>
                   <th className="px-4 py-3 font-semibold">Actions</th>
                 </tr>
@@ -194,6 +259,9 @@ export function UsersTable({ users, currentUserId }: { users: UserRow[]; current
                       <td className="px-4 py-3 text-text-secondary">{user.phone ?? user.email ?? '—'}</td>
                       <td className="px-4 py-3">
                         <Badge variant={ROLE_VARIANT[user.role]}>{user.role}</Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        {user.role === 'elder' || user.role === 'caregiver' ? <AgeCell user={user} /> : <span className="text-text-secondary">—</span>}
                       </td>
                       <td className="px-4 py-3 text-text-secondary">{new Date(user.createdAt).toLocaleDateString()}</td>
                       <td className="px-4 py-3">

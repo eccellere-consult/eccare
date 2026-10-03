@@ -9,7 +9,7 @@ export default async function AdminUsersPage() {
     prisma.user.findMany({
       orderBy: { createdAt: 'desc' },
       take: 100,
-      select: { id: true, name: true, phone: true, email: true, role: true, passwordHash: true, createdAt: true },
+      select: { id: true, name: true, phone: true, email: true, role: true, passwordHash: true, createdAt: true, dateOfBirth: true, caregiverException: true },
     }),
     getServerUser(),
   ]);
@@ -22,7 +22,12 @@ export default async function AdminUsersPage() {
       <UsersTable
         // Never send passwordHash itself to the client — only whether one
         // exists, for the "claimed?" check ResetPasswordButton needs.
-        users={users.map(({ passwordHash, createdAt, ...u }) => ({ ...u, claimed: !!passwordHash, createdAt: createdAt.toISOString() }))}
+        users={users.map(({ passwordHash, createdAt, dateOfBirth, ...u }) => ({
+          ...u,
+          claimed: !!passwordHash,
+          createdAt: createdAt.toISOString(),
+          dateOfBirth: dateOfBirth ? dateOfBirth.toISOString().slice(0, 10) : null,
+        }))}
         currentUserId={me?.id ?? ''}
       />
     </div>

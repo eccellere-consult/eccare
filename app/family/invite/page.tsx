@@ -9,12 +9,15 @@ import { Label } from '@/components/ui/label';
 import { TourButton } from '@/components/tour/TourButton';
 import { isValidEmail, isValidPhone, EMAIL_FORMAT_MESSAGE, PHONE_FORMAT_MESSAGE } from '@/lib/validation';
 import { SUPPORTED_LANGUAGES } from '@/lib/i18n/languages';
+import { DateOfBirthField } from '@/components/dob-field';
+import { checkDateOfBirth, ELDER_AGE, DOB_ERROR_MESSAGES } from '@/lib/age';
 
 export default function InviteElderPage() {
   const router = useRouter();
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
+  const [dob, setDob] = useState('');
   const [relationship, setRelationship] = useState('');
   const [language, setLanguage] = useState('en');
   const [loading, setLoading] = useState(false);
@@ -27,6 +30,19 @@ export default function InviteElderPage() {
 
     if (!name.trim() || !relationship.trim()) {
       setError('Please fill in the elder\'s name and your relationship to them.');
+      return;
+    }
+    if (!dob) {
+      setError("Please enter the elder's date of birth.");
+      return;
+    }
+    const dobCheck = checkDateOfBirth(dob);
+    if (!dobCheck.ok) {
+      setError(DOB_ERROR_MESSAGES[dobCheck.reason]);
+      return;
+    }
+    if (dobCheck.age < ELDER_AGE) {
+      setError(`An elder account is for people aged ${ELDER_AGE} or over. This person can register as a family member themselves instead.`);
       return;
     }
     if (!phone.trim() && !email.trim()) {
@@ -52,6 +68,7 @@ export default function InviteElderPage() {
           ...(phone.trim() ? { elderPhone: phone.trim() } : {}),
           ...(email.trim() ? { elderEmail: email.trim() } : {}),
           elderName: name,
+          elderDateOfBirth: dob,
           relationship,
           language,
         }),
@@ -90,6 +107,19 @@ export default function InviteElderPage() {
             <div className="flex flex-col gap-2">
               <Label htmlFor="name">Elder's name</Label>
               <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Raj Sharma" />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label>Elder's date of birth</Label>
+              <DateOfBirthField
+                id="elder-dob"
+                value={dob}
+                onChange={setDob}
+                labels={{ day: 'Day', month: 'Month', year: 'Year' }}
+                maxYear={new Date().getFullYear() - ELDER_AGE}
+              />
+              <p className="text-xs text-text-secondary">
+                An elder account is for people aged {ELDER_AGE} or over.
+              </p>
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="phone">Elder's phone number</Label>

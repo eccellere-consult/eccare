@@ -1,3 +1,4 @@
+import { isCaregiverEligible } from '@/lib/age';
 import { prisma } from '@/lib/db';
 import { getServerUser } from '@/lib/server-session';
 import { ServicesClient } from './services-client';
@@ -13,7 +14,7 @@ export default async function ServicesPage() {
   const user = await getServerUser();
 
   const relation =
-    user?.role === 'caregiver'
+    user?.role === 'caregiver' && isCaregiverEligible(user)
       ? await prisma.familyRelation.findFirst({
           where: { caregiverUserId: user.id, inviteStatus: 'accepted' },
           include: { elderUser: true },

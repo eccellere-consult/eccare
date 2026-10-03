@@ -8,12 +8,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ChangePasswordCard } from '@/components/change-password-card';
+import { ProfileDobField } from '@/components/profile-dob';
+import { checkDateOfBirth, DOB_ERROR_MESSAGES } from '@/lib/age';
 import { isValidEmail, isValidPhone, EMAIL_FORMAT_MESSAGE, PHONE_FORMAT_MESSAGE } from '@/lib/validation';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
 interface Profile {
   name: string;
+  dateOfBirth: string | null;
   email: string | null;
   phone: string | null;
   bloodGroup: string | null;
@@ -27,6 +30,7 @@ export function ProfileClient({ profile }: { profile: Profile }) {
   const lang = useLanguage();
   const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   const [form, setForm] = useState(profile);
+  const [newDob, setNewDob] = useState('');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -37,6 +41,13 @@ export function ProfileClient({ profile }: { profile: Profile }) {
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setMessage('');
+    if (!profile.dateOfBirth && newDob) {
+      const check = checkDateOfBirth(newDob);
+      if (!check.ok) {
+        setMessage(DOB_ERROR_MESSAGES[check.reason]);
+        return;
+      }
+    }
     if (form.email && !isValidEmail(form.email)) {
       setMessage(EMAIL_FORMAT_MESSAGE);
       return;
@@ -50,7 +61,7 @@ export function ProfileClient({ profile }: { profile: Profile }) {
       const res = await fetch('/api/v1/auth/me', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, dateOfBirth: profile.dateOfBirth ? undefined : newDob || undefined }),
       });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json?.error?.message || t('elder.profile.couldNotSave'));
@@ -77,6 +88,19 @@ export function ProfileClient({ profile }: { profile: Profile }) {
               <Label htmlFor="p-name">{t('elder.profile.name')}</Label>
               <Input id="p-name" value={form.name} onChange={(e) => update('name', e.target.value)} />
             </div>
+            <ProfileDobField
+              locked={profile.dateOfBirth}
+              value={newDob}
+              onChange={setNewDob}
+              labels={{
+                label: t('login.dob.label'),
+                day: t('login.dob.day'),
+                month: t('login.dob.month'),
+                year: t('login.dob.year'),
+                locked: t('login.dob.locked'),
+                addPrompt: t('login.dob.addPrompt'),
+              }}
+            />
             <div className="flex flex-col gap-2">
               <Label htmlFor="p-phone">{t('elder.profile.phoneNumber')}</Label>
               <Input id="p-phone" type="tel" value={form.phone ?? ''} onChange={(e) => update('phone', e.target.value)} />

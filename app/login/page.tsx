@@ -19,6 +19,8 @@ import {
   INTERNATIONAL_ROLE_MESSAGE,
 } from '@/lib/validation';
 import { PhoneField } from '@/components/phone-field';
+import { DateOfBirthField } from '@/components/dob-field';
+import { checkDateOfBirth, roleForAge, DOB_ERROR_MESSAGES } from '@/lib/age';
 import { HelpGuidesSection } from '@/components/help-guides-section';
 import { TourButton } from '@/components/tour/TourButton';
 import { DedicationFooter } from '@/components/dedication-footer';
@@ -344,9 +346,10 @@ function OtpSignInForm({ onSuccess, t }: { onSuccess: (role: string) => void; t:
   );
 }
 
-const ROLE_TOGGLE_OPTIONS = [
-  { value: 'elder', labelKey: 'login.role.elder' },
-  { value: 'caregiver', labelKey: 'login.role.caregiver' },
+// A person doesn't pick elder vs family member — their date of birth does (60+ is
+// an elder). The only choice made here is person vs service provider.
+const ACCOUNT_KIND_OPTIONS = [
+  { value: 'person', labelKey: 'login.dob.person' },
   { value: 'provider', labelKey: 'login.role.provider' },
 ] as const satisfies readonly { value: string; labelKey: TranslationKey }[];
 
@@ -373,7 +376,8 @@ function CreateAccountForm({
   t: (k: TranslationKey) => string;
   uiLanguage: string;
 }) {
-  const [role, setRole] = useState<'elder' | 'caregiver' | 'provider'>('elder');
+  const [accountKind, setAccountKind] = useState<'person' | 'provider'>('person');
+  const [dob, setDob] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -393,6 +397,12 @@ function CreateAccountForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // The account type, decided by age for a person — the same rule the server applies
+  // (lib/age.ts), shown live so it's no surprise. null until a valid date is chosen.
+  const dobCheck = accountKind === 'person' && dob ? checkDateOfBirth(dob) : null;
+  const role: 'elder' | 'caregiver' | 'provider' | null =
+    accountKind === 'provider' ? 'provider' : dobCheck?.ok ? roleForAge(dobCheck.age) : null;
+
   useEffect(() => {
     fetch('/api/v1/pricing')
       .then((r) => r.json())
@@ -407,6 +417,16 @@ function CreateAccountForm({
   async function register(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+    if (accountKind === 'person') {
+      if (!dob) {
+        setError(t('login.dob.required'));
+        return;
+      }
+      if (dobCheck && !dobCheck.ok) {
+        setError(DOB_ERROR_MESSAGES[dobCheck.reason]);
+        return;
+      }
+    }
     if (!phone.trim()) {
       setError(t('login.errors.enterPhone'));
       return;
@@ -445,7 +465,8 @@ function CreateAccountForm({
           phone: phone.trim(),
           ...(email.trim() ? { email: email.trim() } : {}),
           password,
-          role,
+          // Only a provider says what it is; a person's type comes from their date of birth.
+          ...(accountKind === 'provider' ? { role: 'provider' } : { dateOfBirth: dob }),
           ...(role === 'provider'
             ? {
                 businessName,
@@ -479,14 +500,14 @@ function CreateAccountForm({
       <div className="flex flex-col gap-2">
         <Label>{t('login.role.iAm')}</Label>
         <div className="flex h-12 items-center rounded-xl bg-primary-50 p-1">
-          {ROLE_TOGGLE_OPTIONS.map(({ value, labelKey }) => (
+          {ACCOUNT_KIND_OPTIONS.map(({ value, labelKey }) => (
             <button
               key={value}
               type="button"
-              onClick={() => setRole(value)}
+              onClick={() => setAccountKind(value)}
               className={cn(
                 'flex-1 rounded-lg py-2 text-xs font-semibold transition-colors sm:text-sm',
-                role === value ? 'bg-surface text-primary-900 shadow-sm' : 'text-primary-900/70',
+                accountKind === value ? 'bg-surface text-primary-900 shadow-sm' : 'text-primary-900/70',
               )}
             >
               {t(labelKey)}
@@ -504,6 +525,27 @@ function CreateAccountForm({
           placeholder={t('login.register.fullNamePlaceholder')}
         />
       </div>
+      {accountKind === 'person' && (
+        <div className="flex flex-col gap-2">
+          <Label>{t('login.dob.label')}</Label>
+          <DateOfBirthField
+            id="reg-dob"
+            value={dob}
+            onChange={setDob}
+            labels={{ day: t('login.dob.day'), month: t('login.dob.month'), year: t('login.dob.year') }}
+            locale={uiLanguage === 'en' ? 'en-IN' : `${uiLanguage}-IN`}
+          />
+          {role === 'elder' || role === 'caregiver' ? (
+            <p className="text-sm font-semibold text-primary-900">
+              {role === 'elder' ? t('login.dob.asElder') : t('login.dob.asFamily')}
+            </p>
+          ) : dobCheck && !dobCheck.ok ? (
+            <p className="text-sm text-danger-600">{DOB_ERROR_MESSAGES[dobCheck.reason]}</p>
+          ) : (
+            <p className="text-xs text-text-secondary">{t('login.dob.helper')}</p>
+          )}
+        </div>
+      )}
       <div className="flex flex-col gap-2">
         <Label htmlFor="reg-phone">{t('login.register.phoneNumber')}</Label>
         <PhoneField

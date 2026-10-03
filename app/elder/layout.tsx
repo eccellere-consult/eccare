@@ -10,7 +10,7 @@ export default async function ElderLayout({ children }: { children: React.ReactN
       language={user?.language ?? 'en'}
       secondaryLanguage={user?.secondaryLanguage ?? null}
     >
-      <AppShell role="elder" userName={user?.name}>
+      <AppShell role="elder" userName={user?.name} needsDateOfBirth={!!user && !user.dateOfBirth}>
         {children}
       </AppShell>
     </LanguageProvider>

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { getAuthUser } from '@/lib/auth';
 import { sendPushToTokens } from '@/lib/push';
 import { getPrimaryNeighborhoodId } from '@/lib/community-access';
+import { canAccessElder } from '@/lib/family-access';
 import { z } from 'zod';
 
 const schema = z.object({
@@ -138,10 +139,7 @@ export async function GET(req: NextRequest) {
 
   let targetUserId = auth.userId;
   if (elderUserId && elderUserId !== auth.userId) {
-    const relation = await prisma.familyRelation.findUnique({
-      where: { elderUserId_caregiverUserId: { elderUserId, caregiverUserId: auth.userId } },
-    });
-    if (!relation || relation.inviteStatus !== 'accepted') {
+    if (!(await canAccessElder(auth.userId, elderUserId))) {
       return NextResponse.json(
         { success: false, error: { code: 'FORBIDDEN', message: "You don't have access to this elder's history." } },
         { status: 403 },

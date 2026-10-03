@@ -1,24 +1,15 @@
-import { SignJWT, jwtVerify } from 'jose';
 import { hash, compare } from 'bcryptjs';
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
+import { isCaregiverEligible } from '@/lib/age';
+import { verifyToken, createToken, SESSION_COOKIE } from '@/lib/session-token';
 
-const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'dev-secret');
+// Token creation/verification lives in lib/session-token.ts (edge-safe, so the
+// middleware can use it without dragging Prisma into the edge bundle); re-exported
+// here so every existing `from '@/lib/auth'` import keeps working.
+export { verifyToken, createToken, SESSION_COOKIE };
 
-export const SESSION_COOKIE = 'ec_session';
-const SESSION_MAX_AGE = 60 * 60 * 24 * 30; // 30 days, matches JWT expiry below
-
-export async function createToken(userId: string, role: string): Promise<string> {
-  return new SignJWT({ userId, role })
-    .setProtectedHeader({ alg: 'HS256' })
-    .setIssuedAt()
-    .setExpirationTime('30d')
-    .sign(secret);
-}
-
-export async function verifyToken(token: string) {
-  const { payload } = await jwtVerify(token, secret);
-  return payload as { userId: string; role: string };
-}
+const SESSION_MAX_AGE = 60 * 60 * 24 * 30; // 30 days, matches the JWT expiry in session-token.ts
 
 export async function hashPin(pin: string): Promise<string> {
   return hash(pin, 10);
@@ -64,6 +55,13 @@ export function toSafeUser<T extends { passwordHash?: unknown; pinHash?: unknown
   return safe;
 }
 
+/** The role an account holds once the age rule is applied. A caregiver whose date
+ *  of birth says 60 or over (and who has no admin exception) is reported as
+ *  'caregiver_ineligible' — which matches no role check anywhere, so every
+ *  caregiver-only route refuses them without each one needing to know about ages.
+ *  Accounts with no date of birth yet are left alone (see isCaregiverEligible). */
+export const INELIGIBLE_CAREGIVER_ROLE = 'caregiver_ineligible';
+
 export async function getAuthUser(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
   const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
@@ -71,7 +69,18 @@ export async function getAuthUser(req: NextRequest) {
   if (!token) return null;
 
   try {
-    return await verifyToken(token);
+    const payload = await verifyToken(token);
+    if (payload.role === 'caregiver') {
+      // One primary-key lookup, only for caregivers. Read fresh (not baked into
+      // the 30-day token) so an admin exception or a newly entered date of birth
+      // takes effect immediately.
+      const user = await prisma.user.findUnique({
+        where: { id: payload.userId },
+        select: { dateOfBirth: true, caregiverException: true },
+      });
+      if (user && !isCaregiverEligible(user)) return { ...payload, role: INELIGIBLE_CAREGIVER_ROLE };
+    }
+    return payload;
   } catch {
     return null;
   }

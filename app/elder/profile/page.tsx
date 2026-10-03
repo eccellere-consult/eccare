@@ -10,6 +10,7 @@ export default async function ElderProfilePage() {
 
   const profile = {
     name: user?.name ?? '',
+    dateOfBirth: user?.dateOfBirth ? user.dateOfBirth.toISOString().slice(0, 10) : null,
     email: user?.email ?? null,
     phone: user?.phone ?? null,
     bloodGroup: user?.bloodGroup ?? null,
