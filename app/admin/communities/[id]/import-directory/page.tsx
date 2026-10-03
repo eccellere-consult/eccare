@@ -19,7 +19,7 @@ interface DirectoryImportRow {
   houseNumber: string | null;
   rawPhone: string;
   phone: string | null;
-  status: 'ready' | 'duplicate-in-file' | 'already-registered' | 'already-imported';
+  status: 'ready' | 'duplicate-in-file' | 'already-registered' | 'already-imported' | 'will-add-house';
   existingLabel?: string | null;
 }
 interface CreatedEntry {
@@ -47,12 +47,14 @@ const STATUS_LABEL: Record<DirectoryImportRow['status'], string> = {
   'duplicate-in-file': 'Duplicate in file',
   'already-registered': 'Already a registered member',
   'already-imported': 'Already in directory',
+  'will-add-house': 'Will add house no.',
 };
 const STATUS_VARIANT: Record<DirectoryImportRow['status'], 'success' | 'danger' | 'muted' | 'accent'> = {
   ready: 'success',
   'duplicate-in-file': 'accent',
   'already-registered': 'accent',
   'already-imported': 'accent',
+  'will-add-house': 'success',
 };
 
 export default function ImportDirectoryPage({ params }: { params: Promise<{ id: string }> }) {
@@ -65,7 +67,7 @@ export default function ImportDirectoryPage({ params }: { params: Promise<{ id: 
   const [included, setIncluded] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [result, setResult] = useState<{ created: CreatedEntry[]; skipped: number } | null>(null);
+  const [result, setResult] = useState<{ created: CreatedEntry[]; updated: number; skipped: number } | null>(null);
   const [importVersion, setImportVersion] = useState(0);
 
   async function preview(e: React.FormEvent) {
@@ -83,7 +85,9 @@ export default function ImportDirectoryPage({ params }: { params: Promise<{ id: 
       if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Could not read the file.');
       const newRows: DirectoryImportRow[] = json.data.rows;
       setRows(newRows);
-      setIncluded(new Set(newRows.filter((r) => r.status === 'ready').map((r) => r.rowNumber)));
+      setIncluded(
+        new Set(newRows.filter((r) => r.status === 'ready' || r.status === 'will-add-house').map((r) => r.rowNumber)),
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not read the file.');
     } finally {
@@ -104,7 +108,7 @@ export default function ImportDirectoryPage({ params }: { params: Promise<{ id: 
       const res = await fetch('/api/v1/community/import-directory', { method: 'POST', credentials: 'include', body });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Import failed.');
-      setResult({ created: json.data.created, skipped: json.data.skipped });
+      setResult({ created: json.data.created, updated: json.data.updated ?? 0, skipped: json.data.skipped });
       setRows(null);
       setFile(null);
       // Remounts PendingInvites so it refetches and includes what was just added.
@@ -137,8 +141,8 @@ export default function ImportDirectoryPage({ params }: { params: Promise<{ id: 
 
       <h1 className="mt-3 text-2xl font-bold text-text">Bulk-add to Local Directory</h1>
       <p className="mt-1 text-text-secondary">
-        Upload a register (.xlsx) with Name, House Name/No, and Mobile No. columns — column order doesn&rsquo;t
-        matter. This only adds entries to the community&rsquo;s Local Directory — it does <strong>not</strong>{' '}
+        Upload a register (.xlsx) with Name, House No. (or GR No.), and Mobile No. columns — column order
+        doesn&rsquo;t matter. Re-uploading a file fills in house numbers that are still blank for people already listed. This only adds entries to the community&rsquo;s Local Directory — it does <strong>not</strong>{' '}
         create any account or password. Everyone you add shows up below, where you can send them a WhatsApp
         invite to register at any time.
       </p>
@@ -148,6 +152,7 @@ export default function ImportDirectoryPage({ params }: { params: Promise<{ id: 
           <CardContent className="flex flex-wrap items-center justify-between gap-3 pt-6">
             <p className="font-semibold text-success-900">
               Added {result.created.length} {result.created.length === 1 ? 'entry' : 'entries'} to the directory
+              {result.updated > 0 ? `, filled in the house number for ${result.updated} already listed` : ''}
               {result.skipped > 0 ? ` — ${result.skipped} row${result.skipped === 1 ? '' : 's'} skipped.` : '.'}
             </p>
             <Button size="sm" variant="outline" onClick={() => setResult(null)}>
