@@ -19,7 +19,7 @@ interface DirectoryImportRow {
   houseNumber: string | null;
   rawPhone: string;
   phone: string | null;
-  status: 'ready' | 'duplicate-in-file' | 'already-registered' | 'already-imported' | 'will-add-house';
+  status: 'ready' | 'bad-house' | 'duplicate-in-file' | 'already-registered' | 'already-imported' | 'will-add-house';
   existingLabel?: string | null;
 }
 interface CreatedEntry {
@@ -44,6 +44,7 @@ interface NeighborhoodDetail {
 
 const STATUS_LABEL: Record<DirectoryImportRow['status'], string> = {
   ready: 'Ready',
+  'bad-house': 'House no. needs fixing',
   'duplicate-in-file': 'Duplicate in file',
   'already-registered': 'Already a registered member',
   'already-imported': 'Already in directory',
@@ -51,6 +52,7 @@ const STATUS_LABEL: Record<DirectoryImportRow['status'], string> = {
 };
 const STATUS_VARIANT: Record<DirectoryImportRow['status'], 'success' | 'danger' | 'muted' | 'accent'> = {
   ready: 'success',
+  'bad-house': 'danger',
   'duplicate-in-file': 'accent',
   'already-registered': 'accent',
   'already-imported': 'accent',
@@ -69,6 +71,8 @@ export default function ImportDirectoryPage({ params }: { params: Promise<{ id: 
   const [error, setError] = useState('');
   const [result, setResult] = useState<{ created: CreatedEntry[]; updated: number; skipped: number } | null>(null);
   const [importVersion, setImportVersion] = useState(0);
+  // Put in front of plain numbers in the sheet ("45" -> GRA-45). Optional.
+  const [defaultBlock, setDefaultBlock] = useState('');
 
   async function preview(e: React.FormEvent) {
     e.preventDefault();
@@ -80,6 +84,7 @@ export default function ImportDirectoryPage({ params }: { params: Promise<{ id: 
       const body = new FormData();
       body.append('file', file);
       body.append('neighborhoodId', neighborhoodId);
+      if (defaultBlock.trim()) body.append('defaultBlock', defaultBlock.trim());
       const res = await fetch('/api/v1/community/import-directory', { method: 'POST', credentials: 'include', body });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Could not read the file.');
@@ -104,6 +109,7 @@ export default function ImportDirectoryPage({ params }: { params: Promise<{ id: 
       body.append('file', file);
       body.append('neighborhoodId', neighborhoodId);
       body.append('commit', 'true');
+      if (defaultBlock.trim()) body.append('defaultBlock', defaultBlock.trim());
       body.append('includeRows', JSON.stringify(Array.from(included)));
       const res = await fetch('/api/v1/community/import-directory', { method: 'POST', credentials: 'include', body });
       const json = await res.json();
@@ -141,7 +147,7 @@ export default function ImportDirectoryPage({ params }: { params: Promise<{ id: 
 
       <h1 className="mt-3 text-2xl font-bold text-text">Bulk-add to Local Directory</h1>
       <p className="mt-1 text-text-secondary">
-        Upload a register (.xlsx) with Name, House No. (or GR No.), and Mobile No. columns — column order
+        Upload a register (.xlsx) with Name, House No. (or GR No.), and Mobile No. columns — a house number is required for every row — column order
         doesn&rsquo;t matter. Re-uploading a file fills in house numbers that are still blank for people already listed. This only adds entries to the community&rsquo;s Local Directory — it does <strong>not</strong>{' '}
         create any account or password. Everyone you add shows up below, where you can send them a WhatsApp
         invite to register at any time.
@@ -169,6 +175,22 @@ export default function ImportDirectoryPage({ params }: { params: Promise<{ id: 
               <div className="flex flex-col gap-2">
                 <Label htmlFor="file">Directory register (.xlsx)</Label>
                 <Input id="file" type="file" accept=".xlsx" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="default-block">Default block / association (optional)</Label>
+                <Input
+                  id="default-block"
+                  value={defaultBlock}
+                  onChange={(e) => setDefaultBlock(e.target.value.toUpperCase())}
+                  placeholder="GRA"
+                  maxLength={10}
+                  className="max-w-40"
+                />
+                <p className="text-xs text-text-secondary">
+                  House numbers must be a block or association plus the number (GRA-105, A-105) or a house name.
+                  If your sheet only has plain numbers like &ldquo;45&rdquo;, enter the block here and every plain
+                  number becomes GRA-45.
+                </p>
               </div>
               {error && <p className="text-sm text-danger-600">{error}</p>}
               <Button type="submit" disabled={!file || loading}>
@@ -209,7 +231,12 @@ export default function ImportDirectoryPage({ params }: { params: Promise<{ id: 
                 {rows.map((row) => (
                   <tr key={row.rowNumber} className="border-b border-border last:border-0">
                     <td className="px-3 py-2">
-                      <input type="checkbox" checked={included.has(row.rowNumber)} onChange={() => toggle(row.rowNumber)} />
+                      <input
+                        type="checkbox"
+                        checked={included.has(row.rowNumber)}
+                        disabled={row.status === 'bad-house'}
+                        onChange={() => toggle(row.rowNumber)}
+                      />
                     </td>
                     <td className="px-3 py-2 text-text-secondary">{row.rowNumber}</td>
                     <td className="px-3 py-2 font-semibold text-text">{row.name}</td>
@@ -219,7 +246,9 @@ export default function ImportDirectoryPage({ params }: { params: Promise<{ id: 
                       <div className="flex flex-col items-start gap-1">
                         <Badge variant={STATUS_VARIANT[row.status]}>{STATUS_LABEL[row.status]}</Badge>
                         {row.existingLabel && (
-                          <span className="text-xs text-text-secondary">Matches: {row.existingLabel}</span>
+                          <span className="text-xs text-text-secondary">
+                            {row.status === 'bad-house' ? row.existingLabel : `Matches: ${row.existingLabel}`}
+                          </span>
                         )}
                       </div>
                     </td>

@@ -4,10 +4,13 @@ import { prisma } from '@/lib/db';
 import { getAuthUser } from '@/lib/auth';
 import { invalidInput, ok } from '@/lib/community-route';
 import { reconcileMemberWithDirectory } from '@/lib/directory-link';
+import { normalizeHouseInput } from '@/lib/house';
 
 const schema = z.object({
   joinCode: z.string().min(4).max(32),
-  flatNumber: z.string().max(32).optional(),
+  // Mandatory — checked below (not by zod) so a missing/invalid one gets the house-number
+  // message rather than the generic "enter a valid community code".
+  flatNumber: z.string().max(40).optional(),
 });
 
 /** Join a neighbourhood using its share code. */
@@ -23,7 +26,10 @@ export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(await req.json());
   if (!parsed.success) return invalidInput('Please enter a valid community code.');
 
-  const { joinCode, flatNumber } = parsed.data;
+  const { joinCode } = parsed.data;
+  const house = normalizeHouseInput(parsed.data.flatNumber);
+  if (!house.ok) return invalidInput(house.message);
+  const flatNumber = house.value;
 
   const neighborhood = await prisma.neighborhood.findUnique({
     where: { joinCode: joinCode.trim().toUpperCase() },

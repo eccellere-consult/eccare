@@ -12,6 +12,9 @@ import { TourButton } from '@/components/tour/TourButton';
 import { communityApi } from '@/lib/community-client';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
+import { HouseField } from '@/components/house-field';
+import { houseLabels } from '@/lib/house-labels';
+import { normalizeHouseInput } from '@/lib/house';
 
 export default function JoinCommunityPage() {
   const router = useRouter();
@@ -26,11 +29,17 @@ export default function JoinCommunityPage() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+    // Mandatory, in one structured form (block/association + number, or a house name).
+    const house = normalizeHouseInput(flatNumber);
+    if (!house.ok) {
+      setError(flatNumber.trim() ? house.message : t('community.house.required'));
+      return;
+    }
     setBusy(true);
     try {
       const result = await communityApi.post<{ status: 'pending' | 'approved' | 'rejected' }>('/community/join', {
         joinCode: joinCode.trim(),
-        flatNumber: flatNumber.trim() || undefined,
+        flatNumber: house.value,
       });
       if (result.status === 'pending') {
         // Stay on this page with a confirmation instead of redirecting into a
@@ -84,16 +93,10 @@ export default function JoinCommunityPage() {
               />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="flatNumber">{t('community.join.flatNumber')}</Label>
-              <Input
-                id="flatNumber"
-                value={flatNumber}
-                onChange={(e) => setFlatNumber(e.target.value)}
-                placeholder={t('community.join.flatNumberPlaceholder')}
-              />
+              <HouseField id="flatNumber" value={flatNumber} onChange={setFlatNumber} labels={houseLabels(t)} />
             </div>
             {error && <p className="text-sm text-danger-600">{error}</p>}
-            <Button type="submit" size="lg" disabled={busy || joinCode.trim().length < 4}>
+            <Button type="submit" size="lg" disabled={busy || joinCode.trim().length < 4 || !flatNumber}>
               {busy ? t('community.join.joining') : t('community.join.joinCommunity')}
             </Button>
           </form>

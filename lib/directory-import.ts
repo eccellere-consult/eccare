@@ -2,8 +2,12 @@ import ExcelJS from 'exceljs';
 import { prisma } from '@/lib/db';
 import { isValidPhone, normalizePhone } from '@/lib/validation';
 import { isHouseHeader } from '@/lib/spreadsheet-headers';
+import { normalizeHouseInput } from '@/lib/house';
 
 export type DirectoryImportRowStatus =
+  // No usable house number — block/association + number, or a house name (lib/house.ts).
+  // Mandatory, so these can't be imported until the sheet (or the default block) is fixed.
+  | 'bad-house'
   | 'ready'
   | 'duplicate-in-file'
   | 'already-registered'
@@ -88,11 +92,21 @@ export async function parseDirectoryWorkbook(
 export async function annotateDirectoryRows(
   rows: Array<Omit<DirectoryImportRow, 'status' | 'existingLabel' | 'updateTarget'>>,
   neighborhoodId: string,
+  // Put in front of a bare number (a column that just says "45") — e.g. "GRA" gives GRA-45.
+  opts: { defaultBlock?: string } = {},
 ): Promise<DirectoryImportRow[]> {
   const seenPhones = new Set<string>();
   const out: DirectoryImportRow[] = [];
 
-  for (const row of rows) {
+  for (const original of rows) {
+    // House number is mandatory and always stored in the one structured form.
+    const house = normalizeHouseInput(original.houseNumber, { defaultBlock: opts.defaultBlock });
+    if (!house.ok) {
+      out.push({ ...original, status: 'bad-house', existingLabel: house.message });
+      continue;
+    }
+    const row = { ...original, houseNumber: house.value };
+
     if (!row.phone) {
       out.push({ ...row, status: 'ready', existingLabel: null });
       continue;

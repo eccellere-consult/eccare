@@ -18,12 +18,14 @@ interface ImportRow {
   rawPhone: string;
   phone: string | null;
   role: 'elder' | 'caregiver' | null;
-  status: 'ready' | 'bad-phone' | 'bad-age' | 'duplicate-in-file' | 'duplicate-existing';
+  status: 'ready' | 'bad-phone' | 'bad-age' | 'bad-house' | 'duplicate-in-file' | 'duplicate-existing';
+  houseProblem?: string | null;
   existingUser?: { id: string; name: string } | null;
 }
 
 const STATUS_LABEL: Record<ImportRow['status'], string> = {
   ready: 'Ready',
+  'bad-house': 'House no. needs fixing',
   'bad-phone': 'No usable phone',
   'bad-age': 'Age missing/invalid',
   'duplicate-in-file': 'Duplicate in file',
@@ -31,6 +33,7 @@ const STATUS_LABEL: Record<ImportRow['status'], string> = {
 };
 const STATUS_VARIANT: Record<ImportRow['status'], 'success' | 'danger' | 'muted' | 'accent'> = {
   ready: 'success',
+  'bad-house': 'danger',
   'bad-phone': 'danger',
   'bad-age': 'danger',
   'duplicate-in-file': 'accent',
@@ -42,6 +45,8 @@ export default function ImportResidentsPage({ params }: { params: Promise<{ id: 
 
   const [file, setFile] = useState<File | null>(null);
   const [password, setPassword] = useState('');
+  // Put in front of plain numbers in the sheet ("45" -> GRA-45). Optional.
+  const [defaultBlock, setDefaultBlock] = useState('');
   const [rows, setRows] = useState<ImportRow[] | null>(null);
   const [included, setIncluded] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(false);
@@ -59,6 +64,7 @@ export default function ImportResidentsPage({ params }: { params: Promise<{ id: 
       const body = new FormData();
       body.append('file', file);
       body.append('neighborhoodId', neighborhoodId);
+      if (defaultBlock.trim()) body.append('defaultBlock', defaultBlock.trim());
       const res = await fetch('/api/v1/community/import-residents', { method: 'POST', credentials: 'include', body });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Could not read the file.');
@@ -85,6 +91,7 @@ export default function ImportResidentsPage({ params }: { params: Promise<{ id: 
       body.append('file', file);
       body.append('neighborhoodId', neighborhoodId);
       body.append('commit', 'true');
+      if (defaultBlock.trim()) body.append('defaultBlock', defaultBlock.trim());
       body.append('password', password);
       body.append('includeRows', JSON.stringify(Array.from(included)));
       const res = await fetch('/api/v1/community/import-residents', { method: 'POST', credentials: 'include', body });
@@ -166,6 +173,22 @@ export default function ImportResidentsPage({ params }: { params: Promise<{ id: 
                 <Label htmlFor="file">Resident register (.xlsx)</Label>
                 <Input id="file" type="file" accept=".xlsx" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
               </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="default-block">Default block / association (optional)</Label>
+                <Input
+                  id="default-block"
+                  value={defaultBlock}
+                  onChange={(e) => setDefaultBlock(e.target.value.toUpperCase())}
+                  placeholder="GRA"
+                  maxLength={10}
+                  className="max-w-40"
+                />
+                <p className="text-xs text-text-secondary">
+                  A house number is required for every resident, as a block or association plus the number
+                  (GRA-105, A-105) or a house name. If the sheet only has plain numbers like &ldquo;45&rdquo;,
+                  enter the block here and they become GRA-45.
+                </p>
+              </div>
               {error && <p className="text-sm text-danger-600">{error}</p>}
               <Button type="submit" disabled={!file || loading}>
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
@@ -218,7 +241,7 @@ export default function ImportResidentsPage({ params }: { params: Promise<{ id: 
               </thead>
               <tbody>
                 {rows.map((row) => {
-                  const disabled = row.status === 'bad-phone' || row.status === 'bad-age';
+                  const disabled = row.status === 'bad-phone' || row.status === 'bad-age' || row.status === 'bad-house';
                   return (
                     <tr key={row.rowNumber} className="border-b border-border last:border-0">
                       <td className="px-3 py-2">
@@ -240,6 +263,9 @@ export default function ImportResidentsPage({ params }: { params: Promise<{ id: 
                       <td className="px-3 py-2">
                         <div className="flex flex-col items-start gap-1">
                           <Badge variant={STATUS_VARIANT[row.status]}>{STATUS_LABEL[row.status]}</Badge>
+                          {row.status === 'bad-house' && row.houseProblem && (
+                            <span className="text-xs text-text-secondary">{row.houseProblem}</span>
+                          )}
                           {row.status === 'duplicate-existing' && row.existingUser && (
                             <>
                               <span className="text-xs text-text-secondary">

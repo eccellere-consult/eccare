@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { requireMembership, invalidInput, ok } from '@/lib/community-route';
+import { normalizeHouseInput } from '@/lib/house';
 
 const notFound = () =>
   NextResponse.json(
@@ -38,10 +39,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
   if (Object.keys(parsed.data).length === 0) return invalidInput('Nothing to update.');
 
-  const { invited, ...rest } = parsed.data;
+  const { invited, flatNumber: rawHouse, ...rest } = parsed.data;
+  // Mandatory and structured, same as for members (lib/house.ts).
+  let flatNumber: string | undefined;
+  if (rawHouse !== undefined) {
+    const house = normalizeHouseInput(rawHouse);
+    if (!house.ok) return invalidInput(house.message);
+    flatNumber = house.value;
+  }
   const updated = await prisma.unregisteredResident.update({
     where: { id },
-    data: { ...rest, ...(invited !== undefined ? { invitedAt: invited ? new Date() : null } : {}) },
+    data: {
+      ...rest,
+      ...(flatNumber !== undefined ? { flatNumber } : {}),
+      ...(invited !== undefined ? { invitedAt: invited ? new Date() : null } : {}),
+    },
   });
   return ok(updated);
 }

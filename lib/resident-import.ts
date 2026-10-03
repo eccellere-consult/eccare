@@ -3,8 +3,9 @@ import { prisma } from '@/lib/db';
 import { isValidPhone, isValidEmail, normalizePhone } from '@/lib/validation';
 import { isHouseHeader } from '@/lib/spreadsheet-headers';
 import { reconcileMemberWithDirectory } from '@/lib/directory-link';
+import { normalizeHouseInput } from '@/lib/house';
 
-export type ImportRowStatus = 'ready' | 'bad-phone' | 'bad-age' | 'duplicate-in-file' | 'duplicate-existing';
+export type ImportRowStatus = 'ready' | 'bad-phone' | 'bad-age' | 'bad-house' | 'duplicate-in-file' | 'duplicate-existing';
 
 export interface ImportRow {
   rowNumber: number; // 1-based spreadsheet row, shown to the admin for cross-reference
@@ -17,6 +18,8 @@ export interface ImportRow {
   role: 'elder' | 'caregiver' | null; // by age: 60+ = elder, under 60 = family member (caregiver)
   status: ImportRowStatus;
   existingUser?: { id: string; name: string } | null;
+  /** Why a 'bad-house' row was refused (shown to the admin). */
+  houseProblem?: string | null;
 }
 
 const HEADER_MATCHERS: Record<string, (label: string) => boolean> = {
@@ -88,17 +91,27 @@ export async function parseResidentWorkbook(
  *  confirmed not to collide with an earlier row in the same file. */
 export async function annotateRows(
   rows: Array<Omit<ImportRow, 'status' | 'existingUser'>>,
+  // Put in front of a bare number (a column that just says "45") — e.g. "GRA" gives GRA-45.
+  opts: { defaultBlock?: string } = {},
 ): Promise<ImportRow[]> {
   const seenPhones = new Set<string>();
   const out: ImportRow[] = [];
 
-  for (const row of rows) {
+  for (const original of rows) {
+    // House number is mandatory and always stored in the one structured form (lib/house.ts).
+    const house = normalizeHouseInput(original.houseNumber, { defaultBlock: opts.defaultBlock });
+    const row = house.ok ? { ...original, houseNumber: house.value } : original;
+
     if (!row.phone) {
       out.push({ ...row, status: 'bad-phone', existingUser: null });
       continue;
     }
     if (!row.role) {
       out.push({ ...row, status: 'bad-age', existingUser: null });
+      continue;
+    }
+    if (!house.ok) {
+      out.push({ ...row, status: 'bad-house', existingUser: null, houseProblem: house.message });
       continue;
     }
     if (seenPhones.has(row.phone)) {

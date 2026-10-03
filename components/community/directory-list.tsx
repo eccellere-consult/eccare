@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { communityApi, useCommunityData } from '@/lib/community-client';
+import { HouseField } from '@/components/house-field';
+import { normalizeHouseInput } from '@/lib/house';
 
 interface Neighbour {
   id: string;
@@ -115,12 +117,19 @@ export function DirectoryList({
           setBusyId(null);
           return;
         }
+        // House number is mandatory, in one structured form (lib/house.ts).
+        const house = normalizeHouseInput(editFlatNumber);
+        if (!house.ok) {
+          setEditError(house.message);
+          setBusyId(null);
+          return;
+        }
         await communityApi.patch(`/community/members/${n.memberId}`, {
           name: editName.trim(),
-          flatNumber: editFlatNumber || null,
+          flatNumber: house.value,
         });
         setData((prev) =>
-          prev?.map((x) => (x.id === n.id ? { ...x, name: editName.trim(), flatNumber: editFlatNumber || null } : x)) ?? prev,
+          prev?.map((x) => (x.id === n.id ? { ...x, name: editName.trim(), flatNumber: house.value } : x)) ?? prev,
         );
       } else if (n.source === 'unregistered' && n.unregisteredId) {
         if (!editName.trim()) {
@@ -128,15 +137,21 @@ export function DirectoryList({
           setBusyId(null);
           return;
         }
+        const house = normalizeHouseInput(editFlatNumber);
+        if (!house.ok) {
+          setEditError(house.message);
+          setBusyId(null);
+          return;
+        }
         await communityApi.patch(`/community/directory/unregistered/${n.unregisteredId}`, {
           name: editName.trim(),
           phone: editPhone.trim() || null,
-          flatNumber: editFlatNumber.trim() || null,
+          flatNumber: house.value,
         });
         setData((prev) =>
           prev?.map((x) =>
             x.id === n.id
-              ? { ...x, name: editName.trim(), phone: editPhone.trim() || null, flatNumber: editFlatNumber.trim() || null }
+              ? { ...x, name: editName.trim(), phone: editPhone.trim() || null, flatNumber: house.value }
               : x,
           ) ?? prev,
         );
@@ -251,15 +266,7 @@ export function DirectoryList({
                       <Label htmlFor={`nb-phone-${n.id}`}>Phone number (optional)</Label>
                       <Input id={`nb-phone-${n.id}`} value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
                     </div>
-                    <div className="flex flex-col gap-2">
-                      <Label htmlFor={`nb-flat-${n.id}`}>Flat / house number</Label>
-                      <Input
-                        id={`nb-flat-${n.id}`}
-                        value={editFlatNumber}
-                        onChange={(e) => setEditFlatNumber(e.target.value)}
-                        placeholder="A-101"
-                      />
-                    </div>
+                    <HouseField id={`nb-flat-${n.id}`} value={editFlatNumber} onChange={setEditFlatNumber} />
                   </>
                 ) : (
                   <>
@@ -267,15 +274,7 @@ export function DirectoryList({
                       <Label htmlFor={`nb-name-${n.id}`}>Name</Label>
                       <Input id={`nb-name-${n.id}`} value={editName} onChange={(e) => setEditName(e.target.value)} />
                     </div>
-                    <div className="flex flex-col gap-2">
-                      <Label htmlFor={`nb-flat-${n.id}`}>Flat / house number</Label>
-                      <Input
-                        id={`nb-flat-${n.id}`}
-                        value={editFlatNumber}
-                        onChange={(e) => setEditFlatNumber(e.target.value)}
-                        placeholder="A-101"
-                      />
-                    </div>
+                    <HouseField id={`nb-flat-${n.id}`} value={editFlatNumber} onChange={setEditFlatNumber} />
                   </>
                 )}
                 {editError && <p className="text-sm text-danger-600">{editError}</p>}

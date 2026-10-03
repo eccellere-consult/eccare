@@ -39,7 +39,9 @@ export async function POST(req: NextRequest) {
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
     const parsed = await parseDirectoryWorkbook(buffer);
-    rows = await annotateDirectoryRows(parsed, guard.neighborhoodId);
+    // Optional: a block/association to put in front of plain numbers, e.g. GRA -> GRA-45.
+    const defaultBlock = ((formData.get('defaultBlock') as string) || '').trim() || undefined;
+    rows = await annotateDirectoryRows(parsed, guard.neighborhoodId, { defaultBlock });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Could not read the file.';
     return fail('VALIDATION', `Could not read the spreadsheet: ${message}`);
