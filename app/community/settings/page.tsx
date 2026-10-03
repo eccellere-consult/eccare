@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation';
 import { LogOut } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { HouseField } from '@/components/house-field';
+import { HouseLocationEditor } from '@/components/community/house-location-editor';
+import { houseLabels } from '@/lib/house-labels';
+import { normalizeHouseInput } from '@/lib/house';
 import { CommunityPageFrame } from '@/components/community/page-frame';
 import { communityApi, useCommunityData } from '@/lib/community-client';
 import { cn } from '@/lib/utils';
@@ -25,6 +27,7 @@ interface Membership {
   id: string;
   neighborhoodId: string;
   flatNumber: string | null;
+  houseLocation: { lat: number; lng: number } | null;
   showInDirectory: boolean;
   neighborhood: { name: string };
 }
@@ -128,6 +131,7 @@ function HouseNumberSection() {
   const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   const { data, loading } = useCommunityData<Me>('/community/me');
   const [values, setValues] = useState<Record<string, string>>({});
+  const [locations, setLocations] = useState<Record<string, { lat: number; lng: number } | null>>({});
   const [saving, setSaving] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -135,13 +139,15 @@ function HouseNumberSection() {
   if (loading || (data?.memberships.length ?? 0) === 0) return null;
 
   async function save(m: Membership) {
+    const house = normalizeHouseInput(values[m.neighborhoodId] ?? m.flatNumber ?? '');
+    if (!house.ok) {
+      setError(house.message);
+      return;
+    }
     setSaving(m.neighborhoodId);
     setError('');
     try {
-      await communityApi.patch('/community/me', {
-        neighborhoodId: m.neighborhoodId,
-        flatNumber: values[m.neighborhoodId] ?? m.flatNumber ?? '',
-      });
+      await communityApi.patch('/community/me', { neighborhoodId: m.neighborhoodId, flatNumber: house.value });
       setSaved(m.neighborhoodId);
       setTimeout(() => setSaved(null), 2000);
     } catch (err) {
@@ -157,21 +163,27 @@ function HouseNumberSection() {
         <Card key={m.neighborhoodId}>
           <CardContent className="flex flex-col gap-3 py-4">
             <div>
-              <Label htmlFor={`house-${m.neighborhoodId}`} className="text-base font-bold text-text">
+              <p className="text-base font-bold text-text">
                 {t('community.settings.houseNumber')}
                 {data.memberships.length > 1 ? ` — ${m.neighborhood.name}` : ''}
-              </Label>
+              </p>
               <p className="text-sm text-text-secondary">{t('community.settings.houseNumberHelper')}</p>
             </div>
-            <div className="flex gap-2">
-              <Input
+            <div className="flex flex-col gap-3">
+              <HouseField
                 id={`house-${m.neighborhoodId}`}
                 value={values[m.neighborhoodId] ?? m.flatNumber ?? ''}
-                onChange={(e) => setValues((v) => ({ ...v, [m.neighborhoodId]: e.target.value }))}
-                placeholder={t('community.settings.houseNumberPlaceholder')}
-                maxLength={32}
+                onChange={(v) => setValues((prev) => ({ ...prev, [m.neighborhoodId]: v }))}
+                labels={houseLabels(t)}
               />
-              <Button onClick={() => save(m)} disabled={saving === m.neighborhoodId}>
+              {m.flatNumber && (
+                <HouseLocationEditor
+                  neighborhoodId={m.neighborhoodId}
+                  current={m.neighborhoodId in locations ? locations[m.neighborhoodId] : m.houseLocation}
+                  onChange={(loc) => setLocations((prev) => ({ ...prev, [m.neighborhoodId]: loc }))}
+                />
+              )}
+              <Button className="w-fit" onClick={() => save(m)} disabled={saving === m.neighborhoodId}>
                 {saving === m.neighborhoodId
                   ? t('community.settings.saving')
                   : saved === m.neighborhoodId

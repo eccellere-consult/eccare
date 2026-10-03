@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import { getAuthUser } from '@/lib/auth';
 import { ok, invalidInput } from '@/lib/community-route';
 import { getPrimaryNeighborhoodId } from '@/lib/community-access';
+import { normalizeHouseInput, houseKey } from '@/lib/house';
 
 /** The caller's communities and their role in each. Drives whether the UI shows the
  *  community section or the "join a community" prompt. */
@@ -27,12 +28,23 @@ export async function GET(req: NextRequest) {
   });
   const approved = memberships.filter((m) => m.status === 'approved');
 
+  // Where each of their houses is, if anyone has pinned it (see /community/house-location).
+  const locations = await prisma.houseLocation.findMany({
+    where: { neighborhoodId: { in: approved.map((m) => m.neighborhoodId) } },
+  });
+  const locationFor = (m: { neighborhoodId: string; flatNumber: string | null }) => {
+    const key = houseKey(m.flatNumber);
+    const row = key ? locations.find((l) => l.neighborhoodId === m.neighborhoodId && l.houseKey === key) : undefined;
+    return row ? { lat: Number(row.lat), lng: Number(row.lng) } : null;
+  };
+
   return ok({
     memberships: approved.map((m) => ({
       id: m.id,
       neighborhoodId: m.neighborhoodId,
       role: m.role,
       flatNumber: m.flatNumber,
+      houseLocation: locationFor(m),
       showInDirectory: m.showInDirectory,
       neighborhood: m.neighborhood,
     })),
@@ -69,6 +81,14 @@ export async function PATCH(req: NextRequest) {
   const parsed = patchSchema.safeParse(await req.json());
   if (!parsed.success || Object.keys(parsed.data).filter((k) => k !== 'neighborhoodId').length === 0) return invalidInput();
 
+  // Mandatory, in the one structured form (lib/house.ts); can't be cleared.
+  let flatNumber: string | undefined;
+  if (parsed.data.flatNumber !== undefined) {
+    const house = normalizeHouseInput(parsed.data.flatNumber);
+    if (!house.ok) return invalidInput(house.message);
+    flatNumber = house.value;
+  }
+
   const neighborhoodId = parsed.data.neighborhoodId || (await getPrimaryNeighborhoodId(auth.userId));
   if (!neighborhoodId) {
     return NextResponse.json(
@@ -81,7 +101,7 @@ export async function PATCH(req: NextRequest) {
     where: { neighborhoodId_userId: { neighborhoodId, userId: auth.userId } },
     data: {
       ...(parsed.data.showInDirectory !== undefined ? { showInDirectory: parsed.data.showInDirectory } : {}),
-      ...(parsed.data.flatNumber !== undefined ? { flatNumber: parsed.data.flatNumber || null } : {}),
+      ...(flatNumber !== undefined ? { flatNumber } : {}),
     },
   });
 

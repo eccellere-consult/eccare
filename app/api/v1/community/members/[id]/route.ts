@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { requireMembership, invalidInput, ok } from '@/lib/community-route';
+import { normalizeHouseInput } from '@/lib/house';
 
 const schema = z.object({
   role: z.enum(['member', 'committee', 'admin']).optional(),
@@ -73,6 +74,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return invalidInput('Nothing to update.');
   }
 
+  // A house number is mandatory and always stored in the one structured form
+  // (block/association + number, or a house name) — see lib/house.ts. Clearing it
+  // isn't allowed.
+  let flatNumber: string | undefined;
+  if (parsed.data.flatNumber !== undefined) {
+    const house = normalizeHouseInput(parsed.data.flatNumber);
+    if (!house.ok) return invalidInput(house.message);
+    flatNumber = house.value;
+  }
+
   const callerIsAdminTier = guard.membership.role === 'admin';
   const touchesAdmin = parsed.data.role === 'admin' || target.role === 'admin';
   if (parsed.data.role !== undefined && touchesAdmin && !callerIsAdminTier) {
@@ -99,7 +110,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const memberUpdateData = {
     ...(parsed.data.role !== undefined ? { role: parsed.data.role } : {}),
-    ...(parsed.data.flatNumber !== undefined ? { flatNumber: parsed.data.flatNumber } : {}),
+    ...(flatNumber !== undefined ? { flatNumber } : {}),
   };
 
   // Name lives on User, not NeighborhoodMember — when both are being changed,

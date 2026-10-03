@@ -187,6 +187,14 @@ export function CommunityHubClient() {
 
   return (
     <div>
+      {!membership.flatNumber && (
+        <Link
+          href="/community/settings"
+          className="mb-4 block rounded-xl border border-accent-100 bg-accent-50 p-3 text-sm font-semibold text-accent-900 hover:bg-accent-100"
+        >
+          {t('community.house.addPrompt')}
+        </Link>
+      )}
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
           <h1 className="text-2xl font-bold text-text">{membership.neighborhood.name}</h1>

@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { QueryThread } from '@/components/query-thread';
 import { CommunityMembers } from '@/components/community-members';
 import { DirectoryList } from '@/components/community/directory-list';
+import { DirectoryMatchReview } from '@/components/community/directory-match-review';
 import { communityApi, useCommunityData } from '@/lib/community-client';
 import { cn } from '@/lib/utils';
 
@@ -125,6 +126,7 @@ export default function AdminCommunityDetailPage({ params }: { params: Promise<{
                     Bulk-add &amp; invite
                   </Link>
                 </div>
+                <DirectoryMatchReview neighborhoodId={id} />
                 <DirectoryList neighborhoodId={id} adminView />
               </>
             )}

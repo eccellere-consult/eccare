@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireMembership } from '@/lib/community-route';
 import { parseDirectoryWorkbook, annotateDirectoryRows, createUnregisteredResidents } from '@/lib/directory-import';
+import { suggestForNewPlaceholders } from '@/lib/directory-link';
 
 const MAX_SIZE = 5 * 1024 * 1024; // 5 MB — a directory register is a small file
 
@@ -38,7 +39,9 @@ export async function POST(req: NextRequest) {
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
     const parsed = await parseDirectoryWorkbook(buffer);
-    rows = await annotateDirectoryRows(parsed, guard.neighborhoodId);
+    // Optional: a block/association to put in front of plain numbers, e.g. GRA -> GRA-45.
+    const defaultBlock = ((formData.get('defaultBlock') as string) || '').trim() || undefined;
+    rows = await annotateDirectoryRows(parsed, guard.neighborhoodId, { defaultBlock });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Could not read the file.';
     return fail('VALIDATION', `Could not read the spreadsheet: ${message}`);
@@ -58,6 +61,14 @@ export async function POST(req: NextRequest) {
   }
 
   const result = await createUnregisteredResidents(rows, guard.neighborhoodId, guard.auth.userId, includeRowNumbers);
+
+  // Some of these people may already have joined under a different number — queue
+  // any plausible matches for the committee. Best-effort; never fails the import.
+  try {
+    await suggestForNewPlaceholders(guard.neighborhoodId, result.created.map((c) => c.id));
+  } catch (err) {
+    console.error('[directory-link] suggest failed:', err instanceof Error ? err.message : err);
+  }
 
   return NextResponse.json({
     success: true,
