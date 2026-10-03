@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireMembership } from '@/lib/community-route';
 import { parseDirectoryWorkbook, annotateDirectoryRows, createUnregisteredResidents } from '@/lib/directory-import';
+import { suggestForNewPlaceholders } from '@/lib/directory-link';
 
 const MAX_SIZE = 5 * 1024 * 1024; // 5 MB — a directory register is a small file
 
@@ -58,6 +59,14 @@ export async function POST(req: NextRequest) {
   }
 
   const result = await createUnregisteredResidents(rows, guard.neighborhoodId, guard.auth.userId, includeRowNumbers);
+
+  // Some of these people may already have joined under a different number — queue
+  // any plausible matches for the committee. Best-effort; never fails the import.
+  try {
+    await suggestForNewPlaceholders(guard.neighborhoodId, result.created.map((c) => c.id));
+  } catch (err) {
+    console.error('[directory-link] suggest failed:', err instanceof Error ? err.message : err);
+  }
 
   return NextResponse.json({
     success: true,

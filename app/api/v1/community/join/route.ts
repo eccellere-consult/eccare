@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { getAuthUser } from '@/lib/auth';
 import { invalidInput, ok } from '@/lib/community-route';
+import { reconcileMemberWithDirectory } from '@/lib/directory-link';
 
 const schema = z.object({
   joinCode: z.string().min(4).max(32),
@@ -66,6 +67,16 @@ export async function POST(req: NextRequest) {
     : await prisma.neighborhoodMember.create({
         data: { neighborhoodId: neighborhood.id, userId: auth.userId, flatNumber, status },
       });
+
+  // Connect them to the entry the community's admin may already have put in the
+  // directory for them: same phone links automatically, a plausible resemblance
+  // is queued for the committee (see lib/directory-link.ts). Never allowed to
+  // fail the join itself.
+  try {
+    await reconcileMemberWithDirectory(neighborhood.id, auth.userId);
+  } catch (err) {
+    console.error('[directory-link] reconcile failed:', err instanceof Error ? err.message : err);
+  }
 
   return ok({ neighborhood, alreadyMember: false, status: member.status }, 201);
 }

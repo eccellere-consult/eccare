@@ -2,6 +2,7 @@ import ExcelJS from 'exceljs';
 import { prisma } from '@/lib/db';
 import { isValidPhone, isValidEmail, normalizePhone } from '@/lib/validation';
 import { isHouseHeader } from '@/lib/spreadsheet-headers';
+import { reconcileMemberWithDirectory } from '@/lib/directory-link';
 
 export type ImportRowStatus = 'ready' | 'bad-phone' | 'bad-age' | 'duplicate-in-file' | 'duplicate-existing';
 
@@ -165,6 +166,9 @@ export async function createResidents(
       await prisma.neighborhoodMember.create({
         data: { neighborhoodId, userId: user.id, flatNumber: row.houseNumber ?? undefined },
       });
+      // A directory entry may already exist for this person — link it (same phone) or
+      // queue it for the committee. Best-effort, and outside the try that guards the create.
+      reconcileMemberWithDirectory(neighborhoodId, user.id).catch(() => {});
       created++;
     } catch {
       // Phone claimed by a concurrent request between preview and commit — rare,

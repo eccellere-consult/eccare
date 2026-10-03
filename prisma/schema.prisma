@@ -1362,11 +1362,44 @@ model UnregisteredResident {
   // Set when an admin has stepped through the WhatsApp-invite queue for this
   // row (see the import page) — purely informational, doesn't gate anything.
   invitedAt      DateTime?
+  // Set when this entry is matched to the real account of the person it
+  // describes (same phone number automatically; anything fuzzier only after a
+  // committee member confirms — see lib/directory-link.ts). A claimed entry is
+  // hidden from the directory while that account is a member, but kept rather
+  // than deleted so the link can be audited and the entry reappears if they leave.
+  claimedByUserId String?
+  claimedAt       DateTime?
   createdAt      DateTime  @default(now())
 
   neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  matchSuggestions DirectoryMatchSuggestion[]
 
   @@index([neighborhoodId])
+}
+
+/// "This new member might be that directory entry" — raised when someone joins (or
+/// an entry is imported) and the match isn't certain (not the same phone number):
+/// same house number with a similar name, or a very similar name with a house
+/// number missing on one side. Only the committee looks at these. A decision
+/// (linked / rejected) is kept so the same pair is never asked about twice.
+/// `userId` is a bare id, no relation — same minimal-footprint pattern as
+/// UnregisteredResident.importedById.
+model DirectoryMatchSuggestion {
+  id             String    @id @default(cuid())
+  neighborhoodId String
+  placeholderId  String
+  userId         String
+  reason         String // 'house_and_name' | 'name_only'
+  score          Float
+  status         String    @default("pending") // pending | linked | rejected | superseded
+  decidedById    String?
+  decidedAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  placeholder UnregisteredResident @relation(fields: [placeholderId], references: [id], onDelete: Cascade)
+
+  @@unique([placeholderId, userId])
+  @@index([neighborhoodId, status])
 }
 
 /// A resident's own pin on an entry in the Local Directory (GET
