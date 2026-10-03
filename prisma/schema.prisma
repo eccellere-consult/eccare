@@ -25,6 +25,15 @@ model User {
   highContrast      Boolean  @default(true)
   voiceEnabled      Boolean  @default(true)
   bloodGroup        String?
+  // Drives the account type: 60 and over is an elder, under 60 is a family
+  // member (see lib/age.ts). Required at registration; null only on accounts
+  // that pre-date it, which keep working until they add one. Once set it can
+  // only be changed by an admin, so it can't be edited to dodge the age rule.
+  dateOfBirth       DateTime? @db.Date
+  // Admin-granted exception: lets someone 60+ use caregiver features (a 63-year-old
+  // son looking after his 88-year-old mother). The age rule is otherwise a hard
+  // check on caregiver features.
+  caregiverException Boolean  @default(false)
   address           String?  @db.Text
   city              String?
   state             String?

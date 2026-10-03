@@ -6,10 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ChangePasswordCard } from '@/components/change-password-card';
+import { ProfileDobField } from '@/components/profile-dob';
+import { checkDateOfBirth, DOB_ERROR_MESSAGES } from '@/lib/age';
 import { isValidEmail, isValidAnyPhone, EMAIL_FORMAT_MESSAGE, ANY_PHONE_FORMAT_MESSAGE } from '@/lib/validation';
 
 interface Profile {
   name: string;
+  dateOfBirth: string | null;
   email: string | null;
   phone: string | null;
   address: string | null;
@@ -20,6 +23,8 @@ interface Profile {
 
 export function FamilyProfileClient({ profile }: { profile: Profile }) {
   const [form, setForm] = useState(profile);
+  // Only a date entered now is new; one already on record is locked and not resent.
+  const [newDob, setNewDob] = useState('');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -30,6 +35,13 @@ export function FamilyProfileClient({ profile }: { profile: Profile }) {
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setMessage('');
+    if (!profile.dateOfBirth && newDob) {
+      const check = checkDateOfBirth(newDob);
+      if (!check.ok) {
+        setMessage(DOB_ERROR_MESSAGES[check.reason]);
+        return;
+      }
+    }
     if (form.email && !isValidEmail(form.email)) {
       setMessage(EMAIL_FORMAT_MESSAGE);
       return;
@@ -43,7 +55,7 @@ export function FamilyProfileClient({ profile }: { profile: Profile }) {
       const res = await fetch('/api/v1/auth/me', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, dateOfBirth: profile.dateOfBirth ? undefined : newDob || undefined }),
       });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Could not save changes.');
@@ -71,6 +83,19 @@ export function FamilyProfileClient({ profile }: { profile: Profile }) {
               <Label htmlFor="p-name">Name</Label>
               <Input id="p-name" value={form.name} onChange={(e) => update('name', e.target.value)} />
             </div>
+            <ProfileDobField
+              locked={profile.dateOfBirth}
+              value={newDob}
+              onChange={setNewDob}
+              labels={{
+                label: 'Date of birth',
+                day: 'Day',
+                month: 'Month',
+                year: 'Year',
+                locked: 'Your date of birth is on record. Only an admin can change it.',
+                addPrompt: 'Add your date of birth — it sets up the right account features for you.',
+              }}
+            />
             <div className="flex flex-col gap-2">
               <Label htmlFor="p-phone">Phone number</Label>
               <Input id="p-phone" type="tel" value={form.phone ?? ''} onChange={(e) => update('phone', e.target.value)} />

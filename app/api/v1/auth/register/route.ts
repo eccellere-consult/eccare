@@ -5,10 +5,21 @@ import { z } from 'zod';
 import { isValidEmail, isValidAnyPhone, isInternationalPhone, normalizeAnyPhone, EMAIL_FORMAT_MESSAGE, ANY_PHONE_FORMAT_MESSAGE, INTERNATIONAL_ROLE_MESSAGE } from '@/lib/validation';
 import { getPricingContent } from '@/lib/pricing-content';
 import { isSupportedLanguage } from '@/lib/i18n/languages';
+import { checkDateOfBirth, roleForAge, DOB_ERROR_MESSAGES } from '@/lib/age';
 
 // Phone is the primary identifier — required, and the default way people sign in.
 // Email is optional: useful for password-recovery links and directory contact, but
 // not everyone has one they check, so it can't be a hard requirement to register.
+type RegistrationFields = { role?: 'elder' | 'caregiver' | 'provider'; dateOfBirth?: string };
+
+/** The account type this registration will create: a provider if they said so,
+ *  otherwise decided by age. null when a non-provider has no usable date of birth. */
+function effectiveRole(data: RegistrationFields): 'provider' | 'elder' | 'caregiver' | null {
+  if (data.role === 'provider') return 'provider';
+  const check = data.dateOfBirth ? checkDateOfBirth(data.dateOfBirth) : null;
+  return check?.ok ? roleForAge(check.age) : null;
+}
+
 const schema = z
   .object({
     email: z
@@ -20,7 +31,13 @@ const schema = z
     password: z.string().min(8),
     name: z.string().min(1),
     phone: z.string().min(1).refine(isValidAnyPhone, ANY_PHONE_FORMAT_MESSAGE),
-    role: z.enum(['elder', 'caregiver', 'provider']),
+    // Only 'provider' is chosen by the registrant. For everyone else the account
+    // type comes from their date of birth (60+ elder, under 60 family member) —
+    // any elder/caregiver value a client sends is ignored, so it can't be used to
+    // pick the other account type. See effectiveRole below.
+    role: z.enum(['elder', 'caregiver', 'provider']).optional(),
+    // "YYYY-MM-DD". Required unless registering as a provider (a business).
+    dateOfBirth: z.string().optional(),
     businessName: z.string().min(1).max(160).optional(),
     category: z.string().min(1).max(80).optional(),
     // Provider-only, all optional — collected here going forward, but
@@ -47,12 +64,24 @@ const schema = z
     language: z.string().optional().refine((v) => v === undefined || isSupportedLanguage(v), 'Invalid language.'),
   })
   .superRefine((data, ctx) => {
+    if (data.role !== 'provider') {
+      if (!data.dateOfBirth) {
+        ctx.addIssue({ code: 'custom', path: ['dateOfBirth'], message: 'Please enter your date of birth.' });
+        return;
+      }
+      const check = checkDateOfBirth(data.dateOfBirth);
+      if (!check.ok) {
+        ctx.addIssue({ code: 'custom', path: ['dateOfBirth'], message: DOB_ERROR_MESSAGES[check.reason] });
+        return;
+      }
+    }
+    const role = effectiveRole(data);
     // Family members often live abroad; elders and providers are local, so a
     // non-Indian number is only accepted for the caregiver role.
-    if (data.role !== 'caregiver' && isInternationalPhone(data.phone)) {
+    if (role !== 'caregiver' && isInternationalPhone(data.phone)) {
       ctx.addIssue({ code: 'custom', path: ['phone'], message: INTERNATIONAL_ROLE_MESSAGE });
     }
-    if (data.role === 'provider') {
+    if (role === 'provider') {
       if (!data.businessName) {
         ctx.addIssue({ code: 'custom', path: ['businessName'], message: 'Business name is required.' });
       }
@@ -61,7 +90,7 @@ const schema = z
       }
     }
     if (data.isVolunteer) {
-      if (data.role !== 'caregiver') {
+      if (role !== 'caregiver') {
         ctx.addIssue({ code: 'custom', path: ['isVolunteer'], message: 'Only family members can register as a volunteer.' });
       }
       if (!data.volunteerAvailability) {
@@ -73,6 +102,12 @@ const schema = z
     }
   });
 
+function checkDateOfBirthStrict(value: string): Date {
+  const check = checkDateOfBirth(value);
+  if (!check.ok) throw new Error('unreachable: validated in superRefine');
+  return check.dob;
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const parsed = schema.safeParse(body);
@@ -83,7 +118,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { email, password, name, role, businessName, category, backupContactName, backupContactPhone, lat, lng, isVolunteer, volunteerAvailability, volunteerAssistanceTypes, billingCycle, language } = parsed.data;
+  const { email, password, name, businessName, category, backupContactName, backupContactPhone, lat, lng, isVolunteer, volunteerAvailability, volunteerAssistanceTypes, billingCycle, language } = parsed.data;
+  const role = effectiveRole(parsed.data)!; // superRefine guarantees a usable role
+  const dateOfBirth = role === 'provider' ? undefined : checkDateOfBirthStrict(parsed.data.dateOfBirth!);
   const phone = normalizeAnyPhone(parsed.data.phone);
   const passwordHash = await hashPassword(password);
 
@@ -129,7 +166,7 @@ export async function POST(req: NextRequest) {
       }
       if (existing.role !== role) {
         return NextResponse.json(
-          { success: false, error: { code: 'ROLE_MISMATCH', message: 'This account was already invited with a different role.' } },
+          { success: false, error: { code: 'ROLE_MISMATCH', message: "This number was invited as a different type of account than your date of birth gives (60 and over is an Elder, under 60 is a Family member). Please check your date of birth, or contact support." } },
           { status: 409 },
         );
       }
@@ -139,6 +176,9 @@ export async function POST(req: NextRequest) {
           passwordHash,
           name,
           phone,
+          // An invite may already carry one (family invite asks for the elder's);
+          // never overwrite it — it's locked once set.
+          ...(dateOfBirth && !existing.dateOfBirth ? { dateOfBirth } : {}),
           email: email ?? existing.email,
           ...(role === 'elder' && language ? { language } : {}),
         },
@@ -171,7 +211,7 @@ export async function POST(req: NextRequest) {
       const { trialDays } = await getPricingContent();
       const trialEndsAt = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000);
       user = await prisma.$transaction(async (tx) => {
-        const created = await tx.user.create({ data: { email, phone, passwordHash, name, role } });
+        const created = await tx.user.create({ data: { email, phone, passwordHash, name, role, dateOfBirth } });
         await tx.familySubscription.create({
           data: { caregiverUserId: created.id, billingCycle: billingCycle ?? 'monthly', trialEndsAt },
         });
@@ -179,7 +219,7 @@ export async function POST(req: NextRequest) {
       });
     } else {
       user = await prisma.user.create({
-        data: { email, phone, passwordHash, name, role, ...(role === 'elder' && language ? { language } : {}) },
+        data: { email, phone, passwordHash, name, role, dateOfBirth, ...(role === 'elder' && language ? { language } : {}) },
       });
     }
   } catch (err) {

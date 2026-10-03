@@ -2,6 +2,8 @@ import { AppShell } from '@/components/app-shell';
 import { getServerUser } from '@/lib/server-session';
 import { getFamilySubscriptionState } from '@/lib/family-subscription';
 import { FamilySubscriptionGate } from '@/components/family-subscription-gate';
+import { CaregiverAgeGate } from '@/components/caregiver-age-gate';
+import { isCaregiverEligible } from '@/lib/age';
 
 /** Hard-blocks a caregiver whose family subscription has expired — checked
  *  here so it applies no matter which /family/* URL they land on (deep link,
@@ -13,11 +15,14 @@ import { FamilySubscriptionGate } from '@/components/family-subscription-gate';
  *  model's own doc comment). */
 export default async function FamilyLayout({ children }: { children: React.ReactNode }) {
   const user = await getServerUser();
-  const blocked = user?.role === 'caregiver' && (await getFamilySubscriptionState(user.id)).blocked;
+  // The age rule comes first: a 60+ caregiver with no exception has no business
+  // being billed for a subscription to features they can't use.
+  const ageBlocked = user?.role === 'caregiver' && !isCaregiverEligible(user);
+  const blocked = user?.role === 'caregiver' && !ageBlocked && (await getFamilySubscriptionState(user.id)).blocked;
 
   return (
-    <AppShell role="family" userName={user?.name}>
-      {blocked ? <FamilySubscriptionGate /> : children}
+    <AppShell role="family" userName={user?.name} needsDateOfBirth={!!user && !user.dateOfBirth}>
+      {ageBlocked ? <CaregiverAgeGate /> : blocked ? <FamilySubscriptionGate /> : children}
     </AppShell>
   );
 }

@@ -4,12 +4,16 @@ import { getAuthUser, toSafeUser } from '@/lib/auth';
 import { z } from 'zod';
 import { isValidEmail, isValidPhone, normalizePhone, EMAIL_FORMAT_MESSAGE, PHONE_FORMAT_MESSAGE } from '@/lib/validation';
 import { isSupportedLanguage } from '@/lib/i18n/languages';
+import { checkDateOfBirth, ELDER_AGE, DOB_ERROR_MESSAGES } from '@/lib/age';
 
 const schema = z
   .object({
     elderPhone: z.string().refine(isValidPhone, PHONE_FORMAT_MESSAGE).optional(),
     elderEmail: z.string().refine(isValidEmail, EMAIL_FORMAT_MESSAGE).optional(),
     elderName: z.string().min(1),
+    // "YYYY-MM-DD". An elder is 60 or over — that's the account type's definition,
+    // so it's checked here rather than trusted from the form.
+    elderDateOfBirth: z.string().min(1, "Please enter the elder's date of birth."),
     relationship: z.string().min(1),
     // The elder's preferred language, picked by the inviting caregiver — only
     // applied when a brand-new placeholder account is created below; an
@@ -46,6 +50,26 @@ export async function POST(req: NextRequest) {
   }
 
   const { elderName, relationship, language } = parsed.data;
+
+  const dobCheck = checkDateOfBirth(parsed.data.elderDateOfBirth);
+  if (!dobCheck.ok) {
+    return NextResponse.json(
+      { success: false, error: { code: 'INVALID_INPUT', message: DOB_ERROR_MESSAGES[dobCheck.reason] } },
+      { status: 400 },
+    );
+  }
+  if (dobCheck.age < ELDER_AGE) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: 'NOT_AN_ELDER_AGE',
+          message: `An elder account is for people aged ${ELDER_AGE} or over. This person can register as a family member themselves instead.`,
+        },
+      },
+      { status: 400 },
+    );
+  }
   const elderEmail = parsed.data.elderEmail;
   const elderPhone = parsed.data.elderPhone ? normalizePhone(parsed.data.elderPhone) : undefined;
 
@@ -58,8 +82,19 @@ export async function POST(req: NextRequest) {
 
   if (!elder) {
     elder = await prisma.user.create({
-      data: { phone: elderPhone, email: elderEmail, name: elderName, role: 'elder', ...(language ? { language } : {}) },
+      data: {
+        phone: elderPhone,
+        email: elderEmail,
+        name: elderName,
+        role: 'elder',
+        dateOfBirth: dobCheck.dob,
+        ...(language ? { language } : {}),
+      },
     });
+  } else if (!elder.dateOfBirth && elder.role === 'elder') {
+    // An older account that never had one — fill it in, but never overwrite one
+    // that's there (it's locked once set).
+    elder = await prisma.user.update({ where: { id: elder.id }, data: { dateOfBirth: dobCheck.dob } });
   }
 
   if (elder.role !== 'elder') {

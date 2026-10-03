@@ -10,6 +10,7 @@ export default async function FamilyProfilePage() {
 
   const profile = {
     name: user?.name ?? '',
+    dateOfBirth: user?.dateOfBirth ? user.dateOfBirth.toISOString().slice(0, 10) : null,
     email: user?.email ?? null,
     phone: user?.phone ?? null,
     address: user?.address ?? null,

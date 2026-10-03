@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken, SESSION_COOKIE } from '@/lib/auth';
+import { verifyToken, SESSION_COOKIE } from '@/lib/session-token';
 
 const ROLE_HOME: Record<string, string> = {
   elder: '/elder',
