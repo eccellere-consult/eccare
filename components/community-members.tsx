@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { communityApi, useCommunityData } from '@/lib/community-client';
+import { DirectoryMatchReview } from '@/components/community/directory-match-review';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
@@ -112,6 +113,8 @@ export function CommunityMembers({
   return (
     <div className="flex flex-col gap-3">
       {actionError && <p className="text-sm text-danger-600">{actionError}</p>}
+
+      <DirectoryMatchReview neighborhoodId={neighborhoodId} />
 
       {!pendingLoading && (pending?.length ?? 0) > 0 && (
         <div className="flex flex-col gap-3">

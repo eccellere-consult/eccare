@@ -1223,6 +1223,7 @@ model Neighborhood {
   rentalListings RentalListing[]
   application    CommunityApplication?
   unregisteredResidents UnregisteredResident[]
+  houseLocations HouseLocation[]
 
   @@index([pincode])
 }
@@ -1362,11 +1363,44 @@ model UnregisteredResident {
   // Set when an admin has stepped through the WhatsApp-invite queue for this
   // row (see the import page) — purely informational, doesn't gate anything.
   invitedAt      DateTime?
+  // Set when this entry is matched to the real account of the person it
+  // describes (same phone number automatically; anything fuzzier only after a
+  // committee member confirms — see lib/directory-link.ts). A claimed entry is
+  // hidden from the directory while that account is a member, but kept rather
+  // than deleted so the link can be audited and the entry reappears if they leave.
+  claimedByUserId String?
+  claimedAt       DateTime?
   createdAt      DateTime  @default(now())
 
   neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  matchSuggestions DirectoryMatchSuggestion[]
 
   @@index([neighborhoodId])
+}
+
+/// "This new member might be that directory entry" — raised when someone joins (or
+/// an entry is imported) and the match isn't certain (not the same phone number):
+/// same house number with a similar name, or a very similar name with a house
+/// number missing on one side. Only the committee looks at these. A decision
+/// (linked / rejected) is kept so the same pair is never asked about twice.
+/// `userId` is a bare id, no relation — same minimal-footprint pattern as
+/// UnregisteredResident.importedById.
+model DirectoryMatchSuggestion {
+  id             String    @id @default(cuid())
+  neighborhoodId String
+  placeholderId  String
+  userId         String
+  reason         String // 'house_and_name' | 'name_only'
+  score          Float
+  status         String    @default("pending") // pending | linked | rejected | superseded
+  decidedById    String?
+  decidedAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  placeholder UnregisteredResident @relation(fields: [placeholderId], references: [id], onDelete: Cascade)
+
+  @@unique([placeholderId, userId])
+  @@index([neighborhoodId, status])
 }
 
 /// A resident's own pin on an entry in the Local Directory (GET
@@ -2549,4 +2583,28 @@ model WhatsAppTemplateTranslation {
   updatedAt     DateTime @updatedAt
 
   @@unique([key, language])
+}
+
+/// Where a house actually is, so volunteers and service providers can find it.
+/// One row per house per community, keyed by the normalised house number (see
+/// houseKey in lib/house.ts) so everyone living at "GRA-105" shares it, and
+/// bulk-added directory entries pick it up too. Set by a resident for their own
+/// house (their phone's location, while at home) or by the committee/admin for any
+/// house; the last one to set it wins. Visible only to people in that community,
+/// the committee, and a provider fulfilling an order for someone who lives there.
+model HouseLocation {
+  id             String   @id @default(cuid())
+  neighborhoodId String
+  houseKey       String
+  house          String // as written, e.g. "GRA-105"
+  lat            Decimal  @db.Decimal(10, 7)
+  lng            Decimal  @db.Decimal(10, 7)
+  setById        String
+  setByRole      String // 'member' | 'committee'
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+
+  @@unique([neighborhoodId, houseKey])
 }
