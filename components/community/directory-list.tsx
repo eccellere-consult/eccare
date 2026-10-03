@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Phone, Hand, Pencil, Trash2, ShieldX, Star, Home, Search } from 'lucide-react';
+import { Phone, Hand, Pencil, Trash2, ShieldX, Star, Home, Search, Navigation } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { communityApi, useCommunityData } from '@/lib/community-client';
 import { HouseField } from '@/components/house-field';
-import { normalizeHouseInput } from '@/lib/house';
+import { HouseLocationEditor } from '@/components/community/house-location-editor';
+import { mapsDirectionsUrl } from '@/lib/geo';
+import { normalizeHouseInput, houseKey } from '@/lib/house';
 
 interface Neighbour {
   id: string;
@@ -17,6 +19,7 @@ interface Neighbour {
   contactId: string | null;
   memberId: string | null;
   unregisteredId: string | null;
+  location: { lat: number; lng: number } | null;
   name: string;
   phone: string | null;
   flatNumber: string | null;
@@ -87,6 +90,12 @@ export function DirectoryList({
     } catch {
       setGreeted((g) => ({ ...g, [n.id]: 'failed' }));
     }
+  }
+
+  /** Everyone in a house shares one location, so update every entry for that house. */
+  function setHouseLocation(flat: string, loc: { lat: number; lng: number } | null) {
+    const key = houseKey(flat);
+    setData((prev) => prev?.map((x) => (x.flatNumber && houseKey(x.flatNumber) === key ? { ...x, location: loc } : x)) ?? prev);
   }
 
   function startEdit(n: Neighbour) {
@@ -267,6 +276,14 @@ export function DirectoryList({
                       <Input id={`nb-phone-${n.id}`} value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
                     </div>
                     <HouseField id={`nb-flat-${n.id}`} value={editFlatNumber} onChange={setEditFlatNumber} />
+                    {n.flatNumber && (
+                      <HouseLocationEditor
+                        neighborhoodId={neighborhoodId}
+                        house={n.flatNumber}
+                        current={n.location}
+                        onChange={(loc) => setHouseLocation(n.flatNumber!, loc)}
+                      />
+                    )}
                   </>
                 ) : (
                   <>
@@ -275,6 +292,14 @@ export function DirectoryList({
                       <Input id={`nb-name-${n.id}`} value={editName} onChange={(e) => setEditName(e.target.value)} />
                     </div>
                     <HouseField id={`nb-flat-${n.id}`} value={editFlatNumber} onChange={setEditFlatNumber} />
+                    {n.flatNumber && (
+                      <HouseLocationEditor
+                        neighborhoodId={neighborhoodId}
+                        house={n.flatNumber}
+                        current={n.location}
+                        onChange={(loc) => setHouseLocation(n.flatNumber!, loc)}
+                      />
+                    )}
                   </>
                 )}
                 {editError && <p className="text-sm text-danger-600">{editError}</p>}
@@ -356,6 +381,18 @@ export function DirectoryList({
                     >
                       <Hand className="h-5 w-5" />
                     </button>
+                  )}
+                  {n.location && (
+                    <a
+                      href={mapsDirectionsUrl(n.location)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`Directions to ${n.name}'s house`}
+                      title="Directions to this house"
+                      className="flex h-11 w-11 items-center justify-center rounded-full bg-success-50 text-success-600"
+                    >
+                      <Navigation className="h-5 w-5" />
+                    </a>
                   )}
                   {n.phone && (
                     <a

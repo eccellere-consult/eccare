@@ -73,3 +73,18 @@ export function composeHouse(parts: HouseParts): string {
   const number = tidy(parts.number);
   return block && number ? `${block}-${number}` : '';
 }
+
+/** Compares houses across spellings: "A-101", "a 101", "Flat No. A/101" all become
+ *  "a101"; "House 12" becomes "12". Used to match directory entries
+ *  (lib/directory-link.ts) and to key a house's saved location. */
+export function houseKey(value: string | null | undefined): string {
+  if (!value) return '';
+  const lower = value.toLowerCase();
+  // The filler words ("Flat No.", "House") only come in front of a number. A text
+  // house name like "Rose Villa" keeps all of its words, so it can't collide with
+  // "Rose" or "Rose Cottage".
+  const stripped = /\d/.test(lower)
+    ? lower.replace(/\b(house|flat|apartment|apt|unit|villa|plot|door|gr|no|number)\b\.?/g, '')
+    : lower;
+  return stripped.replace(/[^a-z0-9]/g, '');
+}

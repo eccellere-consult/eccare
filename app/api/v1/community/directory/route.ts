@@ -5,6 +5,7 @@ import { canAccessElder } from '@/lib/family-access';
 import { getAuthUser } from '@/lib/auth';
 import { getElderNeighborhoodId } from '@/lib/community-access';
 import { getVisiblePlaceholders } from '@/lib/directory-link';
+import { houseKey } from '@/lib/house';
 
 /** The house/flat number to show for a registered member. The community-specific
  *  number wins; the join form's field is optional though, so many members never set
@@ -15,6 +16,14 @@ function displayFlat(flatNumber: string | null, address: string | null): string 
   if (flatNumber?.trim()) return flatNumber.trim();
   const a = address?.trim();
   return a && a.length <= 30 ? a : null;
+}
+
+/** Saved house locations for a community, by house key (see lib/house.ts houseKey), so
+ *  each entry can say where its house is — everyone in a house shares one location. */
+async function loadLocations(neighborhoodId: string) {
+  const rows = await prisma.houseLocation.findMany({ where: { neighborhoodId } });
+  const byKey = new Map(rows.map((r) => [r.houseKey, { lat: Number(r.lat), lng: Number(r.lng) }]));
+  return (flat: string | null) => (flat ? (byKey.get(houseKey(flat)) ?? null) : null);
 }
 
 /** Neighbour directory. Only members can read it, and only members who haven't opted
@@ -64,6 +73,7 @@ export async function GET(req: NextRequest) {
       getVisiblePlaceholders(neighborhoodId),
     ]);
 
+    const locationOf = await loadLocations(neighborhoodId);
     const members = membersUnsorted
       .map((m) => ({ ...m, flatNumber: displayFlat(m.flatNumber, m.user.address) }))
       .sort(compareByFlatNumberAsc);
@@ -74,6 +84,7 @@ export async function GET(req: NextRequest) {
       contactId: null,
       memberId: m.id,
       unregisteredId: null,
+      location: locationOf(m.flatNumber),
       name: m.user.name,
       phone: m.user.phone,
       avatarUrl: m.user.avatarUrl,
@@ -95,6 +106,7 @@ export async function GET(req: NextRequest) {
       contactId: c.id,
       memberId: null,
       unregisteredId: null,
+      location: null as { lat: number; lng: number } | null,
       name: c.name,
       phone: c.phone,
       avatarUrl: null,
@@ -113,6 +125,7 @@ export async function GET(req: NextRequest) {
       contactId: null,
       memberId: null,
       unregisteredId: u.id,
+      location: locationOf(u.flatNumber),
       name: u.name,
       phone: u.phone,
       avatarUrl: null,
@@ -165,6 +178,7 @@ export async function GET(req: NextRequest) {
 
   // MySQL can't natural-sort "2" before "10" for an arbitrary alphanumeric column,
   // so registered members are re-sorted here by house/flat number ascending.
+  const locationOf = await loadLocations(guard.neighborhoodId);
   const members = membersUnsorted
     .map((m) => ({ ...m, flatNumber: displayFlat(m.flatNumber, m.user.address) }))
     .sort(compareByFlatNumberAsc);
@@ -175,6 +189,7 @@ export async function GET(req: NextRequest) {
     contactId: null,
     memberId: m.id,
     unregisteredId: null,
+    location: locationOf(m.flatNumber),
     name: m.user.name,
     // Phone is deliberately included — "call direct" is the point of the directory,
     // and it's already scoped to fellow members who opted in.
@@ -199,6 +214,7 @@ export async function GET(req: NextRequest) {
       contactId: c.id,
       memberId: null,
       unregisteredId: null,
+      location: null as { lat: number; lng: number } | null,
       name: c.name,
       phone: c.phone,
       avatarUrl: null,
@@ -228,6 +244,7 @@ export async function GET(req: NextRequest) {
     contactId: null,
     memberId: null,
     unregisteredId: u.id,
+    location: locationOf(u.flatNumber),
     name: u.name,
     phone: u.phone,
     avatarUrl: null,

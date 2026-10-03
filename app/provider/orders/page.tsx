@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { PackageCheck, Phone } from 'lucide-react';
+import { PackageCheck, Phone, Navigation } from 'lucide-react';
+import { mapsDirectionsUrl } from '@/lib/geo';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,7 +21,7 @@ interface Order {
   deliveryAddress: string;
   createdAt: string;
   items: OrderItem[];
-  elderUser: { name: string; phone: string | null };
+  elderUser: { name: string; phone: string | null; location?: { lat: number; lng: number } | null };
 }
 
 const STATUS_VARIANT = {
@@ -58,6 +59,17 @@ function OrderCard({ order: o, busy, onDecide }: { order: Order; busy: boolean; 
           <Badge variant={STATUS_VARIANT[o.status]}>{o.status}</Badge>
         </div>
         <p className="mt-2 text-sm text-text-secondary">{o.deliveryAddress}</p>
+        {o.elderUser.location && (
+          <a
+            href={mapsDirectionsUrl(o.elderUser.location)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 flex w-fit items-center gap-1.5 rounded-full bg-success-50 px-3 py-1.5 text-sm font-semibold text-success-600"
+          >
+            <Navigation className="h-4 w-4" />
+            Directions to the house
+          </a>
+        )}
         <div className="mt-3 flex flex-col gap-1 border-t border-border pt-3 text-sm">
           {o.items.map((i) => (
             <div key={i.id} className="flex justify-between">

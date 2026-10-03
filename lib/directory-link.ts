@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db';
+import { houseKey } from '@/lib/house';
 
 /**
  * Connecting a person who registers and joins a community to the entry the
@@ -15,15 +16,7 @@ import { prisma } from '@/lib/db';
 
 // ─── Matching helpers (pure) ─────────────────────────────────────────────────
 
-/** "A-101", "a 101", "Flat No. A/101" -> "a101"; "House 12" -> "12". Lets the
- *  different ways people write the same address compare equal. */
-export function normalizeHouse(value: string | null | undefined): string {
-  if (!value) return '';
-  return value
-    .toLowerCase()
-    .replace(/\b(house|flat|apartment|apt|unit|villa|plot|door|gr|no|number)\b\.?/g, '')
-    .replace(/[^a-z0-9]/g, '');
-}
+export const normalizeHouse = houseKey;
 
 const TITLES = new Set(['mr', 'mrs', 'ms', 'miss', 'dr', 'shri', 'smt', 'sri', 'late']);
 

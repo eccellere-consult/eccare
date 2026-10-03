@@ -6,6 +6,7 @@ import { LogOut } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { HouseField } from '@/components/house-field';
+import { HouseLocationEditor } from '@/components/community/house-location-editor';
 import { houseLabels } from '@/lib/house-labels';
 import { normalizeHouseInput } from '@/lib/house';
 import { CommunityPageFrame } from '@/components/community/page-frame';
@@ -26,6 +27,7 @@ interface Membership {
   id: string;
   neighborhoodId: string;
   flatNumber: string | null;
+  houseLocation: { lat: number; lng: number } | null;
   showInDirectory: boolean;
   neighborhood: { name: string };
 }
@@ -129,6 +131,7 @@ function HouseNumberSection() {
   const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
   const { data, loading } = useCommunityData<Me>('/community/me');
   const [values, setValues] = useState<Record<string, string>>({});
+  const [locations, setLocations] = useState<Record<string, { lat: number; lng: number } | null>>({});
   const [saving, setSaving] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -173,6 +176,13 @@ function HouseNumberSection() {
                 onChange={(v) => setValues((prev) => ({ ...prev, [m.neighborhoodId]: v }))}
                 labels={houseLabels(t)}
               />
+              {m.flatNumber && (
+                <HouseLocationEditor
+                  neighborhoodId={m.neighborhoodId}
+                  current={m.neighborhoodId in locations ? locations[m.neighborhoodId] : m.houseLocation}
+                  onChange={(loc) => setLocations((prev) => ({ ...prev, [m.neighborhoodId]: loc }))}
+                />
+              )}
               <Button className="w-fit" onClick={() => save(m)} disabled={saving === m.neighborhoodId}>
                 {saving === m.neighborhoodId
                   ? t('community.settings.saving')

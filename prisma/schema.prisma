@@ -1223,6 +1223,7 @@ model Neighborhood {
   rentalListings RentalListing[]
   application    CommunityApplication?
   unregisteredResidents UnregisteredResident[]
+  houseLocations HouseLocation[]
 
   @@index([pincode])
 }
@@ -2582,4 +2583,28 @@ model WhatsAppTemplateTranslation {
   updatedAt     DateTime @updatedAt
 
   @@unique([key, language])
+}
+
+/// Where a house actually is, so volunteers and service providers can find it.
+/// One row per house per community, keyed by the normalised house number (see
+/// houseKey in lib/house.ts) so everyone living at "GRA-105" shares it, and
+/// bulk-added directory entries pick it up too. Set by a resident for their own
+/// house (their phone's location, while at home) or by the committee/admin for any
+/// house; the last one to set it wins. Visible only to people in that community,
+/// the committee, and a provider fulfilling an order for someone who lives there.
+model HouseLocation {
+  id             String   @id @default(cuid())
+  neighborhoodId String
+  houseKey       String
+  house          String // as written, e.g. "GRA-105"
+  lat            Decimal  @db.Decimal(10, 7)
+  lng            Decimal  @db.Decimal(10, 7)
+  setById        String
+  setByRole      String // 'member' | 'committee'
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+
+  @@unique([neighborhoodId, houseKey])
 }

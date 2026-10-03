@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db';
 import { getAuthUser } from '@/lib/auth';
 import { ok, invalidInput } from '@/lib/community-route';
 import { getPrimaryNeighborhoodId } from '@/lib/community-access';
-import { normalizeHouseInput } from '@/lib/house';
+import { normalizeHouseInput, houseKey } from '@/lib/house';
 
 /** The caller's communities and their role in each. Drives whether the UI shows the
  *  community section or the "join a community" prompt. */
@@ -28,12 +28,23 @@ export async function GET(req: NextRequest) {
   });
   const approved = memberships.filter((m) => m.status === 'approved');
 
+  // Where each of their houses is, if anyone has pinned it (see /community/house-location).
+  const locations = await prisma.houseLocation.findMany({
+    where: { neighborhoodId: { in: approved.map((m) => m.neighborhoodId) } },
+  });
+  const locationFor = (m: { neighborhoodId: string; flatNumber: string | null }) => {
+    const key = houseKey(m.flatNumber);
+    const row = key ? locations.find((l) => l.neighborhoodId === m.neighborhoodId && l.houseKey === key) : undefined;
+    return row ? { lat: Number(row.lat), lng: Number(row.lng) } : null;
+  };
+
   return ok({
     memberships: approved.map((m) => ({
       id: m.id,
       neighborhoodId: m.neighborhoodId,
       role: m.role,
       flatNumber: m.flatNumber,
+      houseLocation: locationFor(m),
       showInDirectory: m.showInDirectory,
       neighborhood: m.neighborhood,
     })),
