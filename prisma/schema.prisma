@@ -216,6 +216,10 @@ model PlatformSettings {
   // can unlock editing for a while; once this time passes it is locked again by itself.
   // Null means locked.
   demoUnlockedUntil DateTime?
+  // First-run loading of the sample data (lib/demo/auto.ts): 'pending' until it has been loaded
+  // once, then 'done'; 'off' if an admin removed it on purpose, so it never comes back by itself.
+  demoAutoLoad      String   @default("pending")
+  demoAutoLoadAt    DateTime?
   updatedAt         DateTime @updatedAt
   updatedById       String?
 }

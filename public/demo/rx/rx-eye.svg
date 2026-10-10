@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 900" width="700" height="900" role="img" aria-label="Dr. Shamina Rahman, MS Ophthalmology">
+<rect width="700" height="900" fill="#fbfaf6"/>
+<rect x="0" y="0" width="700" height="110" fill="#2f6f5a"/>
+<text x="60" y="68" font-family="Georgia, serif" font-size="34" fill="#fff">Dr. Shamina Rahman, MS Ophthalmology</text>
+<line x1="60" y1="130" x2="640" y2="130" stroke="#2f6f5a" stroke-width="2"/>
+<text x="60" y="190" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="700" fill="#1f2a30">Kowdiar Eye &amp; Diabetes Centre</text>
+<text x="60" y="228" font-family="Helvetica, Arial, sans-serif" font-size="20" font-weight="400" fill="#1f2a30">Patient: Radhamani Nair   Age: 71   F</text>
+<text x="60" y="266" font-family="Helvetica, Arial, sans-serif" font-size="20" font-weight="400" fill="#1f2a30"></text>
+<text x="60" y="304" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="700" fill="#1f2a30">Rx</text>
+<text x="60" y="342" font-family="Helvetica, Arial, sans-serif" font-size="20" font-weight="400" fill="#1f2a30">1. Eye drops Timolol 0.5%   1 drop both eyes, morning and night</text>
+<text x="60" y="380" font-family="Helvetica, Arial, sans-serif" font-size="20" font-weight="400" fill="#1f2a30"></text>
+<text x="60" y="418" font-family="Helvetica, Arial, sans-serif" font-size="20" font-weight="400" fill="#1f2a30">Eye pressure borderline. Recheck in 6 weeks.</text>
+<text x="60" y="456" font-family="Helvetica, Arial, sans-serif" font-size="20" font-weight="400" fill="#1f2a30">Wait 5 minutes between different eye drops.</text>
+<text x="60" y="864" font-family="Helvetica, Arial, sans-serif" font-size="14" fill="#8a949a">Sample document created for the EC demo</text>
+</svg>

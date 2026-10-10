@@ -4,8 +4,9 @@ import { buildHealth } from './health';
 import { setUpProviders } from './providers';
 import { buildCommunity } from './community';
 import { buildServices, DEMO_GERIATRIC_NAMES, DEMO_NEWSLETTER_TITLES } from './services';
+import { buildAdminContent, DEMO_QUOTE_MARKER, DEMO_WELLNESS_URLS } from './admin';
 import { getDemoProtection, invalidateDemoProtection, setDemoUnlock } from './lock';
-import { DEMO_COMMUNITY_CODE, DEMO_EMAIL_DOMAIN, MAIN_ACCOUNTS, Tally } from './helpers';
+import { DEMO_COMMUNITY_CODE, DEMO_COMMUNITY_NAME, DEMO_EMAIL_DOMAIN, MAIN_ACCOUNTS, Tally } from './helpers';
 
 export interface DemoLoadResult {
   counts: Record<string, number>;
@@ -103,6 +104,8 @@ export async function removeDemoData(): Promise<void> {
   // Platform-wide content the demo added.
   await prisma.newsletter.deleteMany({ where: { title: { in: DEMO_NEWSLETTER_TITLES } } });
   await prisma.geriatricCareListing.deleteMany({ where: { name: { in: DEMO_GERIATRIC_NAMES } } });
+  await prisma.dailyQuote.deleteMany({ where: { generatedBy: DEMO_QUOTE_MARKER } });
+  await prisma.wellnessVideo.deleteMany({ where: { youtubeUrl: { in: DEMO_WELLNESS_URLS } } });
 
   // Supporting people last; everything they own cascades with them.
   if (demoIds.length) {
@@ -121,11 +124,13 @@ export async function loadDemoData(adminId: string): Promise<DemoLoadResult> {
   const people = await setUpPeople(adminId, tally);
   const health = await buildHealth(people, tally);
   const providers = await setUpProviders(people, tally);
+  await buildAdminContent(people, tally);
   const community = await buildCommunity(people, providers, tally);
   await buildServices(people, providers, community, tally, health.medications);
 
-  // A fresh demo always starts locked.
+  // A fresh demo always starts locked, and counts as loaded for first-run purposes.
   await setDemoUnlock(null);
+  await prisma.platformSettings.upsert({ where: { id: 'singleton' }, update: { demoAutoLoad: 'done' }, create: { id: 'singleton', demoAutoLoad: 'done' } });
 
   // A family account that has a lapsed subscription would be locked out of the demo.
   // (An account with no subscription row is never blocked, so none is created.)
@@ -137,6 +142,6 @@ export async function loadDemoData(adminId: string): Promise<DemoLoadResult> {
   return {
     counts: tally.counts,
     accounts: people.accounts,
-    community: { name: 'Sunrise Residency', joinCode: DEMO_COMMUNITY_CODE },
+    community: { name: DEMO_COMMUNITY_NAME, joinCode: DEMO_COMMUNITY_CODE },
   };
 }
