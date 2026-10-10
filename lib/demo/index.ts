@@ -4,6 +4,7 @@ import { buildHealth } from './health';
 import { setUpProviders } from './providers';
 import { buildCommunity } from './community';
 import { buildServices, DEMO_GERIATRIC_NAMES, DEMO_NEWSLETTER_TITLES } from './services';
+import { getDemoProtection, invalidateDemoProtection, setDemoUnlock } from './lock';
 import { DEMO_COMMUNITY_CODE, DEMO_EMAIL_DOMAIN, MAIN_ACCOUNTS, Tally } from './helpers';
 
 export interface DemoLoadResult {
@@ -14,20 +15,27 @@ export interface DemoLoadResult {
 
 export interface DemoStatus {
   loaded: boolean;
+  /** Editing by the demo logins is refused while true. */
+  locked: boolean;
+  unlockedUntil: string | null;
   community: { name: string; joinCode: string; members: number } | null;
   demoPeople: number;
 }
 
 export async function getDemoStatus(): Promise<DemoStatus> {
-  const [hood, demoPeople] = await Promise.all([
+  invalidateDemoProtection();
+  const [hood, demoPeople, protection] = await Promise.all([
     prisma.neighborhood.findUnique({
       where: { joinCode: DEMO_COMMUNITY_CODE },
       select: { name: true, joinCode: true, _count: { select: { members: true } } },
     }),
     prisma.user.count({ where: { email: { endsWith: `@${DEMO_EMAIL_DOMAIN}` } } }),
+    getDemoProtection(),
   ]);
   return {
     loaded: Boolean(hood),
+    locked: protection.locked,
+    unlockedUntil: protection.unlockedUntil && protection.unlockedUntil.getTime() > Date.now() ? protection.unlockedUntil.toISOString() : null,
     community: hood ? { name: hood.name, joinCode: hood.joinCode, members: hood._count.members } : null,
     demoPeople,
   };
@@ -101,6 +109,7 @@ export async function removeDemoData(): Promise<void> {
     await prisma.rentalListing.deleteMany({ where: { postedById: { in: demoIds } } });
     await prisma.user.deleteMany({ where: { id: { in: demoIds } } });
   }
+  invalidateDemoProtection();
 }
 
 /** Loads (or refreshes) the full demo. Safe to run more than once: it clears the previous
@@ -114,6 +123,9 @@ export async function loadDemoData(adminId: string): Promise<DemoLoadResult> {
   const providers = await setUpProviders(people, tally);
   const community = await buildCommunity(people, providers, tally);
   await buildServices(people, providers, community, tally, health.medications);
+
+  // A fresh demo always starts locked.
+  await setDemoUnlock(null);
 
   // A family account that has a lapsed subscription would be locked out of the demo.
   // (An account with no subscription row is never blocked, so none is created.)

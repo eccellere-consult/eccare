@@ -212,6 +212,10 @@ model PlatformSettings {
   // Flat monthly fee a verified provider pays (via Razorpay) to be featured at the
   // top of /services/elder-care for 30 days — see ServiceProvider.isFeatured.
   elderCareAdPricePerMonth Decimal @default(499) @db.Decimal(10, 2)
+  // The sample data behind the demo logins is read-only (see lib/demo/lock.ts). An admin
+  // can unlock editing for a while; once this time passes it is locked again by itself.
+  // Null means locked.
+  demoUnlockedUntil DateTime?
   updatedAt         DateTime @updatedAt
   updatedById       String?
 }

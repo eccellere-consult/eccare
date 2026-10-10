@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken, SESSION_COOKIE } from '@/lib/session-token';
+import { demoGuard } from '@/lib/demo/guard';
 
 const ROLE_HOME: Record<string, string> = {
   elder: '/elder',
@@ -27,6 +28,11 @@ function prefixRole(pathname: string): string | null {
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  // API requests: the only thing handled here is keeping the demo logins' sample data
+  // read-only while it is locked. Authentication itself stays in each route.
+  if (pathname.startsWith('/api/v1/')) return demoGuard(req);
+
   const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
   if (!isProtected) return NextResponse.next();
 
@@ -55,7 +61,10 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
+  // Node.js runtime (not edge): the demo guard reads the lock state from the database.
+  runtime: 'nodejs',
   matcher: [
+    '/api/v1/:path*',
     '/elder/:path*',
     '/family/:path*',
     '/admin/:path*',
