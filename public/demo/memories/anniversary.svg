@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-label="Anniversary lunch with family">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fce4d6"/><stop offset="1" stop-color="#fff4ea"/></linearGradient>
+<linearGradient id="gr" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b5835a"/><stop offset="1" stop-color="#8d6139"/></linearGradient>
+</defs>
+<rect width="800" height="600" fill="url(#sky)"/>
+<rect y="330" width="800" height="212" fill="url(#gr)"/><ellipse cx="400" cy="430" rx="300" ry="64" fill="#f4e8d8"/><ellipse cx="220" cy="430" rx="38" ry="14" fill="#fff"/><ellipse cx="220" cy="427" rx="26" ry="8" fill="#e8b04a"/><ellipse cx="330" cy="430" rx="38" ry="14" fill="#fff"/><ellipse cx="330" cy="427" rx="26" ry="8" fill="#e8b04a"/><ellipse cx="440" cy="430" rx="38" ry="14" fill="#fff"/><ellipse cx="440" cy="427" rx="26" ry="8" fill="#e8b04a"/><ellipse cx="550" cy="430" rx="38" ry="14" fill="#fff"/><ellipse cx="550" cy="427" rx="26" ry="8" fill="#e8b04a"/><rect x="385" y="372" width="30" height="42" rx="4" fill="#c0392b"/><path d="M400 372 Q392 356 400 342 Q408 356 400 372Z" fill="#ffd54a"/><g transform="translate(190 320) scale(1.4)"><circle cx="0" cy="-62" r="18" fill="#e0ac82"/><path d="M-26 40 Q-26 -36 0 -36 Q26 -36 26 40 Z" fill="#2a7f62"/></g><g transform="translate(610 320) scale(1.4)"><circle cx="0" cy="-62" r="18" fill="#c68a63"/><path d="M-26 40 Q-26 -36 0 -36 Q26 -36 26 40 Z" fill="#d9534f"/></g>
+</svg>

@@ -540,8 +540,8 @@ export function DirectoryList({
               </CardContent>
             </Card>
           ) : (
-            <Card key={n.id} className={n.unregisteredId && selected.has(n.unregisteredId) ? 'ring-2 ring-primary-600' : undefined}>
-              <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:gap-4">
+            <Card key={n.id} className={`@container ${n.unregisteredId && selected.has(n.unregisteredId) ? 'ring-2 ring-primary-600' : ''}`}>
+              <CardContent className="flex flex-col gap-3 py-4 @lg:flex-row @lg:items-center @lg:gap-4">
                 <div className="flex min-w-0 flex-1 items-center gap-4">
                   {isRegisterCandidate(n) && (
                     <input
@@ -595,8 +595,10 @@ export function DirectoryList({
                     so the row takes less width to begin with. Left-aligned on
                     mobile so the icon row starts under the name/avatar above it
                     instead of jumping to the opposite edge; right-aligned again
-                    on sm+ where it sits inline with the name on a single row. */}
-                <div className="flex flex-wrap justify-start gap-2 sm:justify-end sm:shrink-0">
+                    once the card itself is wide enough (container query, not the
+                    screen width — in a two-column grid a card can be narrow on a wide
+                    screen) that it sits inline with the name on a single row. */}
+                <div className="flex flex-wrap justify-start gap-2 @lg:justify-end @lg:shrink-0">
                   {!n.isSelf && !adminView && (
                     <button
                       onClick={() => toggleFavorite(n)}

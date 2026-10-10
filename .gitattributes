@@ -1,0 +1,2 @@
+# Demo PDFs carry byte offsets (xref table), so line endings must never be rewritten
+public/demo/**/*.pdf -text

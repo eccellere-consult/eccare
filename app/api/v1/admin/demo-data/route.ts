@@ -1,0 +1,47 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getAuthUser } from '@/lib/auth';
+import { getDemoStatus, loadDemoData, removeDemoData } from '@/lib/demo';
+
+// Loading writes a few thousand rows in one go; give it room on slower hosts.
+export const maxDuration = 120;
+
+async function requireAdmin(req: NextRequest) {
+  const auth = await getAuthUser(req);
+  if (!auth) return { error: NextResponse.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Please log in.' } }, { status: 401 }) };
+  if (auth.role !== 'admin') return { error: NextResponse.json({ success: false, error: { code: 'FORBIDDEN', message: 'Admins only.' } }, { status: 403 }) };
+  return { auth };
+}
+
+const failure = (err: unknown) =>
+  NextResponse.json(
+    { success: false, error: { code: 'DEMO_FAILED', message: err instanceof Error ? err.message : 'Something went wrong while preparing the demo.' } },
+    { status: 500 },
+  );
+
+export async function GET(req: NextRequest) {
+  const { error } = await requireAdmin(req);
+  if (error) return error;
+  return NextResponse.json({ success: true, data: await getDemoStatus() });
+}
+
+/** Loads the demo, or refreshes it if it is already loaded. */
+export async function POST(req: NextRequest) {
+  const { error, auth } = await requireAdmin(req);
+  if (error) return error;
+  try {
+    return NextResponse.json({ success: true, data: await loadDemoData(auth!.userId) });
+  } catch (err) {
+    return failure(err);
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  const { error } = await requireAdmin(req);
+  if (error) return error;
+  try {
+    await removeDemoData();
+    return NextResponse.json({ success: true, data: { removed: true } });
+  } catch (err) {
+    return failure(err);
+  }
+}
