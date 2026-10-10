@@ -28,6 +28,7 @@ interface Neighbour {
   unregisteredId: string | null;
   location: { lat: number; lng: number } | null;
   name: string;
+  avatarUrl?: string | null;
   phone: string | null;
   flatNumber: string | null;
   role: 'member' | 'committee' | 'admin' | null;
@@ -554,9 +555,14 @@ export function DirectoryList({
                       title={canRegisterNow(n) ? 'Select to register' : 'Add a valid phone number to register this person'}
                     />
                   )}
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-50 text-lg font-bold text-primary-900">
-                    {n.name.charAt(0).toUpperCase()}
-                  </span>
+                  {n.avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={n.avatarUrl} alt="" className="h-12 w-12 shrink-0 rounded-full bg-primary-50 object-cover" />
+                  ) : (
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-50 text-lg font-bold text-primary-900">
+                      {n.name.charAt(0).toUpperCase()}
+                    </span>
+                  )}
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-bold text-text">
                       {n.name} {n.isSelf && <span className="text-text-secondary">(you)</span>}

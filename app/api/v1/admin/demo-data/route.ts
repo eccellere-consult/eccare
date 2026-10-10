@@ -3,6 +3,7 @@ import { getAuthUser } from '@/lib/auth';
 import { z } from 'zod';
 import { getDemoStatus, loadDemoData, removeDemoData } from '@/lib/demo';
 import { setDemoUnlock } from '@/lib/demo/lock';
+import { setDemoAutoState } from '@/lib/demo/auto';
 
 // Loading writes a few thousand rows in one go; give it room on slower hosts.
 export const maxDuration = 120;
@@ -42,6 +43,8 @@ export async function DELETE(req: NextRequest) {
   if (error) return error;
   try {
     await removeDemoData();
+    // Removed on purpose: never bring it back by itself.
+    await setDemoAutoState('off');
     return NextResponse.json({ success: true, data: { removed: true } });
   } catch (err) {
     return failure(err);

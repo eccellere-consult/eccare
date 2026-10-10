@@ -78,6 +78,35 @@ const memories = {
   }),
 };
 for (const [name, svg] of Object.entries(memories)) out(`memories/${name}.svg`, svg);
+Object.assign(memories, {
+  kitchen: scene({
+    sky: ['#fbead2', '#fff6e8'], ground: ['#c9a47a', '#a98353'], caption: 'Filter coffee in the new kitchen',
+    body: `<rect y="380" width="800" height="162" fill="url(#gr)"/><rect x="90" y="150" width="250" height="150" rx="6" fill="#f0dcc0"/><rect x="110" y="170" width="95" height="110" fill="#e6caa0"/><rect x="225" y="170" width="95" height="110" fill="#e6caa0"/>` +
+      `<rect x="470" y="330" width="220" height="60" rx="6" fill="#8d6139"/><ellipse cx="580" cy="326" rx="42" ry="10" fill="#fff"/><path d="M560 326 Q580 292 600 326Z" fill="#f4e8d8"/><path d="M560 300 Q555 280 566 268 M584 300 Q579 278 590 264" stroke="#d9d3c7" stroke-width="5" fill="none" stroke-linecap="round"/>` +
+      person(400, 420, 1.7, '#d9a47c', '#8a4f7d'),
+  }),
+  videocall: scene({
+    sky: ['#1f3a4a', '#2d5368'], ground: ['#1b2a33', '#10181d'], caption: 'Sunday video call',
+    body: `<rect x="90" y="90" width="620" height="380" rx="18" fill="#10181d" stroke="#6fa2b0" stroke-width="6"/>` +
+      [[190, 220, '#d9a47c', '#2f6f8f'], [330, 220, '#c68a63', '#c0392b'], [470, 220, '#e0ac82', '#3a7d44'], [610, 220, '#b9794f', '#d9822b'], [260, 380, '#e8b996', '#6a5acd'], [400, 380, '#d9a47c', '#8a4f7d'], [540, 380, '#c68a63', '#2a7f62']]
+        .map(([x, y, sk, sh]) => `<rect x="${x - 55}" y="${y - 70}" width="110" height="${y > 300 ? 100 : 105}" rx="10" fill="#243844"/>` + person(x, y + 10, 0.9, sk, sh)).join(''),
+  }),
+  balcony: scene({
+    sky: ['#8fb6c9', '#cfe3ea'], ground: ['#5a6b4a', '#3e4d33'], caption: 'Tea on the balcony after the rain',
+    body: `<path d="M0 330 L800 330 L800 540 L0 540Z" fill="#7a7f83"/><rect y="300" width="800" height="30" fill="#5e6469"/>` +
+      [60, 160, 260, 360, 460, 560, 660, 740].map((x) => `<rect x="${x}" y="300" width="8" height="-80" fill="#4a5055"/><rect x="${x}" y="210" width="8" height="90" fill="#4a5055"/>`).join('') +
+      `<path d="M120 460 Q200 420 280 460" stroke="#9fd0e0" stroke-width="4" fill="none" opacity="0.7"/><rect x="520" y="400" width="130" height="14" rx="4" fill="#8d6139"/><rect x="540" y="414" width="8" height="70" fill="#8d6139"/><rect x="624" y="414" width="8" height="70" fill="#8d6139"/>` +
+      `<ellipse cx="585" cy="394" rx="22" ry="7" fill="#fff"/><path d="M570 390 Q585 372 600 390Z" fill="#c9884a"/>` + person(400, 460, 1.5, '#d9a47c', '#8a4f7d') + tree(150, 250, 1.1, '#3f7a3a'),
+  }),
+  ganesha: scene({
+    sky: ['#f8d7a4', '#fdeccd'], ground: ['#b8864f', '#8c6234'], caption: 'Ganesh Chaturthi at the clubhouse',
+    body: `<rect y="420" width="800" height="122" fill="url(#gr)"/><rect x="260" y="360" width="280" height="70" rx="6" fill="#c0392b"/><circle cx="400" cy="270" r="84" fill="#f6c452"/><circle cx="400" cy="270" r="64" fill="#e9a23b"/>` +
+      `<ellipse cx="400" cy="285" rx="40" ry="46" fill="#9aa5b1"/><path d="M400 300 Q440 340 420 370 Q410 340 396 322Z" fill="#9aa5b1"/><circle cx="384" cy="270" r="5" fill="#2b2220"/><circle cx="416" cy="270" r="5" fill="#2b2220"/>` +
+      [150, 230, 570, 650].map((x, i) => diya(x, 470 + (i % 2) * 20, 0.9)).join('') + person(110, 440, 1.3, '#d9a47c', '#2a7f62') + person(690, 440, 1.3, '#c68a63', '#d9534f'),
+  }),
+});
+for (const name of ['kitchen', 'videocall', 'balcony', 'ganesha']) out(`memories/${name}.svg`, memories[name]);
+
 
 // ─── Document-like SVGs ───────────────────────────────────────────────────
 
@@ -101,14 +130,19 @@ ${body}
 `;
 }
 
-out('rx/rx-bhat.svg', sheet({
-  title: 'Dr. Ramesh Bhat, MD',
-  lines: ['**General Physician - Indiranagar Clinic', 'Patient: Lakshmi Narayanan   Age: 72   F', '', '**Rx', '1. Tab Telmisartan 40 mg   1-0-0   after breakfast', '2. Tab Metformin 500 mg   1-0-1   after food', '3. Tab Atorvastatin 10 mg   0-0-1   at night', '4. Tab Ecosprin 75 mg   0-1-0   after lunch', '5. Tab Calcium + D3   0-1-0   after lunch', '', 'Review after 4 weeks with HbA1c, lipid profile.', 'Low salt, low sugar diet. Walk 30 minutes daily.'],
+out('rx/rx-varma.svg', sheet({
+  title: 'Dr. Latha Varma, MD',
+  lines: ['**General Physician - Varma Family Clinic, Kowdiar', 'Patient: Radhamani Nair   Age: 71   F', '', '**Rx', '1. Tab Telmisartan 40 mg   1-0-0   after breakfast', '2. Tab Metformin 500 mg   1-0-1   after food', '3. Tab Atorvastatin 10 mg   0-0-1   at night', '4. Tab Ecosprin 75 mg   0-1-0   after lunch', '5. Tab Calcium + D3   0-1-0   after lunch', '', 'Review after 4 weeks with HbA1c, lipid profile.', 'Low salt, low sugar diet. Walk 30 minutes daily.'],
 }));
 out('rx/rx-cardio.svg', sheet({
-  title: 'Dr. Meenakshi Rao, DM Cardiology',
+  title: 'Dr. Suresh Kumar, DM Cardiology',
   accent: '#7a1f2b',
-  lines: ['**Cardiology OPD - Manipal Hospital', 'Patient: Lakshmi Narayanan   Age: 72   F', '', '**Rx', '1. Tab Amlodipine 5 mg   0-0-1   at night', '2. Eye drops Timolol 0.5%   1 drop both eyes, morning and night', '', 'BP 134/82 today. Echo normal, EF 60%.', 'Continue present medicines. Review in 3 months.'],
+  lines: ['**Cardiology OPD - Anantha Multispeciality Hospital, Pattom', 'Patient: Radhamani Nair   Age: 71   F', '', '**Rx', '1. Tab Amlodipine 5 mg   0-0-1   at night', '', 'BP 138/86 today. Echo normal, EF 60%.', 'Continue present medicines. Review in 3 months.'],
+}));
+out('rx/rx-eye.svg', sheet({
+  title: 'Dr. Shamina Rahman, MS Ophthalmology',
+  accent: '#2f6f5a',
+  lines: ['**Kowdiar Eye & Diabetes Centre', 'Patient: Radhamani Nair   Age: 71   F', '', '**Rx', '1. Eye drops Timolol 0.5%   1 drop both eyes, morning and night', '', 'Eye pressure borderline. Recheck in 6 weeks.', 'Wait 5 minutes between different eye drops.'],
 }));
 
 function card({ title, lines, c1, c2 }) {
@@ -123,8 +157,8 @@ ${body}
 </svg>
 `;
 }
-out('cards/health-plan.svg', card({ title: 'Manipal Senior Health Plan', lines: ['Member: Lakshmi Narayanan', 'Plan ID: MSH-4471-2290', 'Valid till: 31 Mar 2027', 'Helpline: 080 4000 1111'], c1: '#0B5563', c2: '#2a8a96' }));
-out('cards/insurance.svg', card({ title: 'Senior Red Carpet Policy', lines: ['Insured: Lakshmi Narayanan', 'Policy No: P/211111/01/2026/003481', 'Sum insured: Rs 10,00,000', 'Renewal: 14 Aug 2027'], c1: '#854F0B', c2: '#c77a1f' }));
+out('cards/health-plan.svg', card({ title: 'Anantha Senior Health Plan', lines: ['Member: Radhamani Nair', 'Plan ID: ANH-4471-2290', 'Valid till: 31 Mar 2027', 'Helpline: 0471 400 1111'], c1: '#0B5563', c2: '#2a8a96' }));
+out('cards/insurance.svg', card({ title: 'Senior Red Carpet Policy', lines: ['Insured: Radhamani Nair', 'Policy No: P/211111/01/2026/003481', 'Sum insured: Rs 10,00,000', 'Renewal: 14 Aug 2027'], c1: '#854F0B', c2: '#c77a1f' }));
 
 // ─── Catalog / marketplace / rental / inspection tiles ────────────────────
 
@@ -214,60 +248,79 @@ function pdf(title, paragraphs) {
   return Buffer.from(body, 'binary');
 }
 
-out('docs/bylaws.pdf', pdf('Sunrise Residency - Association Bye-laws', [
+out('docs/bylaws.pdf', pdf('Kowdiar Gardens Residents Association - Bye-laws', [
   '**1. Name and objects',
-  'The association is called the Sunrise Residency Owners and Residents Association. Its objects are to maintain the common areas and services, to protect the safety and comfort of all residents, and to promote harmony among members.',
+  'The association is called the Kowdiar Gardens Residents Association (KGRA). Its objects are to maintain the shared roads, street lights, drains and common ground, to look after the safety and comfort of all residents, and to promote harmony among neighbours.',
   '', '**2. Membership',
-  'Every owner or tenant of a flat is a member. Each flat has one vote, exercised by the owner or the nominated adult resident of the flat.',
+  'Every owner or tenant of a house in the association area is a member. Each house has one vote, exercised by the owner or the nominated adult resident of the house.',
   '', '**3. Managing committee',
   'A committee of seven members is elected at the Annual General Meeting for a term of two years. The committee elects a President, Secretary and Treasurer from among its members.',
-  '', '**4. Maintenance charges',
-  'Monthly maintenance is payable by the 10th of each month. Charges are fixed by the general body. Delays beyond 30 days may attract interest as resolved by the committee.',
-  '', '**5. Safety and quiet hours',
-  'Quiet hours are 10:00 PM to 6:00 AM. Vehicles must be parked only in allotted slots. Elders living alone are encouraged to register with the committee so neighbours can look in on them.',
+  '', '**4. Monthly subscription',
+  'The monthly subscription covers the night watchman, street lights, road cleaning and waste-collection support. It is payable by the 10th of each month and is fixed by the general body.',
+  '', '**5. Safety and neighbourliness',
+  'Residents are asked to keep road frontage clear, to trim branches that overhang the road or power lines, and to inform the committee about elders living alone so that neighbours can look in on them.',
   '', '**6. Amendments',
   'These bye-laws may be amended by a two-thirds majority of the members present at a general meeting called for the purpose.',
 ]));
-out('docs/agm-minutes.pdf', pdf('Minutes of the Annual General Meeting - 14 June 2026', [
-  'Venue: Clubhouse, Sunrise Residency.   Present: 58 flats represented.   Chair: Mrs Meera Nair, Secretary.',
+out('docs/agm-minutes.pdf', pdf('Minutes of the Annual General Meeting - July 2026', [
+  'Venue: Community hall, Kowdiar Gardens.   Present: 41 houses represented.   Chair: Mr Raghavan Pillai, President.',
   '', '**Item 1 - Accounts for 2025-26',
-  'The Treasurer presented the audited accounts. Maintenance collected was Rs 22.4 lakh against expenses of Rs 20.9 lakh. The accounts were adopted unanimously.',
-  '', '**Item 2 - Lift modernisation',
-  'The house approved replacing the controller in Block B lift at an estimated Rs 4.2 lakh, to be funded from the sinking fund.',
-  '', '**Item 3 - Security',
-  'Night patrolling will be doubled. A panic button linked to the EC community app was demonstrated and all residents were encouraged to install it.',
+  'The Treasurer presented the audited accounts. Subscriptions collected were Rs 2.2 lakh against expenses of Rs 2.0 lakh. The accounts were adopted unanimously.',
+  '', '**Item 2 - Street lights and CCTV',
+  'The house approved replacing the old street lights with LED fittings on all four roads and installing CCTV at the two entrances, funded from the sinking fund.',
+  '', '**Item 3 - Waste and drainage',
+  'Residents will co-operate with the Haritha Karma Sena for door-to-door collection of non-biodegradable waste. The committee will request the Corporation to desilt the main drain before the monsoon.',
   '', '**Item 4 - Senior residents',
-  'The committee will keep a confidential list of residents over 70 living alone and nominate a volunteer buddy for each.',
+  'The committee will keep a confidential list of residents over 70 living alone and nominate a volunteer buddy for each. The panic alert on the EC community app was demonstrated.',
   '', '**Item 5 - Any other business',
-  'Request to repaint the clubhouse noted. Meeting closed at 12:40 PM with a vote of thanks.',
+  'Request to plan the Onam celebration early noted. Meeting closed at 12:40 PM with a vote of thanks.',
 ]));
-out('docs/water-tank-notice.pdf', pdf('Notice - Water tank cleaning', [
-  'All residents are informed that the overhead and sump tanks will be cleaned on Saturday from 9:00 AM to 3:00 PM.',
-  '', 'Water supply will be interrupted during this period. Please store drinking water in advance.',
-  '', 'Residents on the ground floor may collect drinking water from the clubhouse tap. Volunteers will help senior residents carry water on request - ask the security desk.',
-  '', 'Issued by the Management Committee.',
+out('docs/water-tank-notice.pdf', pdf('Notice - Water supply interruption', [
+  'All residents are informed that the Kerala Water Authority will interrupt supply on Saturday from 9:00 AM to 5:00 PM for pipeline work at Kowdiar junction.',
+  '', 'Please store drinking water in advance. The association has arranged two tanker loads, which will be available at the community hall.',
+  '', 'Volunteers will help senior residents carry water on request - please call the number on the notice board.',
+  '', 'Issued by the Managing Committee.',
 ]));
-out('docs/fire-safety.pdf', pdf('Fire safety circular', [
-  '**What to do in case of fire',
-  '1. Raise the alarm and call 101. 2. Do not use the lift. 3. Move to the assembly point near the clubhouse. 4. Help elders and children first.',
-  '', '**Extinguishers',
-  'Extinguishers are placed on every landing and checked every quarter. Please do not block them.',
+out('docs/fire-safety.pdf', pdf('Safety circular - monsoon and fire', [
+  '**Monsoon (Edavappathi) precautions',
+  'Clear drains and gutters, trim branches near power lines and keep the number of the KSEB emergency line (1912) handy. Do not touch fallen wires.',
+  '', '**In case of fire',
+  'Call 101. Switch off the gas regulator and the mains if it is safe to do so. Move to the road and help elders and children first.',
   '', '**Residents needing assistance',
-  'Residents who cannot use stairs are requested to inform the committee so that a volunteer can be assigned to them during a drill.',
+  'Residents who cannot move quickly are requested to inform the committee so that a neighbour can be assigned to help during an emergency.',
 ]));
 out('docs/will-checklist.pdf', pdf('Registered Will - document checklist', [
   '**Documents to keep ready',
-  '1. Identity and address proof of the testator. 2. Property documents - sale deed, khata, tax receipts. 3. Bank and investment details. 4. Names, ages and addresses of beneficiaries. 5. Two witnesses with identity proof.',
+  '1. Identity and address proof of the testator. 2. Property documents - title deed, possession and tax receipt, location certificate. 3. Bank and investment details. 4. Names, ages and addresses of beneficiaries, including those abroad. 5. Two witnesses with identity proof.',
   '', '**Process',
-  'The draft will be prepared after the first consultation, reviewed by the family, and registered at the Sub-Registrar office. Home registration can be arranged for senior citizens.',
+  'The draft will be prepared after the first consultation, reviewed by the family, and registered at the Sub-Registrar office. Home registration can be arranged for senior citizens, and children abroad may attend by power of attorney or video where permitted.',
 ]));
 out('docs/policy-comparison.pdf', pdf('Senior health insurance - comparison', [
-  '**Plans compared for Lakshmi Narayanan (72)',
+  '**Plans compared for Radhamani Nair (71)',
   'Plan A - Sum insured Rs 5 lakh, pre-existing diseases covered after 2 years, co-pay 20%.',
   'Plan B - Sum insured Rs 10 lakh, pre-existing diseases covered after 1 year, co-pay 10%.',
   'Plan C - Sum insured Rs 10 lakh, no co-pay, higher premium, includes home care.',
   '', '**Recommendation',
-  'Plan B balances premium and cover for existing hypertension and diabetes. Please confirm so the proposal can be filed.',
+  'Plan B balances premium and cover for existing hypertension and diabetes. The premium can be paid by the family from abroad. Please confirm so the proposal can be filed.',
 ]));
+
+
+// Onam scenes: a pookalam (flower carpet) and a sadya on a banana leaf.
+const petals = (cx, cy, r, n, size, color) => Array.from({ length: n }, (_, i) => {
+  const a = (i / n) * Math.PI * 2;
+  return `<ellipse cx="${(cx + Math.cos(a) * r).toFixed(1)}" cy="${(cy + Math.sin(a) * r).toFixed(1)}" rx="${size}" ry="${(size * 0.55).toFixed(1)}" transform="rotate(${((a * 180) / Math.PI).toFixed(0)} ${(cx + Math.cos(a) * r).toFixed(1)} ${(cy + Math.sin(a) * r).toFixed(1)})" fill="${color}"/>`;
+}).join('');
+out('memories/pookalam.svg', scene({
+  sky: ['#e9dcc6', '#f6eedf'], ground: ['#c7b08a', '#a98f66'], caption: 'Onam pookalam',
+  body: `<rect width="800" height="600" fill="#d8c7a6"/><circle cx="400" cy="300" r="250" fill="#f6eedf"/>` +
+    petals(400, 300, 215, 28, 26, '#f4c430') + petals(400, 300, 170, 24, 24, '#e8590c') + petals(400, 300, 128, 20, 22, '#fff8e1') + petals(400, 300, 88, 14, 20, '#c2255c') + petals(400, 300, 50, 10, 16, '#f4c430') + `<circle cx="400" cy="300" r="22" fill="#2f9e44"/>`,
+}));
+const dish = (x, y, r, c1, c2) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${c1}"/><circle cx="${x - r * 0.25}" cy="${y - r * 0.25}" r="${r * 0.45}" fill="${c2}" opacity="0.8"/>`;
+out('memories/sadya.svg', scene({
+  sky: ['#f3e7cf', '#faf3e3'], ground: ['#b8864f', '#8c6234'], caption: 'Onasadya',
+  body: `<rect width="800" height="600" fill="#d9c49a"/><path d="M60 300 Q400 120 740 300 Q400 480 60 300Z" fill="#3f8f3a"/><path d="M60 300 Q400 150 740 300" stroke="#2f7a2c" stroke-width="5" fill="none"/>` +
+    dish(300, 270, 52, '#fff8e1', '#e8e0c4') + dish(420, 250, 26, '#e8590c', '#c43d00') + dish(470, 280, 26, '#f4c430', '#d9a400') + dish(520, 250, 24, '#8a3a12', '#6a2a08') + dish(560, 300, 24, '#c2255c', '#9a1a44') +
+    dish(430, 330, 24, '#f6e7a8', '#e3cf74') + dish(500, 335, 26, '#4a8a3a', '#2f6e28') + dish(380, 340, 22, '#fffbe8', '#ece4c0') + dish(250, 340, 24, '#d9822b', '#b3631b'),
+}));
 
 console.log('Demo assets written to public/demo');
