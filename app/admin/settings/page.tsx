@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { communityApi, useCommunityData } from '@/lib/community-client';
+import { DemoDataCard } from '@/components/admin/demo-data-card';
 
 interface Settings {
   platformFeePercent: number;
@@ -164,6 +165,8 @@ export default function AdminSettingsPage() {
           )}
         </CardContent>
       </Card>
+
+      <DemoDataCard />
     </div>
   );
 }

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-label="Temple visit, Mysuru">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f7c873"/><stop offset="1" stop-color="#fbe9c4"/></linearGradient>
+<linearGradient id="gr" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c9a86a"/><stop offset="1" stop-color="#a98348"/></linearGradient>
+</defs>
+<rect width="800" height="600" fill="url(#sky)"/>
+<rect y="440" width="800" height="102" fill="url(#gr)"/><rect x="300" y="150" width="200" height="54" fill="#d2693a"/><rect x="306" y="204" width="188" height="54" fill="#b8532a"/><rect x="312" y="258" width="176" height="54" fill="#d2693a"/><rect x="318" y="312" width="164" height="54" fill="#b8532a"/><rect x="324" y="366" width="152" height="54" fill="#d2693a"/><path d="M388 150 L400 112 L412 150Z" fill="#ffd54a"/><rect x="372" y="396" width="56" height="48" fill="#4a2a18"/><g transform="translate(210 470) scale(1.2)"><circle cx="0" cy="-62" r="18" fill="#e0ac82"/><path d="M-26 40 Q-26 -36 0 -36 Q26 -36 26 40 Z" fill="#c0392b"/></g><g transform="translate(580 474) scale(1.2)"><circle cx="0" cy="-62" r="18" fill="#c68a63"/><path d="M-26 40 Q-26 -36 0 -36 Q26 -36 26 40 Z" fill="#2c6e8f"/></g>
+</svg>

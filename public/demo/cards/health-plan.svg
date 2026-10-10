@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 380" width="640" height="380" role="img" aria-label="Manipal Senior Health Plan">
+<defs><linearGradient id="c" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0B5563"/><stop offset="1" stop-color="#2a8a96"/></linearGradient></defs>
+<rect width="640" height="380" rx="22" fill="url(#c)"/>
+<text x="40" y="70" font-family="Georgia, serif" font-size="32" fill="#fff" font-weight="700">Manipal Senior Health Plan</text>
+<text x="40" y="130" font-family="Helvetica, Arial, sans-serif" font-size="22" fill="#fff">Member: Lakshmi Narayanan</text>
+<text x="40" y="164" font-family="Helvetica, Arial, sans-serif" font-size="22" fill="#fff">Plan ID: MSH-4471-2290</text>
+<text x="40" y="198" font-family="Helvetica, Arial, sans-serif" font-size="22" fill="#fff">Valid till: 31 Mar 2027</text>
+<text x="40" y="232" font-family="Helvetica, Arial, sans-serif" font-size="22" fill="#fff">Helpline: 080 4000 1111</text>
+<rect x="40" y="300" width="90" height="42" rx="6" fill="rgba(255,255,255,0.25)"/>
+<text x="470" y="336" font-family="Helvetica, Arial, sans-serif" font-size="15" fill="#fff" opacity="0.8">Sample card - demo data</text>
+</svg>

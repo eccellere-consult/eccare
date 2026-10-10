@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-label="The grandchildren visit">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9ed8f0"/><stop offset="1" stop-color="#e8f6fb"/></linearGradient>
+<linearGradient id="gr" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fcf7a"/><stop offset="1" stop-color="#5ea84a"/></linearGradient>
+</defs>
+<rect width="800" height="600" fill="url(#sky)"/>
+<circle cx="680" cy="110" r="52" fill="#ffe27a"/><rect y="400" width="800" height="142" fill="url(#gr)"/><g transform="translate(260 440) scale(1.7)"><circle cx="0" cy="-62" r="18" fill="#e0ac82"/><path d="M-26 40 Q-26 -36 0 -36 Q26 -36 26 40 Z" fill="#f08a24"/></g><g transform="translate(380 452) scale(1.1)"><circle cx="0" cy="-62" r="18" fill="#e8b996"/><path d="M-26 40 Q-26 -36 0 -36 Q26 -36 26 40 Z" fill="#3c8dbc"/></g><g transform="translate(450 458) scale(0.95)"><circle cx="0" cy="-62" r="18" fill="#e8b996"/><path d="M-26 40 Q-26 -36 0 -36 Q26 -36 26 40 Z" fill="#d65a8b"/></g><g transform="translate(540 440) scale(1.7)"><circle cx="0" cy="-62" r="18" fill="#a9744f"/><path d="M-26 40 Q-26 -36 0 -36 Q26 -36 26 40 Z" fill="#6a5acd"/></g>
+</svg>
