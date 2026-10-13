@@ -6,7 +6,7 @@ import { buildCommunity } from './community';
 import { buildServices, DEMO_GERIATRIC_NAMES, DEMO_NEWSLETTER_TITLES } from './services';
 import { buildAdminContent, DEMO_QUOTE_MARKER, DEMO_WELLNESS_URLS } from './admin';
 import { getDemoProtection, invalidateDemoProtection, setDemoUnlock } from './lock';
-import { DEMO_COMMUNITY_CODE, DEMO_COMMUNITY_NAME, DEMO_EMAIL_DOMAIN, MAIN_ACCOUNTS, Tally } from './helpers';
+import { DEMO_VERSION, DEMO_COMMUNITY_CODE, DEMO_COMMUNITY_NAME, DEMO_EMAIL_DOMAIN, MAIN_ACCOUNTS, Tally } from './helpers';
 
 export interface DemoLoadResult {
   counts: Record<string, number>;
@@ -130,7 +130,7 @@ export async function loadDemoData(adminId: string): Promise<DemoLoadResult> {
 
   // A fresh demo always starts locked, and counts as loaded for first-run purposes.
   await setDemoUnlock(null);
-  await prisma.platformSettings.upsert({ where: { id: 'singleton' }, update: { demoAutoLoad: 'done' }, create: { id: 'singleton', demoAutoLoad: 'done' } });
+  await prisma.platformSettings.upsert({ where: { id: 'singleton' }, update: { demoAutoLoad: 'done', demoVersion: DEMO_VERSION }, create: { id: 'singleton', demoAutoLoad: 'done', demoVersion: DEMO_VERSION } });
 
   // A family account that has a lapsed subscription would be locked out of the demo.
   // (An account with no subscription row is never blocked, so none is created.)

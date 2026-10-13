@@ -132,17 +132,17 @@ ${body}
 
 out('rx/rx-varma.svg', sheet({
   title: 'Dr. Latha Varma, MD',
-  lines: ['**General Physician - Varma Family Clinic, Kowdiar', 'Patient: Radhamani Nair   Age: 71   F', '', '**Rx', '1. Tab Telmisartan 40 mg   1-0-0   after breakfast', '2. Tab Metformin 500 mg   1-0-1   after food', '3. Tab Atorvastatin 10 mg   0-0-1   at night', '4. Tab Ecosprin 75 mg   0-1-0   after lunch', '5. Tab Calcium + D3   0-1-0   after lunch', '', 'Review after 4 weeks with HbA1c, lipid profile.', 'Low salt, low sugar diet. Walk 30 minutes daily.'],
+  lines: ['**General Physician - Varma Family Clinic, Kowdiar', 'Patient: Devaki Nair   Age: 71   F', '', '**Rx', '1. Tab Telmisartan 40 mg   1-0-0   after breakfast', '2. Tab Metformin 500 mg   1-0-1   after food', '3. Tab Atorvastatin 10 mg   0-0-1   at night', '4. Tab Ecosprin 75 mg   0-1-0   after lunch', '5. Tab Calcium + D3   0-1-0   after lunch', '', 'Review after 4 weeks with HbA1c, lipid profile.', 'Low salt, low sugar diet. Walk 30 minutes daily.'],
 }));
 out('rx/rx-cardio.svg', sheet({
   title: 'Dr. Suresh Kumar, DM Cardiology',
   accent: '#7a1f2b',
-  lines: ['**Cardiology OPD - Anantha Multispeciality Hospital, Pattom', 'Patient: Radhamani Nair   Age: 71   F', '', '**Rx', '1. Tab Amlodipine 5 mg   0-0-1   at night', '', 'BP 138/86 today. Echo normal, EF 60%.', 'Continue present medicines. Review in 3 months.'],
+  lines: ['**Cardiology OPD - Anantha Multispeciality Hospital, Pattom', 'Patient: Devaki Nair   Age: 71   F', '', '**Rx', '1. Tab Amlodipine 5 mg   0-0-1   at night', '', 'BP 138/86 today. Echo normal, EF 60%.', 'Continue present medicines. Review in 3 months.'],
 }));
 out('rx/rx-eye.svg', sheet({
   title: 'Dr. Shamina Rahman, MS Ophthalmology',
   accent: '#2f6f5a',
-  lines: ['**Kowdiar Eye & Diabetes Centre', 'Patient: Radhamani Nair   Age: 71   F', '', '**Rx', '1. Eye drops Timolol 0.5%   1 drop both eyes, morning and night', '', 'Eye pressure borderline. Recheck in 6 weeks.', 'Wait 5 minutes between different eye drops.'],
+  lines: ['**Kowdiar Eye & Diabetes Centre', 'Patient: Devaki Nair   Age: 71   F', '', '**Rx', '1. Eye drops Timolol 0.5%   1 drop both eyes, morning and night', '', 'Eye pressure borderline. Recheck in 6 weeks.', 'Wait 5 minutes between different eye drops.'],
 }));
 
 function card({ title, lines, c1, c2 }) {
@@ -157,8 +157,8 @@ ${body}
 </svg>
 `;
 }
-out('cards/health-plan.svg', card({ title: 'Anantha Senior Health Plan', lines: ['Member: Radhamani Nair', 'Plan ID: ANH-4471-2290', 'Valid till: 31 Mar 2027', 'Helpline: 0471 400 1111'], c1: '#0B5563', c2: '#2a8a96' }));
-out('cards/insurance.svg', card({ title: 'Senior Red Carpet Policy', lines: ['Insured: Radhamani Nair', 'Policy No: P/211111/01/2026/003481', 'Sum insured: Rs 10,00,000', 'Renewal: 14 Aug 2027'], c1: '#854F0B', c2: '#c77a1f' }));
+out('cards/health-plan.svg', card({ title: 'Anantha Senior Health Plan', lines: ['Member: Devaki Nair', 'Plan ID: ANH-4471-2290', 'Valid till: 31 Mar 2027', 'Helpline: 0471 400 1111'], c1: '#0B5563', c2: '#2a8a96' }));
+out('cards/insurance.svg', card({ title: 'Senior Red Carpet Policy', lines: ['Insured: Devaki Nair', 'Policy No: P/211111/01/2026/003481', 'Sum insured: Rs 10,00,000', 'Renewal: 14 Aug 2027'], c1: '#854F0B', c2: '#c77a1f' }));
 
 // ─── Catalog / marketplace / rental / inspection tiles ────────────────────
 
@@ -296,7 +296,7 @@ out('docs/will-checklist.pdf', pdf('Registered Will - document checklist', [
   'The draft will be prepared after the first consultation, reviewed by the family, and registered at the Sub-Registrar office. Home registration can be arranged for senior citizens, and children abroad may attend by power of attorney or video where permitted.',
 ]));
 out('docs/policy-comparison.pdf', pdf('Senior health insurance - comparison', [
-  '**Plans compared for Radhamani Nair (71)',
+  '**Plans compared for Devaki Nair (71)',
   'Plan A - Sum insured Rs 5 lakh, pre-existing diseases covered after 2 years, co-pay 20%.',
   'Plan B - Sum insured Rs 10 lakh, pre-existing diseases covered after 1 year, co-pay 10%.',
   'Plan C - Sum insured Rs 10 lakh, no co-pay, higher premium, includes home care.',

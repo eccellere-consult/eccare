@@ -220,6 +220,9 @@ model PlatformSettings {
   // once, then 'done'; 'off' if an admin removed it on purpose, so it never comes back by itself.
   demoAutoLoad      String   @default("pending")
   demoAutoLoadAt    DateTime?
+  // Which version of the demo content is loaded (lib/demo/helpers.ts DEMO_VERSION). When the code
+  // has a newer version the demo refreshes itself once, so content changes reach production.
+  demoVersion       Int      @default(0)
   updatedAt         DateTime @updatedAt
   updatedById       String?
 }

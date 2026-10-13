@@ -73,6 +73,7 @@ export async function setDemoUnlock(minutes: number | null): Promise<void> {
  *  and talking to the voice assistant (its actions go through /voice/execute, which stays blocked). */
 const ALLOWED_WHILE_LOCKED = [
   /^\/api\/v1\/auth\/(login|logout|pin-login|send-otp|verify-otp|forgot-password)$/,
+  /^\/api\/v1\/demo\/login$/,
   /^\/api\/v1\/emergency\/sos$/,
   /^\/api\/v1\/community\/panic$/,
   /^\/api\/v1\/voice\/(process|transcribe)$/,

@@ -1,5 +1,6 @@
 'use client';
 
+import { DemoSignIn } from '@/components/demo-signin';
 import { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -820,6 +821,8 @@ function LoginPageContent() {
             ) : (
               <CreateAccountForm onSuccess={handleSuccess} t={t} uiLanguage={uiLanguage} />
             )}
+
+            {view === 'signin' && <DemoSignIn onSuccess={handleSuccess} />}
 
             <button
               type="button"
