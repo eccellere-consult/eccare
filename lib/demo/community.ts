@@ -262,7 +262,7 @@ export async function buildCommunity(p: DemoPeople, prov: DemoProviders, tally: 
     [u.rahul, 'Of course, ammae. I will come at 9:30.', 27],
     [u.sheela, 'Navaratri pooja starts tomorrow at 6:30 PM at the community hall. Do come!', 20],
     [u.fathima, 'I will help with the prasad.', 19],
-    [u.girija, 'Wonderful. Radhamani, you will sing the Narayaneeyam verses on the first day?', 18],
+    [u.girija, 'Wonderful. Devaki, you will sing the Narayaneeyam verses on the first day?', 18],
     [elderId, 'Only if you all sing along.', 17],
     [u.francis, 'Has anyone seen a small brown umbrella near the community hall?', 12],
     [u.anjana, 'I think I saw it at the watchman’s room, Francis uncle.', 11],
@@ -509,7 +509,7 @@ export async function buildCommunity(p: DemoPeople, prov: DemoProviders, tally: 
   const hello = (from: string, to: string, message: string, hAgo: number, read: boolean) => ({ neighborhoodId: nId, fromUserId: from, toUserId: to, message, readAt: read ? hoursAgo(hAgo - 1) : null, createdAt: hoursAgo(hAgo) });
   await prisma.greeting.createMany({
     data: [
-      hello(u.girija, elderId, 'Good morning, Radhamani! See you at the park.', 1.2, false),
+      hello(u.girija, elderId, 'Good morning, Devaki! See you at the park.', 1.2, false),
       hello(u.fathima, elderId, 'Thinking of you. Hope the knee is better.', 30, true),
       hello(elderId, u.george, 'Thank you for the chess game yesterday!', 44, true),
       hello(u.abhijith, familyId, 'Happy to take Amma for her hospital visit on Thursday.', 8, true),

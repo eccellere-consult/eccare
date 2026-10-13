@@ -116,7 +116,7 @@ export function DemoDataCard() {
             <p className="mt-1 text-xs text-text-secondary">
               While locked, every change from the three test logins and the supporting providers is refused, so a demo cannot
               be spoiled. Sign-in, the emergency buttons and talking to the voice assistant still work. It locks itself again
-              when the time is up; allow a few seconds for a change to take effect. Admins are never restricted.
+              when the time is up; allow a few seconds for a change to take effect. Admins are never restricted. Anyone can open these logins from “Try the demo” on the sign-in page, so keep editing locked unless you are presenting.
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
               {status.locked ? (

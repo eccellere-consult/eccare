@@ -6,6 +6,8 @@ import { localTimeToUtcDate, todayIST } from '@/lib/medicine-slots';
  *  accounts are matched by e-mail. */
 export const DEMO_EMAIL_DOMAIN = 'demo.eccare.in';
 export const DEMO_COMMUNITY_CODE = 'SUNR26';
+/** Bump when the demo content changes; a loaded demo of an older version refreshes itself once. */
+export const DEMO_VERSION = 2;
 export const DEMO_COMMUNITY_NAME = 'Kowdiar Gardens Residents Association';
 export const DEMO_COMMUNITY_SHORT = 'KGRA';
 export const DEMO_LOCALITY = 'Kowdiar';
@@ -20,7 +22,7 @@ export const DEMO_LNG = 76.9591;
 export const DEMO_PASSWORD = 'Demo@EC2026';
 
 export const MAIN_ACCOUNTS = {
-  elder: { email: 'elder@eccare.in', password: 'Elder@EC2026', name: 'Radhamani Nair' },
+  elder: { email: 'elder@eccare.in', password: 'Elder@EC2026', name: 'Devaki Nair' },
   family: { email: 'family@eccare.in', password: 'Family@EC2026', name: 'Arun Nair' },
   provider: { email: 'provider@eccare.in', password: 'Provider@EC2026', name: 'Dhanwantari Pharmacy' },
 } as const;
