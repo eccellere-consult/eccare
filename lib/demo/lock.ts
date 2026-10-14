@@ -74,6 +74,9 @@ export async function setDemoUnlock(minutes: number | null): Promise<void> {
 const ALLOWED_WHILE_LOCKED = [
   /^\/api\/v1\/auth\/(login|logout|pin-login|send-otp|verify-otp|forgot-password)$/,
   /^\/api\/v1\/demo\/login$/,
+  // Marking a dose taken or snoozing it is how the medicine reminder is answered; refusing it would
+  // leave the alert nagging for ever.
+  /^\/api\/v1\/health\/reminders\/(confirm-batch|[^/]+)$/,
   /^\/api\/v1\/emergency\/sos$/,
   /^\/api\/v1\/community\/panic$/,
   /^\/api\/v1\/voice\/(process|transcribe)$/,

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { FlaskConical, Lock, LockOpen } from 'lucide-react';
+import { FlaskConical, Lock, LockOpen, Link2, Copy, Check, MessageCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { communityApi, useCommunityData } from '@/lib/community-client';
@@ -26,6 +26,18 @@ const ROLE_LABEL: Record<string, string> = { elder: 'Elder', caregiver: 'Family'
 export function DemoDataCard() {
   const { data: status, loading, reload } = useCommunityData<DemoStatus>('/admin/demo-data');
   const [lockBusy, setLockBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const shareUrl = typeof window === 'undefined' ? '' : `${window.location.origin}/demo`;
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2500);
+    } catch {
+      window.prompt('Copy this link:', shareUrl);
+    }
+  }
   const [busy, setBusy] = useState<'load' | 'remove' | null>(null);
   const [error, setError] = useState('');
   const [result, setResult] = useState<DemoResult | null>(null);
@@ -116,7 +128,7 @@ export function DemoDataCard() {
             <p className="mt-1 text-xs text-text-secondary">
               While locked, every change from the three test logins and the supporting providers is refused, so a demo cannot
               be spoiled. Sign-in, the emergency buttons and talking to the voice assistant still work. It locks itself again
-              when the time is up; allow a few seconds for a change to take effect. Admins are never restricted. Anyone can open these logins from “Try the demo” on the sign-in page, so keep editing locked unless you are presenting.
+              when the time is up; allow a few seconds for a change to take effect. Admins are never restricted. Anyone can open the demo elder from the sign-in page or the shareable link, so keep editing locked unless you are presenting.
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
               {status.locked ? (
@@ -127,6 +139,41 @@ export function DemoDataCard() {
               ) : (
                 <Button size="sm" disabled={lockBusy} onClick={() => setUnlock(null)}>Lock now</Button>
               )}
+            </div>
+          </div>
+        )}
+
+        {status?.loaded && (
+          <div className="mt-4 rounded-xl border border-border p-3">
+            <p className="flex items-center gap-2 text-sm font-semibold text-text">
+              <Link2 className="h-4 w-4 text-primary-600" />
+              Shareable demo link
+            </p>
+            <p className="mt-1 text-xs text-text-secondary">
+              Anyone who opens this link is signed in as the demo elder and lands on the home screen — no password, nothing to
+              type. The same demo is on the sign-in page under “Try the demo”.
+            </p>
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+              <input
+                readOnly
+                value={shareUrl}
+                onFocus={(e) => e.currentTarget.select()}
+                aria-label="Shareable demo link"
+                className="min-h-11 flex-1 rounded-lg border border-border bg-surface px-3 text-sm text-text"
+              />
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={copyLink}>
+                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />} {copied ? 'Copied' : 'Copy'}
+                </Button>
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(`Try the EC demo for elders — no sign-up needed: ${shareUrl}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-sm font-semibold text-text hover:bg-primary-50"
+                >
+                  <MessageCircle className="h-4 w-4" /> WhatsApp
+                </a>
+              </div>
             </div>
           </div>
         )}
