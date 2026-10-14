@@ -2,7 +2,7 @@
 <defs><linearGradient id="c" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0B5563"/><stop offset="1" stop-color="#2a8a96"/></linearGradient></defs>
 <rect width="640" height="380" rx="22" fill="url(#c)"/>
 <text x="40" y="70" font-family="Georgia, serif" font-size="32" fill="#fff" font-weight="700">Anantha Senior Health Plan</text>
-<text x="40" y="130" font-family="Helvetica, Arial, sans-serif" font-size="22" fill="#fff">Member: Radhamani Nair</text>
+<text x="40" y="130" font-family="Helvetica, Arial, sans-serif" font-size="22" fill="#fff">Member: Devaki Nair</text>
 <text x="40" y="164" font-family="Helvetica, Arial, sans-serif" font-size="22" fill="#fff">Plan ID: ANH-4471-2290</text>
 <text x="40" y="198" font-family="Helvetica, Arial, sans-serif" font-size="22" fill="#fff">Valid till: 31 Mar 2027</text>
 <text x="40" y="232" font-family="Helvetica, Arial, sans-serif" font-size="22" fill="#fff">Helpline: 0471 400 1111</text>
