@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { Check, Loader2, MapPin } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 export interface CapturedLocation {
   lat: number;
@@ -16,7 +18,7 @@ export interface LocationCaptureLabels {
   failed: string;
 }
 
-/** One big button that asks the phone where it is. For someone standing at their own front door:
+/** One button that asks the phone where it is. For someone standing at their own front door:
  *  tap, allow, done. Reports the position upward; it does not save anything by itself, so it can
  *  be used before an account is a member of anything (the join page sends it with the request). */
 export function LocationCapture({
@@ -52,23 +54,21 @@ export function LocationCapture({
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <p className="text-base text-text-secondary">{labels.help}</p>
-      <button
+    <div className="flex flex-col gap-2">
+      <p className="text-sm text-text-secondary">{labels.help}</p>
+      <Button
         type="button"
+        variant="outline"
+        size="lg"
         onClick={capture}
         disabled={busy}
         aria-live="polite"
-        className={
-          value
-            ? 'flex min-h-16 w-full items-center justify-center gap-3 rounded-2xl border-2 border-success-600 bg-success-50 px-4 py-3 text-lg font-bold text-success-600'
-            : 'flex min-h-16 w-full items-center justify-center gap-3 rounded-2xl border-2 border-primary-600 bg-surface px-4 py-3 text-lg font-bold text-primary-900 hover:bg-primary-50 disabled:opacity-60'
-        }
+        className={cn('w-full', value && 'border-success-600 bg-success-50 text-success-600 hover:bg-success-50')}
       >
-        {busy ? <Loader2 className="h-6 w-6 animate-spin" /> : value ? <Check className="h-6 w-6" /> : <MapPin className="h-6 w-6" />}
+        {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : value ? <Check className="h-5 w-5" /> : <MapPin className="h-5 w-5" />}
         {busy ? labels.finding : value ? labels.saved : labels.button}
-      </button>
-      {failed && <p className="text-base text-danger-600">{labels.failed}</p>}
+      </Button>
+      {failed && <p className="text-sm text-danger-600">{labels.failed}</p>}
     </div>
   );
 }
