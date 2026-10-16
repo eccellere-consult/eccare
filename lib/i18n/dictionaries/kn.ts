@@ -199,6 +199,11 @@ const kn: Record<TranslationKey, string> = {
   'login.register.passwordPlaceholder': 'ಕನಿಷ್ಠ 8 ಅಕ್ಷರಗಳು',
   'login.register.creatingAccount': 'ಖಾತೆ ರಚಿಸಲಾಗುತ್ತಿದೆ...',
   'login.register.createAccount': 'ಖಾತೆ ರಚಿಸಿ',
+  'login.register.next': 'ಮುಂದೆ: ನಿಮ್ಮ ಸಮುದಾಯವನ್ನು ಆರಿಸಿ',
+  'login.register.stepTwo': 'ಬಹುತೇಕ ಮುಗಿಯಿತು — ನೀವು ಎಲ್ಲಿ ವಾಸಿಸುತ್ತೀರಿ?',
+  'login.register.back': 'ಹಿಂದೆ',
+  'login.register.finish': 'ಮುಗಿಸಿ ಮತ್ತು ನನ್ನ ಖಾತೆ ರಚಿಸಿ',
+  'login.register.approvalNote': 'ನಿಮ್ಮ ಸಮಿತಿ ನಿಮ್ಮನ್ನು ಖಚಿತಪಡಿಸುತ್ತದೆ. ನೀವು ತಕ್ಷಣವೇ EC ಬಳಸಲು ಪ್ರಾರಂಭಿಸಬಹುದು.',
   'login.familyPlan.title': 'ಫ್ಯಾಮಿಲಿ ಪ್ಲಾನ್',
   'login.familyPlan.helper':
     'ನಿಮ್ಮ ಹಿರಿಯರ ಸ್ವಂತ ಖಾತೆ ಯಾವಾಗಲೂ ಉಚಿತ. ಇದು ಕೇವಲ ನಿಮ್ಮ ಸ್ವಂತ ಕುಟುಂಬ ಪ್ರವೇಶವನ್ನು ಒಳಗೊಂಡಿದೆ, ಪ್ರಾರಂಭದಲ್ಲಿ {trialDays}-ದಿನಗಳ ಉಚಿತ ಟ್ರಯಲ್‌ನೊಂದಿಗೆ.',

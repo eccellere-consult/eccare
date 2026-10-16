@@ -29,6 +29,7 @@ import { PROVIDER_CATEGORIES } from '@/lib/provider-categories';
 import { ShareLocationButton } from '@/components/share-location-button';
 import { SUPPORTED_LANGUAGES } from '@/lib/i18n/languages';
 import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
+import { CommunityJoinFields, useJoinFields, type CommunityOption } from '@/components/community/join-fields';
 
 const LOGIN_LANGUAGE_STORAGE_KEY = 'ec-login-language';
 
@@ -397,6 +398,16 @@ function CreateAccountForm({
   const [prices, setPrices] = useState<{ familyMonthlyPrice: number; familyAnnualPrice: number; trialDays: number } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // An elder's sign-up has a second and last step — their community — and the account is only created
+  // once that is complete, so nobody is left without one.
+  const [step, setStep] = useState<'details' | 'community'>('details');
+  const join = useJoinFields((q) =>
+    fetch(`/api/v1/auth/community-options?q=${encodeURIComponent(q)}`)
+      .then((r) => r.json())
+      .then((j) => (j.success ? (j.data as CommunityOption[]) : [])),
+  );
+  const fill = (key: TranslationKey, values: Record<string, string | number>) =>
+    Object.entries(values).reduce((text, [k, v]) => text.replace(`{${k}}`, String(v)), t(key));
 
   // The account type, decided by age for a person — the same rule the server applies
   // (lib/age.ts), shown live so it's no surprise. null until a valid date is chosen.
@@ -415,46 +426,63 @@ function CreateAccountForm({
     setAssistanceTypes((prev) => (prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]));
   }
 
-  async function register(e: React.FormEvent) {
-    e.preventDefault();
-    setError('');
+  const resolvedCategory = category === 'other' ? otherCategory.trim() : category;
+
+  /** The checks on the details step; shows the first problem and says whether all is well. */
+  function detailsOk(): boolean {
     if (accountKind === 'person') {
       if (!dob) {
         setError(t('login.dob.required'));
-        return;
+        return false;
       }
       if (dobCheck && !dobCheck.ok) {
         setError(DOB_ERROR_MESSAGES[dobCheck.reason]);
-        return;
+        return false;
       }
     }
     if (!phone.trim()) {
       setError(t('login.errors.enterPhone'));
-      return;
+      return false;
     }
     if (!isValidAnyPhone(phone)) {
       setError(role === 'caregiver' ? ANY_PHONE_FORMAT_MESSAGE : PHONE_FORMAT_MESSAGE);
-      return;
+      return false;
     }
     if (isInternationalPhone(phone) && role !== 'caregiver') {
       setError(INTERNATIONAL_ROLE_MESSAGE);
-      return;
+      return false;
     }
     if (email.trim() && !isValidEmail(email)) {
       setError(EMAIL_FORMAT_MESSAGE);
-      return;
+      return false;
     }
     if (password.length < 8) {
       setError(t('login.errors.passwordTooShort'));
-      return;
+      return false;
     }
-    const resolvedCategory = category === 'other' ? otherCategory.trim() : category;
     if (role === 'provider' && (!businessName.trim() || !resolvedCategory)) {
       setError(t('login.errors.businessNameCategoryRequired'));
-      return;
+      return false;
     }
     if (role === 'caregiver' && isVolunteer && (!availability || assistanceTypes.length === 0)) {
       setError(t('login.errors.selectAvailabilityAndHelp'));
+      return false;
+    }
+    return true;
+  }
+
+  async function register(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    if (step === 'details') {
+      if (!detailsOk()) return;
+      // An elder goes on to choose their community; the account is created only after that.
+      if (role === 'elder') {
+        setStep('community');
+        return;
+      }
+    } else if (!join.target || !join.houseCheck?.ok) {
+      setError(join.houseCheck && !join.houseCheck.ok ? join.houseCheck.message : t(join.target ? 'community.house.required' : 'community.join.chooseFirst'));
       return;
     }
     setLoading(true);
@@ -485,6 +513,15 @@ function CreateAccountForm({
           // picker — no separate control needed. Meaningless for other roles
           // (their portals aren't translated), so only sent for elder.
           ...(role === 'elder' ? { language: uiLanguage } : {}),
+          ...(role === 'elder' && join.target && join.houseCheck?.ok
+            ? {
+                community: {
+                  ...join.target,
+                  flatNumber: join.houseCheck.value,
+                  ...(join.location ? { lat: join.location.lat, lng: join.location.lng } : {}),
+                },
+              }
+            : {}),
         },
         t,
       );
@@ -494,6 +531,35 @@ function CreateAccountForm({
     } finally {
       setLoading(false);
     }
+  }
+
+  if (step === 'community') {
+    return (
+      <form onSubmit={register} className="flex flex-col gap-5">
+        <div className="flex flex-col gap-1">
+          <button
+            type="button"
+            onClick={() => { setStep('details'); setError(''); }}
+            disabled={loading}
+            className="self-start text-sm font-semibold text-primary-600 hover:underline"
+          >
+            ← {t('login.register.back')}
+          </button>
+          <h2 className="text-xl font-bold text-text">{t('login.register.stepTwo')}</h2>
+        </div>
+        <CommunityJoinFields f={join} t={t} fill={fill} />
+        {join.target && (
+          <>
+            <p className="text-sm text-text-secondary">{t('login.register.approvalNote')}</p>
+            {error && <p role="alert" className="text-base font-semibold text-danger-600">{error}</p>}
+            <Button type="submit" size="lg" disabled={loading || !join.ready} className="h-auto min-h-14 whitespace-normal py-3 text-lg leading-snug">
+              {loading ? t('login.register.creatingAccount') : t('login.register.finish')}
+            </Button>
+          </>
+        )}
+        {!join.target && error && <p role="alert" className="text-base font-semibold text-danger-600">{error}</p>}
+      </form>
+    );
   }
 
   return (
@@ -738,7 +804,7 @@ function CreateAccountForm({
       )}
       {error && <p className="text-sm text-danger-600">{error}</p>}
       <Button type="submit" disabled={loading} size="lg">
-        {loading ? t('login.register.creatingAccount') : t('login.register.createAccount')}
+        {loading ? t('login.register.creatingAccount') : role === 'elder' ? t('login.register.next') : t('login.register.createAccount')}
       </Button>
     </form>
   );
@@ -768,11 +834,11 @@ function LoginPageContent() {
     router.refresh();
   }
 
-  // Right after creating an account, an elder is taken straight to choosing their community —
-  // the one step that turns an empty app into their neighbourhood — instead of being left to find it.
+  // An elder's community is chosen as the last step of creating the account itself, so by now they
+  // already belong to one; everyone goes straight home.
   function handleRegistered(role: string) {
     const next = params.get('next');
-    router.push(next || (role === 'elder' ? '/community/join?welcome=1' : ROLE_HOME[role] || '/login'));
+    router.push(next || ROLE_HOME[role] || '/login');
     router.refresh();
   }
 

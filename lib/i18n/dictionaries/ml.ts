@@ -199,6 +199,11 @@ const ml: Record<TranslationKey, string> = {
   'login.register.passwordPlaceholder': 'കുറഞ്ഞത് 8 അക്ഷരങ്ങൾ',
   'login.register.creatingAccount': 'അക്കൗണ്ട് സൃഷ്ടിക്കുന്നു...',
   'login.register.createAccount': 'അക്കൗണ്ട് സൃഷ്ടിക്കുക',
+  'login.register.next': 'അടുത്തത്: നിങ്ങളുടെ കമ്മ്യൂണിറ്റി തിരഞ്ഞെടുക്കുക',
+  'login.register.stepTwo': 'ഏകദേശം കഴിഞ്ഞു — നിങ്ങൾ എവിടെയാണ് താമസിക്കുന്നത്?',
+  'login.register.back': 'പിന്നോട്ട്',
+  'login.register.finish': 'പൂർത്തിയാക്കി എന്റെ അക്കൗണ്ട് സൃഷ്ടിക്കുക',
+  'login.register.approvalNote': 'നിങ്ങളുടെ കമ്മിറ്റി നിങ്ങളെ സ്ഥിരീകരിക്കും. നിങ്ങൾക്ക് ഉടൻ തന്നെ EC ഉപയോഗിച്ചു തുടങ്ങാം.',
   'login.familyPlan.title': 'ഫാമിലി പ്ലാൻ',
   'login.familyPlan.helper':
     'നിങ്ങളുടെ മുതിർന്ന വ്യക്തിയുടെ സ്വന്തം അക്കൗണ്ട് എപ്പോഴും സൗജന്യമാണ്. ഇത് നിങ്ങളുടെ സ്വന്തം കുടുംബ പ്രവേശനത്തെ മാത്രം ഉൾക്കൊള്ളുന്നു, തുടക്കത്തിൽ {trialDays}-ദിവസത്തെ സൗജന്യ ട്രയലോടെ.',
