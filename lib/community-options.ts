@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db';
-import { commonHousePrefix } from '@/lib/house-location';
+import { communityHousePrefix } from '@/lib/house-location';
 
 export interface CommunityOptionRow {
   id: string;
@@ -8,7 +8,7 @@ export interface CommunityOptionRow {
   pincode: string | null;
   description: string | null;
   memberCount: number;
-  /** The block or association most houses share ("KGRA"), so a person only types the number. */
+  /** The block or association every house is written with ("KGRA"), so a person only types the number. */
   housePrefix: string | null;
   /** Set only for a signed-in person who already asked to join, or is in, this community. */
   joined: 'approved' | 'pending' | null;
@@ -42,6 +42,7 @@ export async function listJoinableCommunities(opts: {
       city: true,
       pincode: true,
       description: true,
+      housePrefix: true,
       members: { where: { status: { in: ['approved', 'pending'] } }, select: { userId: true, status: true, flatNumber: true } },
     },
     take: 60,
@@ -59,7 +60,7 @@ export async function listJoinableCommunities(opts: {
         pincode: c.pincode,
         description: c.description,
         memberCount: approved.length,
-        housePrefix: commonHousePrefix(approved.map((m) => m.flatNumber)),
+        housePrefix: communityHousePrefix(c.housePrefix, approved.map((m) => m.flatNumber)),
         joined: mine ? (mine.status as 'approved' | 'pending') : null,
         near,
       };

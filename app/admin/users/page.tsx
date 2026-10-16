@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/db';
 import { getServerUser } from '@/lib/server-session';
 import { UsersTable } from '@/components/admin/users-table';
-import { commonHousePrefix } from '@/lib/house-location';
+import { communityHousePrefix } from '@/lib/house-location';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,7 +37,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
     prisma.user.count({ where: unassignedWhere }),
     prisma.user.count({ where: waitingWhere }),
     prisma.neighborhood.findMany({
-      select: { id: true, name: true, city: true, pincode: true, members: { where: { status: 'approved' }, select: { flatNumber: true } } },
+      select: { id: true, name: true, city: true, pincode: true, housePrefix: true, members: { where: { status: 'approved' }, select: { flatNumber: true } } },
       orderBy: { name: 'asc' },
     }),
   ]);
@@ -47,7 +47,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
     name: h.name,
     place: [h.city, h.pincode].filter(Boolean).join(' · '),
     members: h.members.length,
-    housePrefix: commonHousePrefix(h.members.map((m) => m.flatNumber)),
+    housePrefix: communityHousePrefix(h.housePrefix, h.members.map((m) => m.flatNumber)),
   }));
 
   return (

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { uploadToStorage, isStorageConfigured } from '@/lib/storage';
+import { normalizeHousePrefix } from '@/lib/house';
 import { isValidPhone, isValidEmail, normalizePhone, PHONE_FORMAT_MESSAGE, EMAIL_FORMAT_MESSAGE } from '@/lib/validation';
 
 const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
@@ -42,12 +43,19 @@ export async function POST(req: NextRequest) {
   const applicantPhoneRaw = str('applicantPhone');
   const applicantEmail = str('applicantEmail') || undefined;
   const applicantDesignation = str('applicantDesignation') || undefined;
+  const housePrefixRaw = str('housePrefix');
+  const noHousePrefix = str('noHousePrefix') === 'true';
 
   if (!placeName) return fail('VALIDATION', 'Please enter the name of the place or association.');
   if (!pincode) return fail('VALIDATION', 'Please enter the PIN code.');
   if (!applicantName) return fail('VALIDATION', 'Please enter your name.');
   if (!applicantPhoneRaw || !isValidPhone(applicantPhoneRaw)) return fail('VALIDATION', PHONE_FORMAT_MESSAGE);
   if (applicantEmail && !isValidEmail(applicantEmail)) return fail('VALIDATION', EMAIL_FORMAT_MESSAGE);
+  // Every address in the community is written with this code (GRA-27), so it is settled here, by the
+  // person applying for the community, unless its houses have names instead of numbers.
+  const prefix = normalizeHousePrefix(housePrefixRaw);
+  if (!prefix.ok) return fail('VALIDATION', prefix.message);
+  if (!prefix.value && !noHousePrefix) return fail('VALIDATION', 'Please enter the house prefix your community uses, like GRA — or tick that your houses have names, not numbers.');
 
   const lat = latRaw ? Number(latRaw) : undefined;
   const lng = lngRaw ? Number(lngRaw) : undefined;
@@ -91,6 +99,7 @@ export async function POST(req: NextRequest) {
         applicantPhone: normalizePhone(applicantPhoneRaw),
         applicantEmail,
         applicantDesignation,
+        housePrefix: prefix.value,
       },
     });
 

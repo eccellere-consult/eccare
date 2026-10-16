@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { HousePrefixField } from '@/components/community/house-prefix-field';
 import { communityApi, useCommunityData } from '@/lib/community-client';
 
 interface Neighborhood {
@@ -25,6 +26,7 @@ export default function AdminCommunitiesPage() {
   );
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', city: '', pincode: '' });
+  const [housePrefix, setHousePrefix] = useState('');
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState('');
 
@@ -37,8 +39,10 @@ export default function AdminCommunitiesPage() {
         name: form.name,
         city: form.city || undefined,
         pincode: form.pincode || undefined,
+        housePrefix: housePrefix || undefined,
       });
       setForm({ name: '', city: '', pincode: '' });
+      setHousePrefix('');
       setShowForm(false);
       reload();
     } catch (err) {
@@ -82,6 +86,7 @@ export default function AdminCommunitiesPage() {
                     />
                   </div>
                 ))}
+                <HousePrefixField value={housePrefix} onChange={setHousePrefix} />
                 {formError && <p className="text-sm text-danger-600">{formError}</p>}
                 <Button type="submit" disabled={busy || !form.name.trim()}>
                   {busy ? 'Creating…' : 'Create community'}

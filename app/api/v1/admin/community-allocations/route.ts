@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { getAuthUser } from '@/lib/auth';
 import { normalizeHouseInput } from '@/lib/house';
-import { commonHousePrefix, pinHouseIfMissing } from '@/lib/house-location';
+import { communityHousePrefix, pinHouseIfMissing } from '@/lib/house-location';
 import { reconcileMemberWithDirectory } from '@/lib/directory-link';
 
 const fail = (code: string, message: string, status = 400) =>
@@ -39,10 +39,10 @@ export async function POST(req: NextRequest) {
 
   const neighborhood = await prisma.neighborhood.findUnique({
     where: { id: neighborhoodId },
-    select: { id: true, name: true, members: { where: { status: 'approved' }, select: { flatNumber: true } } },
+    select: { id: true, name: true, housePrefix: true, members: { where: { status: 'approved' }, select: { flatNumber: true } } },
   });
   if (!neighborhood) return fail('NOT_FOUND', 'That community could not be found.', 404);
-  const defaultBlock = commonHousePrefix(neighborhood.members.map((m) => m.flatNumber)) ?? undefined;
+  const defaultBlock = communityHousePrefix(neighborhood.housePrefix, neighborhood.members.map((m) => m.flatNumber)) ?? undefined;
 
   const accounts = await prisma.user.findMany({
     where: { id: { in: users.map((u) => u.userId) } },

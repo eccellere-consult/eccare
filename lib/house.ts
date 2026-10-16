@@ -94,3 +94,14 @@ export function houseKey(value: string | null | undefined): string {
 export function capitals(value: string): string {
   return value.replace(/\s+/g, ' ').trim().toUpperCase();
 }
+
+export const HOUSE_PREFIX_MESSAGE = 'The house prefix is the short code every house here starts with, like GRA — letters and numbers only, up to 10, starting with a letter.';
+
+/** The block / association code a community writes every house with ("gra", "GRA-" and "G R A" all
+ *  become "GRA"). Blank means the community has no common prefix (its houses have names). */
+export function normalizeHousePrefix(raw: string | null | undefined): { ok: true; value: string | null } | { ok: false; message: string } {
+  const text = (raw ?? '').replace(/[\s\-/.]+/g, '').toUpperCase();
+  if (!text) return { ok: true, value: null };
+  if (!/^[A-Z][A-Z0-9]{0,9}$/.test(text)) return { ok: false, message: HOUSE_PREFIX_MESSAGE };
+  return { ok: true, value: text };
+}

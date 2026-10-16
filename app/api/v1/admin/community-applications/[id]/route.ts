@@ -90,6 +90,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           name: application.placeName,
           city: application.city,
           pincode: application.pincode,
+          housePrefix: application.housePrefix,
           joinCode,
           members: { create: { userId: applicantUser.id, role: 'admin' } },
         },

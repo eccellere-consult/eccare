@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { getAuthUser } from '@/lib/auth';
+import { normalizeHousePrefix } from '@/lib/house';
 
 const patchSchema = z.object({
   name: z.string().min(1).max(160).optional(),
   city: z.string().max(80).optional(),
   pincode: z.string().max(12).optional(),
   description: z.string().max(2000).optional(),
+  // Blank clears it (the community's houses have names, not a common prefix).
+  housePrefix: z.string().max(20).optional(),
 });
 
 const forbidden = () =>
@@ -64,7 +67,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   return NextResponse.json({ success: true, data: neighborhood });
 }
 
-/** Platform admin: rename/re-describe a community. No DELETE — deleting a
+/** Platform admin: rename/re-describe a community, or change its house prefix. No DELETE — deleting a
  *  neighborhood would cascade-remove essentially its entire resident-authored
  *  history (members, events, helplines, vendors, queries, notices, chat), which is
  *  too large a blast radius for a single admin action without a much more
@@ -85,6 +88,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const existing = await prisma.neighborhood.findUnique({ where: { id }, select: { id: true } });
   if (!existing) return notFound();
 
-  const neighborhood = await prisma.neighborhood.update({ where: { id }, data: parsed.data });
+  const { housePrefix: prefixInput, ...rest } = parsed.data;
+  const prefix = prefixInput === undefined ? null : normalizeHousePrefix(prefixInput);
+  if (prefix && !prefix.ok) {
+    return NextResponse.json({ success: false, error: { code: 'INVALID_INPUT', message: prefix.message } }, { status: 400 });
+  }
+  const neighborhood = await prisma.neighborhood.update({
+    where: { id },
+    data: { ...rest, ...(prefix && prefix.ok ? { housePrefix: prefix.value } : {}) },
+  });
   return NextResponse.json({ success: true, data: neighborhood });
 }

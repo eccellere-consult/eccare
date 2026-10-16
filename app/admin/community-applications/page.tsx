@@ -24,6 +24,7 @@ interface ApplicationItem {
   lat: number | null;
   lng: number | null;
   numberOfFamilies: number | null;
+  housePrefix: string | null;
   applicantName: string;
   applicantPhone: string;
   applicantEmail: string | null;
@@ -114,6 +115,10 @@ export default function AdminCommunityApplicationsPage() {
                   <p className="mt-3 text-sm text-text-secondary">
                     {a.applicantName}{a.applicantDesignation ? ` (${a.applicantDesignation})` : ''} · {a.applicantPhone}
                     {a.applicantEmail ? ` · ${a.applicantEmail}` : ''}
+                  </p>
+                  <p className="mt-1 text-sm text-text-secondary">
+                    House prefix:{' '}
+                    {a.housePrefix ? <span className="font-bold text-text">{a.housePrefix}-</span> : <span>none — houses have names</span>}
                   </p>
                   {a.numberOfFamilies !== null && (
                     <p className="mt-1 text-sm text-text-secondary">{a.numberOfFamilies} families</p>

@@ -43,3 +43,9 @@ export function commonHousePrefix(houses: Array<string | null>): string | null {
   const best = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
   return best && best[1] >= 2 ? best[0] : null;
 }
+
+/** The prefix a community's houses are written with: the one set when the community was registered,
+ *  or — for communities that never set one — the block most of its houses already share. */
+export function communityHousePrefix(stored: string | null | undefined, houses: Array<string | null>): string | null {
+  return stored || commonHousePrefix(houses);
+}
