@@ -74,10 +74,10 @@ export default function JoinCommunityPage() {
             <span className="flex h-16 w-16 items-center justify-center rounded-full bg-success-50">
               <Check className="h-9 w-9 text-success-600" />
             </span>
-            <p className="text-xl font-bold text-text">{fill('community.join.requestSentNamed', { name: done.name })}</p>
+            <p className="text-lg font-bold text-text">{fill('community.join.requestSentNamed', { name: done.name })}</p>
             {f.location && (
-              <p className="flex items-center gap-2 text-base font-semibold text-success-600">
-                <Check className="h-5 w-5" /> {t('community.join.locationSaved')}
+              <p className="flex items-center gap-2 text-sm font-semibold text-success-600">
+                <Check className="h-4 w-4" /> {t('community.join.locationSaved')}
               </p>
             )}
             <Button size="lg" className="mt-2 w-full" onClick={() => router.push(homePath)}>
@@ -93,9 +93,9 @@ export default function JoinCommunityPage() {
     <CommunityPageFrame title={t('community.join.title')} subtitle={t('community.join.subtitle')}>
       <div className="flex max-w-lg flex-col gap-4">
         {welcome && (
-          <div className="flex flex-col gap-2 rounded-2xl border border-accent-100 bg-accent-50 p-4">
-            <p className="text-lg font-bold text-accent-900">{t('community.join.welcome')}</p>
-            <button type="button" onClick={() => router.push(homePath)} className="self-start text-base font-semibold text-accent-900 underline">
+          <div className="flex flex-col gap-2 rounded-xl border border-accent-100 bg-accent-50 p-4">
+            <p className="text-base font-bold text-accent-900">{t('community.join.welcome')}</p>
+            <button type="button" onClick={() => router.push(homePath)} className="self-start text-sm font-semibold text-accent-900 underline">
               {t('community.join.skipForNow')}
             </button>
           </div>
@@ -105,8 +105,8 @@ export default function JoinCommunityPage() {
 
         {f.target && (
           <>
-            {error && <p role="alert" className="text-lg font-semibold text-danger-600">{error}</p>}
-            <Button type="button" size="lg" disabled={busy || !f.ready} onClick={submit} className="h-auto min-h-16 w-full whitespace-normal py-3 text-xl leading-snug">
+            {error && <p role="alert" className="text-sm text-danger-600">{error}</p>}
+            <Button type="button" size="lg" disabled={busy || !f.ready} onClick={submit} className="h-auto min-h-14 w-full whitespace-normal py-3">
               {busy ? t('community.join.joining') : f.selected ? fill('community.join.joinNamed', { name: f.selected.name }) : t('community.join.joinCommunity')}
             </Button>
           </>

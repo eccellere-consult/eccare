@@ -545,19 +545,19 @@ function CreateAccountForm({
           >
             ← {t('login.register.back')}
           </button>
-          <h2 className="text-xl font-bold text-text">{t('login.register.stepTwo')}</h2>
+          <h2 className="text-lg font-bold text-text">{t('login.register.stepTwo')}</h2>
         </div>
         <CommunityJoinFields f={join} t={t} fill={fill} />
         {join.target && (
           <>
             <p className="text-sm text-text-secondary">{t('login.register.approvalNote')}</p>
-            {error && <p role="alert" className="text-base font-semibold text-danger-600">{error}</p>}
-            <Button type="submit" size="lg" disabled={loading || !join.ready} className="h-auto min-h-14 whitespace-normal py-3 text-lg leading-snug">
+            {error && <p role="alert" className="text-sm text-danger-600">{error}</p>}
+            <Button type="submit" size="lg" disabled={loading || !join.ready} className="h-auto min-h-14 whitespace-normal py-3">
               {loading ? t('login.register.creatingAccount') : t('login.register.finish')}
             </Button>
           </>
         )}
-        {!join.target && error && <p role="alert" className="text-base font-semibold text-danger-600">{error}</p>}
+        {!join.target && error && <p role="alert" className="text-sm text-danger-600">{error}</p>}
       </form>
     );
   }
