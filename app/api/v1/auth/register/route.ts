@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { createToken, hashPassword, setSessionCookie, toSafeUser } from '@/lib/auth';
 import { z } from 'zod';
+import { capitals } from '@/lib/house';
 import { isValidEmail, isValidAnyPhone, isInternationalPhone, normalizeAnyPhone, EMAIL_FORMAT_MESSAGE, ANY_PHONE_FORMAT_MESSAGE, INTERNATIONAL_ROLE_MESSAGE } from '@/lib/validation';
 import { getPricingContent } from '@/lib/pricing-content';
 import { isSupportedLanguage } from '@/lib/i18n/languages';
@@ -118,7 +119,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { email, password, name, businessName, category, backupContactName, backupContactPhone, lat, lng, isVolunteer, volunteerAvailability, volunteerAssistanceTypes, billingCycle, language } = parsed.data;
+  const { email, password, category, lat, lng, isVolunteer, volunteerAvailability, volunteerAssistanceTypes, billingCycle, language } = parsed.data;
+  // Names are kept in capitals everywhere, so a name looks the same on every screen.
+  const name = capitals(parsed.data.name);
+  const businessName = parsed.data.businessName ? capitals(parsed.data.businessName) : parsed.data.businessName;
+  const backupContactName = parsed.data.backupContactName ? capitals(parsed.data.backupContactName) : parsed.data.backupContactName;
+  const { backupContactPhone } = parsed.data;
   const role = effectiveRole(parsed.data)!; // superRefine guarantees a usable role
   const dateOfBirth = role === 'provider' ? undefined : checkDateOfBirthStrict(parsed.data.dateOfBirth!);
   const phone = normalizeAnyPhone(parsed.data.phone);

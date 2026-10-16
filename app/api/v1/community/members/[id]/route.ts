@@ -1,3 +1,4 @@
+import { pinHouseIfMissing } from '@/lib/house-location';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
@@ -67,6 +68,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           : { status: 'rejected', rejectionReason: parsed.data.rejectionReason ?? null },
       include: { user: { select: { id: true, name: true, phone: true } } },
     });
+    // The location the person shared while asking to join becomes their house's pin on approval
+    // (unless the house is already pinned), then it is no longer needed on the request.
+    if (parsed.data.action === 'approve' && target.joinLat !== null && target.joinLng !== null && target.flatNumber) {
+      await pinHouseIfMissing({
+        neighborhoodId: target.neighborhoodId,
+        house: target.flatNumber,
+        userId: target.userId,
+        lat: Number(target.joinLat),
+        lng: Number(target.joinLng),
+      }).catch(() => false);
+    }
+    if (target.joinLat !== null || target.joinLng !== null) {
+      await prisma.neighborhoodMember.update({ where: { id }, data: { joinLat: null, joinLng: null } }).catch(() => {});
+    }
     return ok(updated);
   }
 

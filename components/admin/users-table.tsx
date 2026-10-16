@@ -1,8 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Trash2, AlertTriangle } from 'lucide-react';
+import { Trash2, AlertTriangle, UserPlus, Check, Loader2 } from 'lucide-react';
+import { AllocatePanel, type AllocCommunity } from '@/components/admin/allocate-panel';
+import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +24,81 @@ interface UserRow {
   createdAt: string;
   dateOfBirth: string | null;
   caregiverException: boolean;
+  memberships: { status: 'approved' | 'pending'; house: string | null; communityId: string; communityName: string }[];
+}
+type View = 'all' | 'unassigned' | 'waiting';
+
+const JOINABLE_ROLES: Role[] = ['elder', 'caregiver'];
+
+/** Where a person stands with communities, with a one-tap Approve for a request that is waiting
+ *  (it uses the house they gave; if they gave none, the Allocate panel asks for it). */
+function CommunityCell({ user, onAllocate }: { user: UserRow; onAllocate: (user: UserRow) => void }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  if (!JOINABLE_ROLES.includes(user.role)) return <span className="text-text-secondary">—</span>;
+  const approved = user.memberships.filter((m) => m.status === 'approved');
+  const pending = user.memberships.filter((m) => m.status === 'pending');
+
+  async function approve(m: UserRow['memberships'][number]) {
+    if (!m.house) {
+      onAllocate(user);
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      const res = await fetch('/api/v1/admin/community-allocations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ neighborhoodId: m.communityId, role: 'member', users: [{ userId: user.id, house: m.house }] }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Could not approve.');
+      const r = json.data.results[0];
+      if (r?.status === 'skipped') throw new Error(r.reason || 'Could not approve.');
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not approve.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-start gap-1">
+      {approved.map((m) => (
+        <span key={m.communityId} className="flex items-center gap-1.5 text-text">
+          <Check className="h-3.5 w-3.5 text-success-600" />
+          <span className="font-semibold">{m.communityName}</span>
+          {m.house && <span className="text-xs text-text-secondary">· {m.house}</span>}
+        </span>
+      ))}
+      {pending.map((m) => (
+        <span key={m.communityId} className="flex flex-wrap items-center gap-2">
+          <Badge variant="accent">Waiting</Badge>
+          <span className="text-text">
+            {m.communityName}
+            {m.house && <span className="text-xs text-text-secondary"> · {m.house}</span>}
+          </span>
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => approve(m)}>
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} Approve
+          </Button>
+        </span>
+      ))}
+      {approved.length === 0 && pending.length === 0 && (
+        <span className="flex items-center gap-2">
+          <Badge variant="muted">Not in a community</Badge>
+          <button type="button" onClick={() => onAllocate(user)} className="text-xs font-semibold text-primary-600 hover:underline">
+            Allocate
+          </button>
+        </span>
+      )}
+      {error && <span className="text-xs text-danger-600">{error}</span>}
+    </div>
+  );
 }
 
 const ROLE_VARIANT: Record<Role, 'default' | 'accent' | 'muted' | 'success'> = {
@@ -95,9 +173,23 @@ function AgeCell({ user }: { user: UserRow }) {
  *  disabled) — the fastest way to guarantee "select all" can never catch
  *  your own account is to never make it selectable. The server route
  *  (POST /admin/users/bulk-delete) also strips it defensively either way. */
-export function UsersTable({ users, currentUserId }: { users: UserRow[]; currentUserId: string }) {
+export function UsersTable({
+  users,
+  currentUserId,
+  communities,
+  view,
+  counts,
+}: {
+  users: UserRow[];
+  currentUserId: string;
+  communities: AllocCommunity[];
+  view: View;
+  counts: { unassigned: number; waiting: number };
+}) {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Who the Allocate panel is open for (a snapshot, so the list refreshing underneath doesn't change it).
+  const [allocating, setAllocating] = useState<UserRow[] | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [confirmText, setConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
@@ -106,6 +198,13 @@ export function UsersTable({ users, currentUserId }: { users: UserRow[]; current
   const selectable = users.filter((u) => u.id !== currentUserId);
   const allSelected = selectable.length > 0 && selectable.every((u) => selected.has(u.id));
   const selectedUsers = selectable.filter((u) => selected.has(u.id));
+  const selectedJoinable = selectedUsers.filter((u) => JOINABLE_ROLES.includes(u.role));
+
+  const tabs: { key: View; label: string; href: string; count?: number }[] = [
+    { key: 'all', label: 'All users', href: '/admin/users' },
+    { key: 'unassigned', label: 'Not in a community', href: '/admin/users?show=unassigned', count: counts.unassigned },
+    { key: 'waiting', label: 'Waiting for approval', href: '/admin/users?show=waiting', count: counts.waiting },
+  ];
 
   function toggleAll() {
     setSelected(allSelected ? new Set() : new Set(selectable.map((u) => u.id)));
@@ -150,16 +249,60 @@ export function UsersTable({ users, currentUserId }: { users: UserRow[]; current
 
   return (
     <>
+      <div className="mt-4 flex flex-wrap gap-2" role="tablist" aria-label="Filter users">
+        {tabs.map((t) => (
+          <Link
+            key={t.key}
+            href={t.href}
+            role="tab"
+            aria-selected={view === t.key}
+            className={cn(
+              'flex items-center gap-2 rounded-full border-2 px-4 py-2 text-sm font-semibold transition-colors',
+              view === t.key ? 'border-primary-600 bg-primary-50 text-primary-900' : 'border-border text-text-secondary hover:border-primary-300',
+            )}
+          >
+            {t.label}
+            {t.count !== undefined && t.count > 0 && (
+              <span className={cn('rounded-full px-2 py-0.5 text-xs', t.key === 'waiting' ? 'bg-accent-light text-accent-dark' : 'bg-primary-100 text-primary-900')}>{t.count}</span>
+            )}
+          </Link>
+        ))}
+      </div>
+
       {selected.size > 0 && (
-        <Card className="mt-4 border-danger-100 bg-danger-50">
+        <Card className="mt-4 border-primary-100 bg-primary-50">
           <CardContent className="flex flex-wrap items-center gap-3 py-4">
             <p className="text-sm font-semibold text-text">{selected.size} account{selected.size > 1 ? 's' : ''} selected</p>
-            <Button size="sm" variant="danger" className="ml-auto" onClick={openConfirm}>
+            {selectedJoinable.length > 0 && (
+              <Button size="sm" className="ml-auto" onClick={() => setAllocating(selectedJoinable)}>
+                <UserPlus className="h-4 w-4" /> Add {selectedJoinable.length} to a community
+              </Button>
+            )}
+            <Button size="sm" variant="danger" className={selectedJoinable.length > 0 ? '' : 'ml-auto'} onClick={openConfirm}>
               <Trash2 className="h-4 w-4" /> Delete selected
             </Button>
             <Button size="sm" variant="outline" onClick={() => setSelected(new Set())}>Clear</Button>
           </CardContent>
         </Card>
+      )}
+
+      {allocating && (
+        <AllocatePanel
+          // A new set of people starts a fresh panel (house boxes, results).
+          key={allocating.map((u) => u.id).join(',')}
+          people={allocating.map((u) => ({
+            id: u.id,
+            name: u.name,
+            phone: u.phone,
+            email: u.email,
+            pending: u.memberships.filter((m) => m.status === 'pending').map((m) => ({ communityId: m.communityId, house: m.house })),
+          }))}
+          communities={communities}
+          onClose={() => {
+            setAllocating(null);
+            setSelected(new Set());
+          }}
+        />
       )}
 
       {confirming && (
@@ -231,6 +374,7 @@ export function UsersTable({ users, currentUserId }: { users: UserRow[]; current
                   <th className="px-4 py-3 font-semibold">Name</th>
                   <th className="px-4 py-3 font-semibold">Contact</th>
                   <th className="px-4 py-3 font-semibold">Role</th>
+                  <th className="px-4 py-3 font-semibold">Community</th>
                   <th className="px-4 py-3 font-semibold">Age</th>
                   <th className="px-4 py-3 font-semibold">Joined</th>
                   <th className="px-4 py-3 font-semibold">Actions</th>
@@ -259,6 +403,9 @@ export function UsersTable({ users, currentUserId }: { users: UserRow[]; current
                       <td className="px-4 py-3 text-text-secondary">{user.phone ?? user.email ?? '—'}</td>
                       <td className="px-4 py-3">
                         <Badge variant={ROLE_VARIANT[user.role]}>{user.role}</Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <CommunityCell user={user} onAllocate={(u) => setAllocating([u])} />
                       </td>
                       <td className="px-4 py-3">
                         {user.role === 'elder' || user.role === 'caregiver' ? <AgeCell user={user} /> : <span className="text-text-secondary">—</span>}

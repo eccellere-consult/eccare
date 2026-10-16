@@ -51,8 +51,9 @@ export function normalizeHouseInput(raw: string | null | undefined, opts: { defa
     };
   }
 
-  // A house name: must actually contain letters, not just punctuation/digit soup.
-  if (/\p{L}{2,}/u.test(text)) return { ok: true, value: text };
+  // A house name: must actually contain letters, not just punctuation/digit soup. Kept in capitals,
+  // like everything else a person types about themselves.
+  if (/\p{L}{2,}/u.test(text)) return { ok: true, value: text.toUpperCase() };
   return { ok: false, message: HOUSE_REQUIRED_MESSAGE };
 }
 
@@ -87,4 +88,9 @@ export function houseKey(value: string | null | undefined): string {
     ? lower.replace(/\b(house|flat|apartment|apt|unit|villa|plot|door|gr|no|number)\b\.?/g, '')
     : lower;
   return stripped.replace(/[^a-z0-9]/g, '');
+}
+
+/** Tidies a name or label into capitals with single spaces ("raman  nair " -> "RAMAN NAIR"). */
+export function capitals(value: string): string {
+  return value.replace(/\s+/g, ' ').trim().toUpperCase();
 }
