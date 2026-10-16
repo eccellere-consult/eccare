@@ -199,6 +199,11 @@ const hi: Record<TranslationKey, string> = {
   'login.register.passwordPlaceholder': 'कम से कम 8 अक्षर',
   'login.register.creatingAccount': 'खाता बनाया जा रहा है...',
   'login.register.createAccount': 'खाता बनाएं',
+  'login.register.next': 'आगे: अपना समुदाय चुनें',
+  'login.register.stepTwo': 'लगभग हो गया — आप कहाँ रहते हैं?',
+  'login.register.back': 'पीछे',
+  'login.register.finish': 'पूरा करें और मेरा खाता बनाएँ',
+  'login.register.approvalNote': 'आपकी समिति आपको मंज़ूरी देगी। आप EC तुरंत इस्तेमाल करना शुरू कर सकते हैं।',
   'login.familyPlan.title': 'फैमिली प्लान',
   'login.familyPlan.helper':
     'आपके बुज़ुर्ग का खाता हमेशा मुफ़्त रहता है। यह सिर्फ़ आपकी अपनी फैमिली एक्सेस को कवर करता है, शुरुआत में {trialDays}-दिन के मुफ़्त ट्रायल के साथ।',

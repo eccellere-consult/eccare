@@ -7,6 +7,7 @@ import { isValidEmail, isValidAnyPhone, isInternationalPhone, normalizeAnyPhone,
 import { getPricingContent } from '@/lib/pricing-content';
 import { isSupportedLanguage } from '@/lib/i18n/languages';
 import { checkDateOfBirth, roleForAge, DOB_ERROR_MESSAGES } from '@/lib/age';
+import { planCommunityJoin, saveMembership, finishJoin } from '@/lib/community-join';
 
 // Phone is the primary identifier — required, and the default way people sign in.
 // Email is optional: useful for password-recovery links and directory contact, but
@@ -63,6 +64,18 @@ const schema = z
     // the column's own "en" default) since this is a nice-to-have, not
     // something that should ever block account creation.
     language: z.string().optional().refine((v) => v === undefined || isSupportedLanguage(v), 'Invalid language.'),
+    // An elder's community — chosen from the list (neighborhoodId) or by its code — with their house
+    // and, optionally, where it is. Required for an elder (checked below): registration is only
+    // accepted once it is complete, so nobody is left without a community. Ignored for other roles.
+    community: z
+      .object({
+        neighborhoodId: z.string().min(1).optional(),
+        joinCode: z.string().min(4).max(32).optional(),
+        flatNumber: z.string().max(40).optional(),
+        lat: z.number().optional(),
+        lng: z.number().optional(),
+      })
+      .optional(),
   })
   .superRefine((data, ctx) => {
     if (data.role !== 'provider') {
@@ -128,6 +141,14 @@ export async function POST(req: NextRequest) {
   const role = effectiveRole(parsed.data)!; // superRefine guarantees a usable role
   const dateOfBirth = role === 'provider' ? undefined : checkDateOfBirthStrict(parsed.data.dateOfBirth!);
   const phone = normalizeAnyPhone(parsed.data.phone);
+
+  // An elder's community is checked up front, so the account and the membership are saved together
+  // (below) or not at all.
+  const plan = role === 'elder' ? await planCommunityJoin(parsed.data.community ?? {}) : null;
+  if (plan && !plan.ok) {
+    return NextResponse.json({ success: false, error: { code: plan.code, message: plan.message } }, { status: plan.httpStatus });
+  }
+  const joinPlan = plan && plan.ok ? plan : null;
   const passwordHash = await hashPassword(password);
 
   // A pre-existing row can be a real, already-claimed account, or an unclaimed
@@ -176,18 +197,22 @@ export async function POST(req: NextRequest) {
           { status: 409 },
         );
       }
-      user = await prisma.user.update({
-        where: { id: existing.id },
-        data: {
-          passwordHash,
-          name,
-          phone,
-          // An invite may already carry one (family invite asks for the elder's);
-          // never overwrite it — it's locked once set.
-          ...(dateOfBirth && !existing.dateOfBirth ? { dateOfBirth } : {}),
-          email: email ?? existing.email,
-          ...(role === 'elder' && language ? { language } : {}),
-        },
+      user = await prisma.$transaction(async (tx) => {
+        const claimed = await tx.user.update({
+          where: { id: existing.id },
+          data: {
+            passwordHash,
+            name,
+            phone,
+            // An invite may already carry one (family invite asks for the elder's);
+            // never overwrite it — it's locked once set.
+            ...(dateOfBirth && !existing.dateOfBirth ? { dateOfBirth } : {}),
+            email: email ?? existing.email,
+            ...(role === 'elder' && language ? { language } : {}),
+          },
+        });
+        if (joinPlan) await saveMembership(tx, joinPlan, claimed.id);
+        return claimed;
       });
     } else if (role === 'provider') {
       // A pending ServiceProvider profile is created in the same transaction so a
@@ -224,8 +249,13 @@ export async function POST(req: NextRequest) {
         return created;
       });
     } else {
-      user = await prisma.user.create({
-        data: { email, phone, passwordHash, name, role, dateOfBirth, ...(role === 'elder' && language ? { language } : {}) },
+      // An elder's account and their place in a community are saved in one step.
+      user = await prisma.$transaction(async (tx) => {
+        const created = await tx.user.create({
+          data: { email, phone, passwordHash, name, role, dateOfBirth, ...(role === 'elder' && language ? { language } : {}) },
+        });
+        if (joinPlan) await saveMembership(tx, joinPlan, created.id);
+        return created;
       });
     }
   } catch (err) {
@@ -259,8 +289,20 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  if (joinPlan) await finishJoin(joinPlan, user.id);
+
   const token = await createToken(user.id, user.role);
-  const res = NextResponse.json({ success: true, data: { user: toSafeUser(user), token } }, { status: 201 });
+  const res = NextResponse.json(
+    {
+      success: true,
+      data: {
+        user: toSafeUser(user),
+        token,
+        ...(joinPlan ? { community: { name: joinPlan.neighborhoodName, status: joinPlan.status, house: joinPlan.flatNumber } } : {}),
+      },
+    },
+    { status: 201 },
+  );
   setSessionCookie(res, token);
   return res;
 }

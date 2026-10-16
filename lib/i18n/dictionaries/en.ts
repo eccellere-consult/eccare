@@ -206,6 +206,11 @@ const en = {
   'login.register.passwordPlaceholder': 'At least 8 characters',
   'login.register.creatingAccount': 'Creating account...',
   'login.register.createAccount': 'Create account',
+  'login.register.next': 'Next: choose your community',
+  'login.register.stepTwo': 'Almost done — where do you live?',
+  'login.register.back': 'Back',
+  'login.register.finish': 'Finish and create my account',
+  'login.register.approvalNote': 'Your committee will confirm you. You can start using EC right away.',
   'login.familyPlan.title': 'Family plan',
   'login.familyPlan.helper':
     "Your elder's own account is always free. This covers your own family access, with a {trialDays}-day free trial to start.",
