@@ -3,12 +3,14 @@ import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { getAuthUser } from '@/lib/auth';
 import { generateJoinCode } from '@/lib/neighborhood-codes';
+import { normalizeHousePrefix } from '@/lib/house';
 
 const schema = z.object({
   name: z.string().min(1).max(160),
   city: z.string().max(80).optional(),
   pincode: z.string().max(12).optional(),
   description: z.string().max(2000).optional(),
+  housePrefix: z.string().max(20).optional(),
 });
 
 const forbidden = () =>
@@ -59,6 +61,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const prefix = normalizeHousePrefix(parsed.data.housePrefix);
+  if (!prefix.ok) {
+    return NextResponse.json({ success: false, error: { code: 'INVALID_INPUT', message: prefix.message } }, { status: 400 });
+  }
+
   // Retry on the (unlikely) chance of a join-code collision.
   let neighborhood = null;
   for (let attempt = 0; attempt < 5 && !neighborhood; attempt++) {
@@ -69,6 +76,7 @@ export async function POST(req: NextRequest) {
     neighborhood = await prisma.neighborhood.create({
       data: {
         ...parsed.data,
+        housePrefix: prefix.value,
         joinCode,
         members: { create: { userId: auth.userId, role: 'admin' } },
       },

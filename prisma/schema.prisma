@@ -1208,6 +1208,9 @@ model Neighborhood {
   // Short human-shareable code so a resident can join without an admin doing manual
   // linking for every household.
   joinCode    String   @unique
+  // The block / association code every house here is written with ("GRA" -> GRA-27), set when the
+  // community is registered, so a resident only types the number. Null: houses have names.
+  housePrefix String?  @db.VarChar(10)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -1257,6 +1260,8 @@ model CommunityApplication {
   lat                  Decimal?                   @db.Decimal(10, 7)
   lng                  Decimal?                   @db.Decimal(10, 7)
   numberOfFamilies     Int?
+  // The house prefix the applicant wants every address written with (see Neighborhood.housePrefix).
+  housePrefix          String?                    @db.VarChar(10)
   applicantName        String
   applicantPhone       String
   applicantEmail       String?

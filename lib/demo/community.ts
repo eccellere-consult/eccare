@@ -45,7 +45,7 @@ export async function buildCommunity(p: DemoPeople, prov: DemoProviders, tally: 
 
   await prisma.neighborhood.create({
     data: {
-      id: nId, name: DEMO_COMMUNITY_NAME, city: DEMO_CITY, pincode: DEMO_PINCODE, joinCode: DEMO_COMMUNITY_CODE, createdAt: at(-102),
+      id: nId, name: DEMO_COMMUNITY_NAME, city: DEMO_CITY, pincode: DEMO_PINCODE, housePrefix: 'KGRA', joinCode: DEMO_COMMUNITY_CODE, createdAt: at(-102),
       description: `A residents’ association of about 60 independent houses on four roads in ${DEMO_LOCALITY}, near Kowdiar Park — families who have lived here for generations alongside newer neighbours from across Kerala and beyond, and many elders whose children work abroad. On EC since July.`,
     },
   });
@@ -77,7 +77,7 @@ export async function buildCommunity(p: DemoPeople, prov: DemoProviders, tally: 
   await prisma.communityApplication.createMany({
     data: [
       {
-        placeName: DEMO_COMMUNITY_NAME, applicantType: 'Residents’ association', city: DEMO_CITY, pincode: DEMO_PINCODE, numberOfFamilies: 60,
+        placeName: DEMO_COMMUNITY_NAME, applicantType: 'Residents’ association', city: DEMO_CITY, pincode: DEMO_PINCODE, numberOfFamilies: 60, housePrefix: 'KGRA',
         applicantName: 'Mini Varghese', applicantPhone: phoneOf('mini'), applicantEmail: `mini@${DEMO_EMAIL_DOMAIN}`, applicantDesignation: 'Secretary',
         status: 'approved', localityCode: 'EC-695003-KGRA', neighborhoodId: nId, reviewedById: p.adminId, reviewedAt: at(-102), createdAt: at(-106),
       },

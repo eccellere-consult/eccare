@@ -7,6 +7,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { HousePrefixField } from '@/components/community/house-prefix-field';
+import { normalizeHousePrefix } from '@/lib/house';
 
 const APPLICANT_TYPES = ["Residents' Association", 'Panchayat / Local Government Body', 'Housing Society', 'Other'];
 
@@ -25,6 +27,8 @@ export default function CommunityRegistrationPage() {
   const [lng, setLng] = useState('');
   const [locating, setLocating] = useState(false);
   const [numberOfFamilies, setNumberOfFamilies] = useState('');
+  const [housePrefix, setHousePrefix] = useState('');
+  const [noHousePrefix, setNoHousePrefix] = useState(false);
   const [applicantName, setApplicantName] = useState('');
   const [applicantPhone, setApplicantPhone] = useState('');
   const [applicantEmail, setApplicantEmail] = useState('');
@@ -70,6 +74,15 @@ export default function CommunityRegistrationPage() {
       setError('Please fill in the required fields.');
       return;
     }
+    const prefix = normalizeHousePrefix(housePrefix);
+    if (!prefix.ok) {
+      setError(prefix.message);
+      return;
+    }
+    if (!prefix.value && !noHousePrefix) {
+      setError('Please enter the house prefix your community uses, like GRA — or tick that your houses have names, not numbers.');
+      return;
+    }
     if (!proofFile) {
       setError('Please attach proof of authority.');
       return;
@@ -84,6 +97,8 @@ export default function CommunityRegistrationPage() {
     if (lat) form.append('lat', lat);
     if (lng) form.append('lng', lng);
     if (numberOfFamilies) form.append('numberOfFamilies', numberOfFamilies);
+    form.append('housePrefix', prefix.value ?? '');
+    if (noHousePrefix) form.append('noHousePrefix', 'true');
     form.append('applicantName', applicantName.trim());
     form.append('applicantPhone', applicantPhone.trim());
     if (applicantEmail.trim()) form.append('applicantEmail', applicantEmail.trim());
@@ -187,6 +202,8 @@ export default function CommunityRegistrationPage() {
                   <Label htmlFor="numberOfFamilies">Number of families</Label>
                   <Input id="numberOfFamilies" type="number" min={0} value={numberOfFamilies} onChange={(e) => setNumberOfFamilies(e.target.value)} />
                 </div>
+
+                <HousePrefixField value={housePrefix} onChange={setHousePrefix} none={noHousePrefix} onNoneChange={setNoHousePrefix} />
 
                 <div className="border-t border-border pt-4">
                   <p className="font-bold text-text">Your details</p>

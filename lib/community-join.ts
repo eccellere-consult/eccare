@@ -2,7 +2,7 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import { normalizeHouseInput } from '@/lib/house';
 import { isValidLatLng } from '@/lib/geo';
-import { commonHousePrefix, pinHouseIfMissing } from '@/lib/house-location';
+import { communityHousePrefix, pinHouseIfMissing } from '@/lib/house-location';
 import { reconcileMemberWithDirectory } from '@/lib/directory-link';
 
 /** What a person sends to join a community while creating their account. Same meaning as on the
@@ -32,20 +32,20 @@ const fail = (code: string, message: string, httpStatus = 400): JoinPlan => ({ o
 
 /** Checks everything about joining a community BEFORE any account exists, so a registration is
  *  accepted whole or not at all: the community is real, the house is valid (a bare number is completed
- *  with the community's usual block), and the same rules as the join page apply — a community with
+ *  with the community's house prefix), and the same rules as the join page apply — a community with
  *  nobody to approve is joined with its code only. */
 export async function planCommunityJoin(input: RegistrationCommunity): Promise<JoinPlan> {
   if (!input.neighborhoodId && !input.joinCode) return fail('COMMUNITY_REQUIRED', 'Please choose your community to finish creating your account.');
 
   const neighborhood = input.neighborhoodId
-    ? await prisma.neighborhood.findUnique({ where: { id: input.neighborhoodId }, select: { id: true, name: true, members: { where: { status: 'approved' }, select: { flatNumber: true } } } })
-    : await prisma.neighborhood.findUnique({ where: { joinCode: (input.joinCode ?? '').trim().toUpperCase() }, select: { id: true, name: true, members: { where: { status: 'approved' }, select: { flatNumber: true } } } });
+    ? await prisma.neighborhood.findUnique({ where: { id: input.neighborhoodId }, select: { id: true, name: true, housePrefix: true, members: { where: { status: 'approved' }, select: { flatNumber: true } } } })
+    : await prisma.neighborhood.findUnique({ where: { joinCode: (input.joinCode ?? '').trim().toUpperCase() }, select: { id: true, name: true, housePrefix: true, members: { where: { status: 'approved' }, select: { flatNumber: true } } } });
   if (!neighborhood) {
     return fail('NOT_FOUND', input.joinCode ? 'No community found with that code.' : 'That community could not be found.', 404);
   }
 
   // A bare number ("27") is completed with the block most houses in this community share ("KGRA-27").
-  const house = normalizeHouseInput(input.flatNumber, { defaultBlock: commonHousePrefix(neighborhood.members.map((m) => m.flatNumber)) ?? undefined });
+  const house = normalizeHouseInput(input.flatNumber, { defaultBlock: communityHousePrefix(neighborhood.housePrefix, neighborhood.members.map((m) => m.flatNumber)) ?? undefined });
   if (!house.ok) return fail('INVALID_INPUT', house.message);
 
   const hasApprover = await prisma.neighborhoodMember.findFirst({

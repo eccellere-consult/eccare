@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { QueryThread } from '@/components/query-thread';
 import { CommunityMembers } from '@/components/community-members';
+import { HousePrefixField } from '@/components/community/house-prefix-field';
 import { DirectoryList } from '@/components/community/directory-list';
 import { DirectoryMatchReview } from '@/components/community/directory-match-review';
 import { communityApi, useCommunityData } from '@/lib/community-client';
@@ -21,6 +22,7 @@ interface NeighborhoodDetail {
   city: string | null;
   pincode: string | null;
   description: string | null;
+  housePrefix: string | null;
   joinCode: string;
   _count: {
     members: number;
@@ -67,6 +69,7 @@ export default function AdminCommunityDetailPage({ params }: { params: Promise<{
               <p className="mt-1 text-text-secondary">
                 {[data.city, data.pincode].filter(Boolean).join(' · ') || '—'} · Join code{' '}
                 <span className="font-mono font-bold tracking-widest">{data.joinCode}</span>
+                {data.housePrefix && <> · Houses <span className="font-bold">{data.housePrefix}-</span></>}
               </p>
             </div>
             <Badge variant="muted">{data._count.members} members</Badge>
@@ -146,6 +149,7 @@ function OverviewTab({ neighborhood, onSaved }: { neighborhood: NeighborhoodDeta
   const [name, setName] = useState(neighborhood.name);
   const [city, setCity] = useState(neighborhood.city ?? '');
   const [pincode, setPincode] = useState(neighborhood.pincode ?? '');
+  const [housePrefix, setHousePrefix] = useState(neighborhood.housePrefix ?? '');
   const [description, setDescription] = useState(neighborhood.description ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -162,6 +166,8 @@ function OverviewTab({ neighborhood, onSaved }: { neighborhood: NeighborhoodDeta
         city: city || undefined,
         pincode: pincode || undefined,
         description: description || undefined,
+        // Always sent: blank means the community has no common prefix.
+        housePrefix,
       });
       setSaved(true);
       onSaved();
@@ -211,6 +217,7 @@ function OverviewTab({ neighborhood, onSaved }: { neighborhood: NeighborhoodDeta
                 <Input id="pincode" value={pincode} onChange={(e) => setPincode(e.target.value)} />
               </div>
             </div>
+            <HousePrefixField value={housePrefix} onChange={setHousePrefix} />
             <div className="flex flex-col gap-2">
               <Label htmlFor="description">Description</Label>
               <textarea
