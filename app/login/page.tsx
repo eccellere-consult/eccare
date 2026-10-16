@@ -521,8 +521,10 @@ function CreateAccountForm({
         <Input
           id="reg-name"
           autoComplete="name"
+          autoCapitalize="characters"
+          className="uppercase"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => setName(e.target.value.toUpperCase())}
           placeholder={t('login.register.fullNamePlaceholder')}
         />
       </div>
@@ -673,8 +675,10 @@ function CreateAccountForm({
             <Label htmlFor="reg-business-name">{t('login.provider.businessName')}</Label>
             <Input
               id="reg-business-name"
+              autoCapitalize="characters"
+              className="uppercase"
               value={businessName}
-              onChange={(e) => setBusinessName(e.target.value)}
+              onChange={(e) => setBusinessName(e.target.value.toUpperCase())}
               placeholder={t('login.provider.businessNamePlaceholder')}
             />
           </div>
@@ -710,7 +714,9 @@ function CreateAccountForm({
             <Input
               id="reg-backup-name"
               value={backupContactName}
-              onChange={(e) => setBackupContactName(e.target.value)}
+              autoCapitalize="characters"
+              className="uppercase"
+              onChange={(e) => setBackupContactName(e.target.value.toUpperCase())}
               placeholder={t('login.provider.backupContactNamePlaceholder')}
             />
           </div>
@@ -759,6 +765,14 @@ function LoginPageContent() {
   function handleSuccess(role: string) {
     const next = params.get('next');
     router.push(next || ROLE_HOME[role] || '/login');
+    router.refresh();
+  }
+
+  // Right after creating an account, an elder is taken straight to choosing their community —
+  // the one step that turns an empty app into their neighbourhood — instead of being left to find it.
+  function handleRegistered(role: string) {
+    const next = params.get('next');
+    router.push(next || (role === 'elder' ? '/community/join?welcome=1' : ROLE_HOME[role] || '/login'));
     router.refresh();
   }
 
@@ -819,7 +833,7 @@ function LoginPageContent() {
                 )}
               </>
             ) : (
-              <CreateAccountForm onSuccess={handleSuccess} t={t} uiLanguage={uiLanguage} />
+              <CreateAccountForm onSuccess={handleRegistered} t={t} uiLanguage={uiLanguage} />
             )}
 
             {view === 'signin' && <DemoSignIn onSuccess={handleSuccess} />}

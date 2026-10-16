@@ -1336,6 +1336,11 @@ model NeighborhoodMember {
   // Residents can stay in the community but keep themselves out of the public
   // directory — a privacy affordance both reference apps get wrong by default.
   showInDirectory Boolean          @default(true)
+  // Where the person said their house is when they asked to join, kept until the committee
+  // approves the request (a pending member can't pin a house yet). On approval it becomes the
+  // house's saved location if the house has none (see lib/house-location.ts).
+  joinLat         Decimal?         @db.Decimal(10, 7)
+  joinLng         Decimal?         @db.Decimal(10, 7)
   // Defaults to approved so every existing row (and any brand-new community's
   // first joiner, who has nobody able to approve them yet — see the join
   // route) keeps working exactly as before this field existed. Only a join

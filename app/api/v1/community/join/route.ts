@@ -5,15 +5,25 @@ import { getAuthUser } from '@/lib/auth';
 import { invalidInput, ok } from '@/lib/community-route';
 import { reconcileMemberWithDirectory } from '@/lib/directory-link';
 import { normalizeHouseInput } from '@/lib/house';
+import { isValidLatLng } from '@/lib/geo';
+import { pinHouseIfMissing } from '@/lib/house-location';
 
-const schema = z.object({
-  joinCode: z.string().min(4).max(32),
-  // Mandatory — checked below (not by zod) so a missing/invalid one gets the house-number
-  // message rather than the generic "enter a valid community code".
-  flatNumber: z.string().max(40).optional(),
-});
+const schema = z
+  .object({
+    // Either choose a registered community from the list (neighborhoodId) or type its code.
+    neighborhoodId: z.string().min(1).optional(),
+    joinCode: z.string().min(4).max(32).optional(),
+    // Mandatory — checked below (not by zod) so a missing/invalid one gets the house-number
+    // message rather than the generic "choose a community".
+    flatNumber: z.string().max(40).optional(),
+    // Where the house is, shared with one tap while joining. Optional.
+    lat: z.number().optional(),
+    lng: z.number().optional(),
+  })
+  .refine((d) => d.neighborhoodId || d.joinCode, { message: 'Please choose your community.' });
 
-/** Join a neighbourhood using its share code. */
+/** Join a neighbourhood — by choosing it from the list of registered communities, or with its
+ *  share code. */
 export async function POST(req: NextRequest) {
   const auth = await getAuthUser(req);
   if (!auth) {
@@ -23,20 +33,21 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const parsed = schema.safeParse(await req.json());
-  if (!parsed.success) return invalidInput('Please enter a valid community code.');
+  const parsed = schema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) return invalidInput(parsed.error.issues[0]?.message || 'Please choose your community.');
 
-  const { joinCode } = parsed.data;
+  const { joinCode, neighborhoodId, lat, lng } = parsed.data;
   const house = normalizeHouseInput(parsed.data.flatNumber);
   if (!house.ok) return invalidInput(house.message);
   const flatNumber = house.value;
+  const location = lat !== undefined && lng !== undefined && isValidLatLng(lat, lng) ? { lat, lng } : null;
 
-  const neighborhood = await prisma.neighborhood.findUnique({
-    where: { joinCode: joinCode.trim().toUpperCase() },
-  });
+  const neighborhood = neighborhoodId
+    ? await prisma.neighborhood.findUnique({ where: { id: neighborhoodId } })
+    : await prisma.neighborhood.findUnique({ where: { joinCode: (joinCode ?? '').trim().toUpperCase() } });
   if (!neighborhood) {
     return NextResponse.json(
-      { success: false, error: { code: 'NOT_FOUND', message: 'No community found with that code.' } },
+      { success: false, error: { code: 'NOT_FOUND', message: joinCode ? 'No community found with that code.' : 'That community could not be found.' } },
       { status: 404 },
     );
   }
@@ -60,19 +71,35 @@ export async function POST(req: NextRequest) {
     where: { neighborhoodId: neighborhood.id, status: 'approved', role: { in: ['committee', 'admin'] } },
     select: { id: true },
   });
+  // Choosing from the list is only for communities that have someone to approve the request —
+  // otherwise anybody could walk into an empty community. Those are joined with the code.
+  if (!joinCode && !hasApprover) {
+    return NextResponse.json(
+      { success: false, error: { code: 'CODE_REQUIRED', message: 'This community is not open for joining from the list yet. Please ask your committee for the community code.' } },
+      { status: 403 },
+    );
+  }
   const status = hasApprover ? 'pending' : 'approved';
 
   // A previously-rejected request re-requests rather than staying locked out
   // forever — same bootstrap rule re-applied, since a new committee may have
   // formed (or dissolved) since the rejection.
+  const locationData = location ? { joinLat: location.lat, joinLng: location.lng } : { joinLat: null, joinLng: null };
   const member = existing
     ? await prisma.neighborhoodMember.update({
         where: { id: existing.id },
-        data: { status, flatNumber, approvedAt: null, approvedById: null, rejectionReason: null },
+        data: { status, flatNumber, approvedAt: null, approvedById: null, rejectionReason: null, ...locationData },
       })
     : await prisma.neighborhoodMember.create({
-        data: { neighborhoodId: neighborhood.id, userId: auth.userId, flatNumber, status },
+        data: { neighborhoodId: neighborhood.id, userId: auth.userId, flatNumber, status, ...locationData },
       });
+
+  // Already a member in good standing (the very first person in a new community): pin the house
+  // now. Everyone else's location waits with their request until the committee approves it.
+  if (location && status === 'approved') {
+    await pinHouseIfMissing({ neighborhoodId: neighborhood.id, house: flatNumber, userId: auth.userId, ...location }).catch(() => false);
+    await prisma.neighborhoodMember.update({ where: { id: member.id }, data: { joinLat: null, joinLng: null } }).catch(() => {});
+  }
 
   // Connect them to the entry the community's admin may already have put in the
   // directory for them: same phone links automatically, a plausible resemblance
@@ -84,5 +111,5 @@ export async function POST(req: NextRequest) {
     console.error('[directory-link] reconcile failed:', err instanceof Error ? err.message : err);
   }
 
-  return ok({ neighborhood, alreadyMember: false, status: member.status }, 201);
+  return ok({ neighborhood, alreadyMember: false, status: member.status, locationSaved: Boolean(location) }, 201);
 }
