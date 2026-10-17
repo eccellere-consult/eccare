@@ -29,7 +29,7 @@
     "firebase-admin": "^14.2.0",
     "jose": "^6.0.0",
     "lucide-react": "^1.27.0",
-    "next": "^15.5.27",
+    "next": "15.5.28",
     "openai": "^7.3.0",
     "razorpay": "^2.9.8",
     "react": "19.2.3",
@@ -48,8 +48,9 @@
   "overrides": {
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "deepmerge-ts": "8.0.2",
     "postcss": "8.5.25",
-    "sharp": "0.35.0",
+    "sharp": "0.35.5",
     "uuid": "^11.1.1"
   },
   "engines": {
