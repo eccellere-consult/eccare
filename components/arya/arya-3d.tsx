@@ -4,7 +4,10 @@ import { Component, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { AryaFigure, type AryaState, type PoseOverride } from './arya-figure';
+import { AryaFigure } from './arya-figure';
+import { AryaGlbFigure } from './arya-glb-figure';
+import { useAryaModel } from './arya-model';
+import type { AryaState, PoseOverride } from './arya-pose';
 
 export type { AryaState, PoseOverride };
 
@@ -78,6 +81,8 @@ function Rig({ variant }: { variant: 'compact' | 'full' }) {
 export function Arya3D({ state, variant, greetNonce, paused, fallback, override }: Arya3DProps) {
   const [supported, setSupported] = useState<boolean | null>(null);
   const [failed, setFailed] = useState(false);
+  // A photoreal model, if one has been provided; the built-in Arya shows until it is ready (or forever, if there is none).
+  const model = useAryaModel();
 
   useEffect(() => {
     setSupported(webglAvailable());
@@ -110,7 +115,11 @@ export function Arya3D({ state, variant, greetNonce, paused, fallback, override 
         <directionalLight color="#d6e8ff" intensity={0.45} position={[3.5, 0.6, 4]} />
         <directionalLight color="#9fdde6" intensity={0.7} position={[2.8, 2.2, -3.2]} />
         <directionalLight color="#ffc58a" intensity={0.9} position={[-3, 1.5, -2.5]} />
-        <AryaFigure state={state} greetNonce={greetNonce} override={override} />
+        {model.status === 'ready' ? (
+          <AryaGlbFigure gltf={model.gltf} state={state} greetNonce={greetNonce} override={override} />
+        ) : (
+          <AryaFigure state={state} greetNonce={greetNonce} override={override} />
+        )}
       </Canvas>
     </SceneBoundary>
   );

@@ -1,29 +1,14 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { aryaVoice, type MouthShape } from '@/lib/arya-voice';
+import { useAryaPose, type AryaState, type PoseOverride } from './arya-pose';
 import { buildHeadGeometry, surfaceAt, SKIN, HEAD } from './face-geometry';
 import { EYE, buildIris, buildLid, buildSclera } from './eye-geometry';
 import { hairTexture, kurtaTexture, makeHairMaterial, makePlainSkinMaterial, makeSkinMaterial } from './arya-materials';
 
-export type AryaState = 'idle' | 'listening' | 'thinking' | 'speaking';
-
-/** Optional fixed values for the pose — used to preview expressions without audio. */
-export interface PoseOverride {
-  open?: number;
-  wide?: number;
-  round?: number;
-  smile?: number;
-  blink?: number;
-  yaw?: number;
-  pitch?: number;
-  roll?: number;
-  brow?: number;
-  gazeX?: number;
-  gazeY?: number;
-}
+export type { AryaState, PoseOverride };
 
 interface AryaFigureProps {
   state: AryaState;
@@ -237,115 +222,22 @@ export function AryaFigure({ state, greetNonce = 0, override }: AryaFigureProps)
   const earringR = useRef<THREE.Group>(null);
   const lidRefs = useRef<Array<THREE.Mesh | null>>([]);
 
-  const anim = useRef({
-    t: 0,
-    nextBlink: 1.6,
-    blinkStart: -10,
-    doubleBlink: false,
-    nextSaccade: 1.2,
-    gazeX: 0, gazeY: 0, gazeTX: 0, gazeTY: 0,
-    yaw: 0, pitch: 0, roll: 0, prevYaw: 0, prevRoll: 0,
-    smile: 0.3, brow: 0, open: 0, wide: 0, round: 0,
-    greetStart: -100,
-    lastGreet: 0,
-    mouth: { open: 0, wide: 0, round: 0 } as MouthShape,
-  });
+  const pose = useAryaPose(state, greetNonce, override);
+  const swingRef = useRef({ prevYaw: 0, prevRoll: 0 });
 
-  useEffect(() => {
-    if (greetNonce !== anim.current.lastGreet) {
-      anim.current.lastGreet = greetNonce;
-      anim.current.greetStart = anim.current.t;
-    }
-  }, [greetNonce]);
-
-  const reduceMotion = useMemo(
-    () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
-    [],
-  );
-
-  useFrame((_, rawDt) => {
-    const dt = Math.min(rawDt, 0.05);
-    const a = anim.current;
-    a.t += dt;
-    const t = a.t;
-    const o = override ?? {};
-    const motion = reduceMotion ? 0.35 : 1;
-
-    // Greeting envelope: bow in, hold with a warm smile, rise.
-    const gt = t - a.greetStart;
-    const greet = gt < 0 || gt > 4.2 ? 0 : gt < 0.9 ? Math.sin((gt / 0.9) * Math.PI * 0.5) : gt < 2.6 ? 1 : Math.cos(((gt - 2.6) / 1.6) * Math.PI * 0.5);
-    const bow = gt < 0 || gt > 4.2 ? 0 : gt < 0.8 ? Math.sin((gt / 0.8) * Math.PI) * 0.5 + 0.0 : 0;
-
-    // Lip-sync from the real voice (or a fixed override for previews).
-    const m = aryaVoice.mouth();
-    const mouth = { open: o.open ?? m.open, wide: o.wide ?? m.wide, round: o.round ?? m.round };
-    const speaking = state === 'speaking' || aryaVoice.speaking;
-    const energy = speaking ? mouth.open : 0;
-
-    // ── Head pose ────────────────────────────────────────────────────────────
-    let yawT = Math.sin(t * 0.37) * 0.07 + Math.sin(t * 0.91) * 0.025;
-    let pitchT = Math.sin(t * 0.53 + 1) * 0.03;
-    let rollT = Math.sin(t * 0.29 + 2) * 0.025;
-    if (state === 'listening') {
-      rollT += 0.085; // attentive tilt
-      pitchT -= 0.02;
-    } else if (state === 'thinking') {
-      yawT += 0.14;
-      pitchT -= 0.06;
-    } else if (speaking) {
-      pitchT += Math.sin(t * 2.3) * 0.025 * (0.4 + energy * 1.5);
-      yawT *= 1.4;
-    }
-    pitchT += greet > 0 ? bow * 0.5 * 0.55 : 0;
-    yawT *= motion;
-    pitchT *= motion === 1 ? 1 : 0.5;
-    a.yaw = damp(a.yaw, o.yaw ?? yawT, 3, dt);
-    a.pitch = damp(a.pitch, o.pitch ?? pitchT, 5, dt);
-    a.roll = damp(a.roll, o.roll ?? rollT, 3, dt);
-
-    // ── Expression ───────────────────────────────────────────────────────────
-    const smileT = 0.32 + (state === 'thinking' ? -0.12 : 0) + greet * 0.55 + (speaking ? 0.1 : 0) - (state === 'listening' ? 0.02 : 0);
-    const browT = (state === 'listening' ? 0.45 : state === 'thinking' ? 0.2 : 0) + (speaking ? energy * 0.5 : 0) + greet * 0.25;
-    a.smile = damp(a.smile, o.smile ?? smileT, 4, dt);
-    a.brow = damp(a.brow, o.brow ?? browT, 6, dt);
-
-    // ── Gaze ─────────────────────────────────────────────────────────────────
-    if (t > a.nextSaccade) {
-      a.nextSaccade = t + 1.4 + Math.random() * 2.6;
-      a.gazeTX = (Math.random() - 0.5) * 0.12 * motion;
-      a.gazeTY = (Math.random() - 0.5) * 0.08 * motion;
-    }
-    let gx = a.gazeTX;
-    let gy = a.gazeTY;
-    if (state === 'thinking') { gx = -0.18; gy = -0.16; } // looks up and aside while she thinks
-    else if (state === 'listening' || speaking) { gx *= 0.3; gy *= 0.3; } // steady eye contact
-    a.gazeX = damp(a.gazeX, o.gazeX ?? gx, 14, dt);
-    a.gazeY = damp(a.gazeY, o.gazeY ?? gy, 14, dt);
-
-    // ── Blink ────────────────────────────────────────────────────────────────
-    if (t > a.nextBlink) {
-      a.blinkStart = t;
-      a.nextBlink = t + (a.doubleBlink ? 0.28 : 2.4 + Math.random() * 3.6);
-      a.doubleBlink = !a.doubleBlink && Math.random() < 0.18;
-    }
-    const bt = (t - a.blinkStart) / 0.17;
-    const blinkAuto = bt >= 0 && bt <= 1 ? Math.sin(bt * Math.PI) : 0;
-    const blink = o.blink ?? Math.max(blinkAuto, state === 'listening' ? 0 : 0);
-
-    // ── Apply ────────────────────────────────────────────────────────────────
+  useFrame(() => {
+    const a = pose.current;
+    const { t, dt, blink } = a;
     const u = assets.uniforms;
-    u.uOpen.value = mouth.open * 0.95;
-    u.uWide.value = mouth.wide;
-    u.uRound.value = mouth.round;
-    u.uSmile.value = Math.max(0, a.smile - mouth.open * 0.35);
+    u.uOpen.value = a.mouth.open * 0.95;
+    u.uWide.value = a.mouth.wide;
+    u.uRound.value = a.mouth.round;
+    u.uSmile.value = Math.max(0, a.smile - a.mouth.open * 0.35);
 
-    if (headPivot.current) {
-      headPivot.current.rotation.set(a.pitch, a.yaw, a.roll);
-    }
-    const breath = Math.sin(t * 1.55) * (reduceMotion ? 0.4 : 1);
+    headPivot.current?.rotation.set(a.pitch, a.yaw, a.roll);
     if (bodyGroup.current) {
-      bodyGroup.current.position.y = breath * 0.01;
-      bodyGroup.current.scale.set(1 + breath * 0.004, 1 + breath * 0.006, 1);
+      bodyGroup.current.position.y = a.breath * 0.01;
+      bodyGroup.current.scale.set(1 + a.breath * 0.004, 1 + a.breath * 0.006, 1);
       bodyGroup.current.rotation.y = a.yaw * 0.25;
     }
     if (hairBack.current) {
@@ -365,10 +257,11 @@ export function AryaFigure({ state, greetNonce = 0, override }: AryaFigureProps)
     if (browR.current) { browR.current.position.y = browLift; browR.current.rotation.z = -a.brow * 0.05; }
 
     // Jhumkas swing against the head's motion.
-    const dYaw = (a.yaw - a.prevYaw) / Math.max(dt, 0.001);
-    const dRoll = (a.roll - a.prevRoll) / Math.max(dt, 0.001);
-    a.prevYaw = a.yaw;
-    a.prevRoll = a.roll;
+    const sw = swingRef.current;
+    const dYaw = (a.yaw - sw.prevYaw) / Math.max(dt, 0.001);
+    const dRoll = (a.roll - sw.prevRoll) / Math.max(dt, 0.001);
+    sw.prevYaw = a.yaw;
+    sw.prevRoll = a.roll;
     const swing = Math.max(-0.5, Math.min(0.5, -dYaw * 0.12 + dRoll * 0.1));
     for (const e of [earringL.current, earringR.current]) {
       if (e) e.rotation.z = damp(e.rotation.z, swing + Math.sin(t * 1.3) * 0.015, 8, dt);
