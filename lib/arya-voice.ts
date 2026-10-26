@@ -22,6 +22,9 @@ export interface MouthShape {
   round: number;
 }
 
+/** Where Arya's speech audio is fetched from. Change it if your project mounts the route elsewhere. */
+export const ARYA_SPEAK_ENDPOINT = '/api/v1/voice/speak';
+
 const CLOSED: MouthShape = { open: 0, wide: 0, round: 0 };
 const MUTE_KEY = 'arya_muted';
 const MAX_CACHED_CLIPS = 24;
@@ -231,7 +234,7 @@ class AryaVoice {
     const cached = this.clips.get(text);
     if (cached) return cached;
     try {
-      const res = await fetch('/api/v1/voice/speak', {
+      const res = await fetch(ARYA_SPEAK_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
