@@ -83,8 +83,8 @@ const VERT = /* glsl */ `
 
 const FRAG = /* glsl */ `
   varying vec2 vUv;
-  uniform sampler2D uMap;
-  uniform float uOpen, uBlink;
+  uniform sampler2D uMap, uTeeth;
+  uniform float uOpen, uBlink, uHasTeeth;
   uniform vec2 uGaze; // iris offset in image pixels
   const float W = 1254.0;
   vec2 px(float x, float y) { return vec2(x, y) / W; }
@@ -144,6 +144,31 @@ const FRAG = /* glsl */ `
       vec3 tongue = vec3(0.24, 0.045, 0.05);
       vec3 inner = mix(cavity, tongue, smoothstep(0.55, 0.95, rel) * smoothstep(0.35, 0.85, uOpen));
 
+      if (uHasTeeth > 0.5) {
+        float gate = smoothstep(0.04, 0.16, uOpen);
+
+        // Lower teeth sit along the bottom of the gap: shaded, a little grey, darker toward the lip.
+        float edges = min(min(abs(at - 0.0), abs(at - 0.10)), min(min(abs(at - 0.21), abs(at - 0.34)), min(abs(at - 0.48), abs(at - 0.64))));
+        float seams = 1.0 - smoothstep(0.003, 0.02, edges);
+        float lowTop = mix(0.86, 0.72, smoothstep(0.10, 0.45, uOpen)) + 0.05 * at * at; // the row curves up at the corners
+        float lowerMask = smoothstep(lowTop - 0.05, lowTop, rel) * (1.0 - smoothstep(0.93, 0.99, rel)) * (1.0 - smoothstep(0.52, 0.80, at)) * gate;
+        vec3 lowerTeeth = vec3(0.40, 0.31, 0.22) * (1.0 - 0.55 * smoothstep(lowTop + 0.03, 1.0, rel)) * (1.0 - 0.12 * seams) * (0.45 + 0.55 * (1.0 - at * at));
+        inner = mix(inner, lowerTeeth, lowerMask);
+
+        // Her real upper teeth, photographed, straightened and mapped across the mouth. They keep their natural
+        // size as the mouth opens (the strip is squeezed into the top of the gap, not stretched over it), and only
+        // the tooth pixels are painted, so the lower teeth and the dark of the mouth show through around them.
+        float vTex = mix(0.92, 0.56, smoothstep(0.10, 0.50, uOpen));
+        float v = rel / vTex;
+        // The photographed teeth span about 0.14-0.80 of the strip; widen that to fill the mouth, as her smile does.
+        float tu = 0.47 + ((t + 1.0) * 0.5 - 0.5) * 0.80;
+        vec3 realTeeth = texture2D(uTeeth, vec2(clamp(tu, 0.0, 1.0), 1.0 - clamp(v, 0.0, 1.0))).rgb;
+        float toothness = smoothstep(0.10, 0.30, dot(realTeeth, vec3(0.299, 0.587, 0.114)));
+        // the small lower-teeth fragments at the bottom of the photographed strip are replaced by the row above
+        toothness *= 1.0 - smoothstep(0.66, 0.74, v);
+        float inTex = 1.0 - smoothstep(0.90, 1.0, v);
+        inner = mix(inner, realTeeth * 0.80, toothness * inTex * gate);
+      } else {
       // Teeth: a row of upper teeth under the lip, each tooth separated by a faint line, fading
       // into shadow toward the corners of the mouth. A strip of lower teeth shows when wide open.
       float edges = min(min(abs(at - 0.0), abs(at - 0.115)), min(min(abs(at - 0.24), abs(at - 0.38)), min(abs(at - 0.55), abs(at - 0.76))));
@@ -157,6 +182,7 @@ const FRAG = /* glsl */ `
 
       float lower = smoothstep(0.80, 0.86, rel) * (1.0 - smoothstep(0.93, 0.99, rel)) * (1.0 - smoothstep(0.45, 0.70, at)) * smoothstep(0.50, 0.75, uOpen);
       inner = mix(inner, ivory * 0.50 * (1.0 - 0.18 * seams), lower);
+      }
 
       inner *= 0.72 + 0.28 * smoothstep(0.0, 0.14, rel); // shadow under the upper lip
       col = mix(col, inner, gap);
@@ -169,12 +195,14 @@ const FRAG = /* glsl */ `
 
 interface Props {
   texture: THREE.Texture;
+  /** Her real teeth (optional); procedural teeth are drawn without it. */
+  teeth?: THREE.Texture | null;
   state: AryaState;
   greetNonce?: number;
   override?: PoseOverride;
 }
 
-export function AryaPhotoFigure({ texture, state, greetNonce = 0, override }: Props) {
+export function AryaPhotoFigure({ texture, teeth = null, state, greetNonce = 0, override }: Props) {
   const pose = useAryaPose(state, greetNonce, override);
   const swing = useRef({ prevYaw: 0, prevRoll: 0, angle: 0 });
 
@@ -184,20 +212,21 @@ export function AryaPhotoFigure({ texture, state, greetNonce = 0, override }: Pr
         vertexShader: VERT,
         fragmentShader: FRAG,
         uniforms: {
-          uMap: { value: texture },
+          uMap: { value: texture }, uTeeth: { value: teeth }, uHasTeeth: { value: teeth ? 1 : 0 },
           uOpen: { value: 0 }, uWide: { value: 0 }, uRound: { value: 0 }, uSmile: { value: 0 },
           uBrow: { value: 0 }, uYaw: { value: 0 }, uPitch: { value: 0 }, uRoll: { value: 0 },
           uBreath: { value: 0 }, uSwingL: { value: 0 }, uSwingR: { value: 0 },
           uBlink: { value: 0 }, uGaze: { value: new THREE.Vector2() },
         },
       }),
-    [texture],
+    [texture, teeth],
   );
 
   useFrame(() => {
     const p = pose.current;
     const u = material.uniforms;
-    u.uOpen.value = p.mouth.open * 0.9;
+    // Conversation never needs a wide-open mouth: even a loud syllable stays a modest, natural opening.
+    u.uOpen.value = Math.min(p.mouth.open, 1) * 0.55;
     u.uWide.value = p.mouth.wide;
     u.uRound.value = p.mouth.round;
     u.uSmile.value = p.smile - 0.32; // the photo already smiles; this is the change from that
