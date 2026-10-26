@@ -6,6 +6,8 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { AryaFigure } from './arya-figure';
 import { AryaGlbFigure } from './arya-glb-figure';
+import { AryaPhotoFigure, PHOTO_FACE, PHOTO_SIZE } from './arya-photo-figure';
+import { useAryaPhoto } from './arya-photo';
 import { useAryaModel } from './arya-model';
 import type { AryaState, PoseOverride } from './arya-pose';
 
@@ -27,6 +29,23 @@ const FRAMING = {
   compact: { position: new THREE.Vector3(0, 0.0, 4.7), look: new THREE.Vector3(0, 0.0, 0) },
   full: { position: new THREE.Vector3(0, -0.72, 8.6), look: new THREE.Vector3(0, -0.78, 0) },
 } as const;
+
+type Kind = 'procedural' | 'glb' | 'photo';
+
+/** The photo fills the view edge to edge: compact is a close crop of the face, full shows head and shoulders. */
+function photoFraming(variant: 'compact' | 'full', aspect: number) {
+  const tanHalf = Math.tan(THREE.MathUtils.degToRad(14)); // the camera's fov is 28°
+  const cx = (PHOTO_FACE.x - 0.5) * PHOTO_SIZE;
+  if (variant === 'compact') {
+    const height = 2.2;
+    const y = (0.5 - 0.405) * PHOTO_SIZE;
+    return { position: new THREE.Vector3(cx, y, height / 2 / tanHalf), look: new THREE.Vector3(cx, y, 0) };
+  }
+  const width = PHOTO_SIZE * 0.86;
+  const height = Math.min(PHOTO_SIZE * 0.98, width / aspect);
+  const y = (0.5 - 0.44) * PHOTO_SIZE;
+  return { position: new THREE.Vector3(cx, y, height / 2 / tanHalf), look: new THREE.Vector3(cx, y, 0) };
+}
 
 function webglAvailable(): boolean {
   try {
@@ -52,8 +71,8 @@ class SceneBoundary extends Component<{ onError: () => void; children: ReactNode
 }
 
 /** Soft studio reflections (for gold, eyes and hair) and smooth camera framing. */
-function Rig({ variant }: { variant: 'compact' | 'full' }) {
-  const { gl, scene, camera } = useThree();
+function Rig({ variant, kind }: { variant: 'compact' | 'full'; kind: Kind }) {
+  const { gl, scene, camera, size } = useThree();
 
   useEffect(() => {
     const pmrem = new THREE.PMREMGenerator(gl);
@@ -69,7 +88,7 @@ function Rig({ variant }: { variant: 'compact' | 'full' }) {
 
   const lookAt = useRef(FRAMING[variant].look.clone());
   useFrame((_, dt) => {
-    const target = FRAMING[variant];
+    const target = kind === 'photo' ? photoFraming(variant, size.width / size.height) : FRAMING[variant];
     const k = 1 - Math.exp(-6 * Math.min(dt, 0.05));
     camera.position.lerp(target.position, k);
     lookAt.current.lerp(target.look, k);
@@ -83,6 +102,8 @@ export function Arya3D({ state, variant, greetNonce, paused, fallback, override 
   const [failed, setFailed] = useState(false);
   // A photoreal model, if one has been provided; the built-in Arya shows until it is ready (or forever, if there is none).
   const model = useAryaModel();
+  const photo = useAryaPhoto();
+  const kind: Kind = model.status === 'ready' ? 'glb' : photo.status === 'ready' ? 'photo' : 'procedural';
 
   useEffect(() => {
     setSupported(webglAvailable());
@@ -108,7 +129,7 @@ export function Arya3D({ state, variant, greetNonce, paused, fallback, override 
         style={{ width: '100%', height: '100%', display: 'block' }}
         aria-hidden
       >
-        <Rig variant={variant} />
+        <Rig variant={variant} kind={kind} />
         <hemisphereLight args={['#fff4ea', '#3a1c10', 0.38]} />
         {/* Warm key from upper left, soft cool fill from the right, teal rim from behind. */}
         <directionalLight color="#fff0dd" intensity={1.7} position={[-2.6, 3.2, 5.5]} />
@@ -117,6 +138,8 @@ export function Arya3D({ state, variant, greetNonce, paused, fallback, override 
         <directionalLight color="#ffc58a" intensity={0.9} position={[-3, 1.5, -2.5]} />
         {model.status === 'ready' ? (
           <AryaGlbFigure gltf={model.gltf} state={state} greetNonce={greetNonce} override={override} />
+        ) : photo.status === 'ready' ? (
+          <AryaPhotoFigure texture={photo.texture} state={state} greetNonce={greetNonce} override={override} />
         ) : (
           <AryaFigure state={state} greetNonce={greetNonce} override={override} />
         )}
