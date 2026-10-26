@@ -1,0 +1,117 @@
+'use client';
+
+import { Component, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { AryaFigure, type AryaState, type PoseOverride } from './arya-figure';
+
+export type { AryaState, PoseOverride };
+
+interface Arya3DProps {
+  state: AryaState;
+  /** 'compact' frames the face for the floating launcher; 'full' shows head and shoulders. */
+  variant: 'compact' | 'full';
+  greetNonce?: number;
+  /** Pause rendering entirely (e.g. while the tab is hidden). */
+  paused?: boolean;
+  /** Shown if WebGL is unavailable or the 3D scene fails. */
+  fallback: ReactNode;
+  override?: PoseOverride;
+}
+
+const FRAMING = {
+  compact: { position: new THREE.Vector3(0, 0.0, 4.7), look: new THREE.Vector3(0, 0.0, 0) },
+  full: { position: new THREE.Vector3(0, -0.72, 8.6), look: new THREE.Vector3(0, -0.78, 0) },
+} as const;
+
+function webglAvailable(): boolean {
+  try {
+    const canvas = document.createElement('canvas');
+    return Boolean(canvas.getContext('webgl2') || canvas.getContext('webgl'));
+  } catch {
+    return false;
+  }
+}
+
+class SceneBoundary extends Component<{ onError: () => void; children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch(error: unknown) {
+    console.error('[arya] 3D scene failed, falling back to the 2D avatar:', error);
+    this.props.onError();
+  }
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
+
+/** Soft studio reflections (for gold, eyes and hair) and smooth camera framing. */
+function Rig({ variant }: { variant: 'compact' | 'full' }) {
+  const { gl, scene, camera } = useThree();
+
+  useEffect(() => {
+    const pmrem = new THREE.PMREMGenerator(gl);
+    const env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    scene.environment = env;
+    scene.environmentIntensity = 0.35;
+    return () => {
+      scene.environment = null;
+      env.dispose();
+      pmrem.dispose();
+    };
+  }, [gl, scene]);
+
+  const lookAt = useRef(FRAMING[variant].look.clone());
+  useFrame((_, dt) => {
+    const target = FRAMING[variant];
+    const k = 1 - Math.exp(-6 * Math.min(dt, 0.05));
+    camera.position.lerp(target.position, k);
+    lookAt.current.lerp(target.look, k);
+    camera.lookAt(lookAt.current);
+  });
+  return null;
+}
+
+export function Arya3D({ state, variant, greetNonce, paused, fallback, override }: Arya3DProps) {
+  const [supported, setSupported] = useState<boolean | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setSupported(webglAvailable());
+  }, []);
+
+  if (supported === null) return null;
+  if (!supported || failed) return <>{fallback}</>;
+
+  return (
+    <SceneBoundary onError={() => setFailed(true)}>
+      <Canvas
+        dpr={variant === 'compact' ? [1, 1.5] : [1, 1.75]}
+        gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
+        camera={{ fov: 28, near: 0.1, far: 60, position: FRAMING[variant].position.toArray() }}
+        frameloop={paused ? 'never' : 'always'}
+        onCreated={({ gl }) => {
+          gl.setClearColor(0x000000, 0);
+          gl.domElement.addEventListener('webglcontextlost', (e) => {
+            e.preventDefault();
+            setFailed(true);
+          });
+        }}
+        style={{ width: '100%', height: '100%', display: 'block' }}
+        aria-hidden
+      >
+        <Rig variant={variant} />
+        <hemisphereLight args={['#fff4ea', '#3a1c10', 0.38]} />
+        {/* Warm key from upper left, soft cool fill from the right, teal rim from behind. */}
+        <directionalLight color="#fff0dd" intensity={1.7} position={[-2.6, 3.2, 5.5]} />
+        <directionalLight color="#d6e8ff" intensity={0.45} position={[3.5, 0.6, 4]} />
+        <directionalLight color="#9fdde6" intensity={0.7} position={[2.8, 2.2, -3.2]} />
+        <directionalLight color="#ffc58a" intensity={0.9} position={[-3, 1.5, -2.5]} />
+        <AryaFigure state={state} greetNonce={greetNonce} override={override} />
+      </Canvas>
+    </SceneBoundary>
+  );
+}

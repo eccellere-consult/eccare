@@ -357,7 +357,7 @@ export function AppShell({ role, userName, providerCategory, needsDateOfBirth, c
         <>
           <ReminderAlerts />
           <MedicineAlerts />
-          <VoiceAssistant />
+          <VoiceAssistant userName={userName} />
           {/* An elder can themselves be a community's committee/admin —
               self-gates via GET /community/me, renders nothing otherwise. */}
           <SosAlertBanner source="committee" />

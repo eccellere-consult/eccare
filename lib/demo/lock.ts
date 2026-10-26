@@ -79,7 +79,7 @@ const ALLOWED_WHILE_LOCKED = [
   /^\/api\/v1\/health\/reminders\/(confirm-batch|[^/]+)$/,
   /^\/api\/v1\/emergency\/sos$/,
   /^\/api\/v1\/community\/panic$/,
-  /^\/api\/v1\/voice\/(process|transcribe)$/,
+  /^\/api\/v1\/voice\/(process|transcribe|speak)$/,
   /^\/api\/v1\/notifications\/register-device$/,
 ];
 
