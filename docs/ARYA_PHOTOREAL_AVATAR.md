@@ -18,6 +18,13 @@ smiles, raises her brows, looks aside, sways her head with parallax, breathes, a
   measurements of the 1254 × 1254 image, hard-coded in the shaders in `arya-photo-figure.tsx`
   (pupils (530,442) and (718,452); mouth corners (527,626) and (700,636); jhumka hooks (397,607)
   and (824,603); head tilt ≈ 3–4°). **A different photo needs these re-measured.**
+- **Teeth:** `public/avatars/arya-teeth.png` is her real teeth, cut from a second photo of the same
+  person smiling and straightened (`python3 scripts/arya-teeth-from-photo.py smiling.jpg`). The mouth shader
+  paints it inside the opening; without the file it falls back to procedurally drawn teeth. Use only photos
+  you have the rights to.
+- **Mouth opening is capped** (`uOpen` ≤ 0.55 in `arya-photo-figure.tsx`) so conversation never looks wide-mouthed;
+  raise the `0.55` there if you want more. Lower teeth are her upper teeth mirrored (smaller, same colour) along the bottom of the opening — the photo's real
+  lower teeth are a few blurred pixels fused with the lip and cannot be cut out.
 - Limits: a still photo has no inside to its mouth, so the opening is painted; it reads well at the
   sizes used on screen but is not a video-grade face. Large head turns are limited to a few degrees.
 

@@ -139,7 +139,7 @@ export function Arya3D({ state, variant, greetNonce, paused, fallback, override 
         {model.status === 'ready' ? (
           <AryaGlbFigure gltf={model.gltf} state={state} greetNonce={greetNonce} override={override} />
         ) : photo.status === 'ready' ? (
-          <AryaPhotoFigure texture={photo.texture} state={state} greetNonce={greetNonce} override={override} />
+          <AryaPhotoFigure texture={photo.texture} teeth={photo.teeth} state={state} greetNonce={greetNonce} override={override} />
         ) : (
           <AryaFigure state={state} greetNonce={greetNonce} override={override} />
         )}
