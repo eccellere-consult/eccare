@@ -1,4 +1,27 @@
-# Photoreal Arya (optional 3D avatar file)
+# Arya's face: photo, photoreal 3D file, or built-in
+
+Arya picks the best face available, in this order:
+
+1. **Photoreal 3D file** — `public/models/arya.glb` (see below).
+2. **Photo** — `public/avatars/arya.webp`, else `public/avatars/arya.png` (current default).
+3. **Built-in** procedural 3D avatar.
+
+## The photo avatar
+
+The photo is warped and painted in real time (`components/arya/arya-photo-figure.tsx`): she blinks
+(skin is painted over the eyes), speaks (jaw and lips open, the inside of the mouth is painted),
+smiles, raises her brows, looks aside, sways her head with parallax, breathes, and her jhumkas swing.
+
+- `arya.webp` is a light copy (~200 KB) of `arya.png` (2.2 MB) that loads first — regenerate it if
+  you replace the PNG: `python3 -c "from PIL import Image; Image.open('public/avatars/arya.png').convert('RGB').save('public/avatars/arya.webp','WEBP',quality=90,method=6)"`.
+- **The animation is tied to this exact photo.** Eye, mouth, ear and jhumka positions are pixel
+  measurements of the 1254 × 1254 image, hard-coded in the shaders in `arya-photo-figure.tsx`
+  (pupils (530,442) and (718,452); mouth corners (527,626) and (700,636); jhumka hooks (397,607)
+  and (824,603); head tilt ≈ 3–4°). **A different photo needs these re-measured.**
+- Limits: a still photo has no inside to its mouth, so the opening is painted; it reads well at the
+  sizes used on screen but is not a video-grade face. Large head turns are limited to a few degrees.
+
+# Photoreal 3D avatar file (optional)
 
 Arya ships with a built-in procedural 3D avatar. To give her a photoreal face, add a rigged
 avatar file. The app picks it up automatically — no code change:

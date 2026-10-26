@@ -423,7 +423,7 @@ export function VoiceAssistant({ userName }: { userName?: string }) {
 
           {open && (
             <>
-              <div className="absolute left-4 top-3">
+              <div className="absolute left-3 top-3 rounded-2xl bg-white/80 px-3 py-1.5 shadow-sm backdrop-blur-sm">
                 <p className="text-lg font-bold leading-tight text-primary-900">Arya</p>
                 <p className="text-xs font-medium text-text-secondary">Your care companion</p>
               </div>
