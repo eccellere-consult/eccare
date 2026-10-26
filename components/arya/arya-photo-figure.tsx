@@ -147,13 +147,15 @@ const FRAG = /* glsl */ `
       if (uHasTeeth > 0.5) {
         float gate = smoothstep(0.04, 0.16, uOpen);
 
-        // Lower teeth sit along the bottom of the gap: shaded, a little grey, darker toward the lip.
-        float edges = min(min(abs(at - 0.0), abs(at - 0.10)), min(min(abs(at - 0.21), abs(at - 0.34)), min(abs(at - 0.48), abs(at - 0.64))));
-        float seams = 1.0 - smoothstep(0.003, 0.02, edges);
-        float lowTop = mix(0.86, 0.72, smoothstep(0.10, 0.45, uOpen)) + 0.05 * at * at; // the row curves up at the corners
-        float lowerMask = smoothstep(lowTop - 0.05, lowTop, rel) * (1.0 - smoothstep(0.93, 0.99, rel)) * (1.0 - smoothstep(0.52, 0.80, at)) * gate;
-        vec3 lowerTeeth = vec3(0.40, 0.31, 0.22) * (1.0 - 0.55 * smoothstep(lowTop + 0.03, 1.0, rel)) * (1.0 - 0.12 * seams) * (0.45 + 0.55 * (1.0 - at * at));
-        inner = mix(inner, lowerTeeth, lowerMask);
+        // Lower teeth are her own upper teeth mirrored: same shapes, same colour, smaller, set along the bottom of the gap.
+        // (The photo's real lower teeth are only a few blurred pixels fused with the lip, so they cannot be cut out.)
+        float lowTop = mix(0.84, 0.68, smoothstep(0.10, 0.45, uOpen)) + 0.04 * at * at; // the row curves up at the corners
+        float vL = (1.0 - rel) / max(1.0 - lowTop, 0.05) * 0.72;          // 0 at the gum line (bottom), 0.72 at the biting edge
+        float tuL = 0.47 + ((t + 1.0) * 0.5 - 0.5) * 1.0;                  // a little narrower than the upper row
+        vec3 lowerTeeth = texture2D(uTeeth, vec2(clamp(tuL, 0.0, 1.0), 1.0 - clamp(vL, 0.0, 1.0))).rgb;
+        float lowerTooth = smoothstep(0.10, 0.30, dot(lowerTeeth, vec3(0.299, 0.587, 0.114)))
+          * smoothstep(lowTop - 0.03, lowTop + 0.02, rel) * (1.0 - smoothstep(0.95, 1.0, rel)) * gate;
+        inner = mix(inner, lowerTeeth * 0.80, lowerTooth);
 
         // Her real upper teeth, photographed, straightened and mapped across the mouth. They keep their natural
         // size as the mouth opens (the strip is squeezed into the top of the gap, not stretched over it), and only

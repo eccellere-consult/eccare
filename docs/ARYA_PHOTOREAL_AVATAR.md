@@ -23,7 +23,8 @@ smiles, raises her brows, looks aside, sways her head with parallax, breathes, a
   paints it inside the opening; without the file it falls back to procedurally drawn teeth. Use only photos
   you have the rights to.
 - **Mouth opening is capped** (`uOpen` ≤ 0.55 in `arya-photo-figure.tsx`) so conversation never looks wide-mouthed;
-  raise the `0.55` there if you want more. Lower teeth are drawn along the bottom of the opening.
+  raise the `0.55` there if you want more. Lower teeth are her upper teeth mirrored (smaller, same colour) along the bottom of the opening — the photo's real
+  lower teeth are a few blurred pixels fused with the lip and cannot be cut out.
 - Limits: a still photo has no inside to its mouth, so the opening is painted; it reads well at the
   sizes used on screen but is not a video-grade face. Large head turns are limited to a few degrees.
 
