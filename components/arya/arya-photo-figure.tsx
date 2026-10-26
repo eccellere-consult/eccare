@@ -139,14 +139,26 @@ const FRAG = /* glsl */ `
     float gap = (1.0 - smoothstep(hw * 0.6, hw, abs(tt - 0.5))) * lensX * open;
     if (gap > 0.001) {
       float rel = clamp((tt - (0.5 - hw)) / (2.0 * hw), 0.0, 1.0); // 0 at the upper lip's edge, 1 at the lower lip's
-      // Upper teeth peek out under the lip; behind them it is dark, with a tongue low down when wide open.
-      vec3 teeth = vec3(0.60, 0.55, 0.48) * (0.55 + 0.45 * pow(max(1.0 - t * t, 0.0), 0.5));
+      float at = abs(t);
       vec3 cavity = vec3(0.016, 0.004, 0.005);
       vec3 tongue = vec3(0.24, 0.045, 0.05);
       vec3 inner = mix(cavity, tongue, smoothstep(0.55, 0.95, rel) * smoothstep(0.35, 0.85, uOpen));
-      float teethShow = smoothstep(0.12, 0.40, uOpen) * (1.0 - smoothstep(0.15, 0.34, rel));
-      inner = mix(inner, teeth * (0.85 + 0.15 * smoothstep(0.0, 0.12, rel)), teethShow);
-      inner *= 0.7 + 0.3 * smoothstep(0.0, 0.2, rel); // shadow under the upper lip
+
+      // Teeth: a row of upper teeth under the lip, each tooth separated by a faint line, fading
+      // into shadow toward the corners of the mouth. A strip of lower teeth shows when wide open.
+      float edges = min(min(abs(at - 0.0), abs(at - 0.115)), min(min(abs(at - 0.24), abs(at - 0.38)), min(abs(at - 0.55), abs(at - 0.76))));
+      float seams = (1.0 - smoothstep(0.003, 0.022, edges)) * (1.0 - 0.55 * smoothstep(0.1, 0.9, rel));
+      float across = 1.0 - smoothstep(0.62, 0.86, at);
+      float teethDepth = mix(0.38, 0.52, smoothstep(0.10, 0.60, uOpen)) * (1.0 - 0.28 * at * at); // corner teeth are shorter, so the edge arcs
+      float upper = (1.0 - smoothstep(teethDepth - 0.10, teethDepth, rel)) * across * smoothstep(0.06, 0.22, uOpen);
+      vec3 ivory = vec3(0.66, 0.59, 0.50);
+      vec3 upperTeeth = ivory * (0.62 + 0.38 * smoothstep(0.0, 0.2, rel)) * (1.0 - 0.20 * seams) * (0.42 + 0.58 * (1.0 - at * at));
+      inner = mix(inner, upperTeeth, upper);
+
+      float lower = smoothstep(0.80, 0.86, rel) * (1.0 - smoothstep(0.93, 0.99, rel)) * (1.0 - smoothstep(0.45, 0.70, at)) * smoothstep(0.50, 0.75, uOpen);
+      inner = mix(inner, ivory * 0.50 * (1.0 - 0.18 * seams), lower);
+
+      inner *= 0.72 + 0.28 * smoothstep(0.0, 0.14, rel); // shadow under the upper lip
       col = mix(col, inner, gap);
     }
 
