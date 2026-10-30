@@ -1946,6 +1946,39 @@ model Notice {
   @@index([neighborhoodId, pinned, createdAt])
 }
 
+enum HealthBulletinStatus {
+  draft
+  published
+  rejected
+}
+
+/// A short, plain-language health bulletin written by the health-bulletin agent from a small allow-list
+/// of trusted organisations (lib/health-sources.ts), waiting for an admin to read it. Nothing reaches a
+/// community Notice or a WhatsApp group until an admin publishes it. `flags` holds the automatic safety
+/// checks' findings; `sources` the pages it was written from (title + url).
+model HealthBulletin {
+  id              String               @id @default(cuid())
+  topic           String
+  title           String
+  body            String               @db.Text
+  whatsappText    String               @db.Text
+  sources         Json
+  flags           Json?
+  status          HealthBulletinStatus @default(draft)
+  model           String?
+  generatedAt     DateTime             @default(now())
+  reviewedById    String?
+  reviewedByName  String?
+  reviewedAt      DateTime?
+  rejectionReason String?              @db.Text
+  publishedAt     DateTime?
+  /// One entry per community it was published to: { neighborhoodId, noticeId }.
+  noticeIds       Json?
+
+  @@index([status, generatedAt])
+  @@index([topic, generatedAt])
+}
+
 /// Curated directory of community WhatsApp group invite links. Deliberately a link-out
 /// list, not an attempt to reimplement group messaging.
 model WhatsAppGroupLink {
