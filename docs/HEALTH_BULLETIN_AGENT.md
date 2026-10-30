@@ -42,8 +42,10 @@ POST /api/v1/cron/health-…    ─┘                                          
 
 ## Setting it up
 
-1. **`ANTHROPIC_API_KEY`** (already used for the voice assistant). In the Anthropic console, switch **web search**
-   on for the organisation. Optional: `HEALTH_AGENT_MODEL` (default `claude-sonnet-5-5`).
+1. **An Anthropic API key.** By default the agent shares `ANTHROPIC_API_KEY` with the voice assistant. Better: set
+   **`HEALTH_AGENT_API_KEY`** to a key from its own Anthropic workspace with its own spending limit, so a limit on
+   one can never switch off the other. In the Anthropic console, switch **web search** on for the organisation.
+   Optional: `HEALTH_AGENT_MODEL` (default `claude-sonnet-5-5`).
 2. **Database.** A new `HealthBulletin` table; the normal deploy (`prisma db push`) creates it.
 3. **Weekly drafting (optional).** This host has no job runner, so use an outside scheduler (Hostinger cron,
    cron-job.org, GitHub Actions…). Set `CRON_SECRET` to a long random value, then call, e.g. every Monday 7 am IST:
@@ -54,6 +56,12 @@ POST /api/v1/cron/health-…    ─┘                                          
 
    It writes up to 3 drafts per call and stops adding once 6 drafts are waiting for review.
 4. Admin → **Health Bulletins**.
+
+## If "Write a draft" shows an error
+
+The screen explains the common ones in plain words: the account's **usage limit** was reached (it says when access
+returns), it is **out of credit**, the **key** was not accepted, **web search** is not enabled, the **model** name is
+not available to the key, or Anthropic is **rate-limiting or busy**.
 
 ## Cost and limits
 
