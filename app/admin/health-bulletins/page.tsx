@@ -109,8 +109,9 @@ export default function AdminHealthBulletinsPage() {
         <Card className="mt-4 border-danger-100 bg-danger-50">
           <CardContent className="flex items-start gap-2 pt-6 text-sm text-danger-900">
             <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
-            The agent is not set up yet: add <code className="mx-1 rounded bg-surface px-1">ANTHROPIC_API_KEY</code> to the server's environment
-            variables (with web search switched on in the Anthropic console).
+            The agent is not set up yet: add <code className="mx-1 rounded bg-surface px-1">HEALTH_AGENT_API_KEY</code> (or the shared
+            <code className="mx-1 rounded bg-surface px-1">ANTHROPIC_API_KEY</code>) to the server's environment variables, with web search switched on
+            in the Anthropic console.
           </CardContent>
         </Card>
       )}

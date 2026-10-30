@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { apiError, apiOk, requireAdmin } from '@/lib/admin-route';
 import { HEALTH_TOPICS } from '@/lib/health-sources';
-import { healthAgentModel, runHealthAgent } from '@/lib/health-agent';
+import { healthAgentApiKey, healthAgentModel, runHealthAgent } from '@/lib/health-agent';
 
 // Writing a bulletin means a web search and a long answer — allow it time.
 export const maxDuration = 180;
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     bulletins,
     communities,
     topics: HEALTH_TOPICS.map((t) => ({ id: t.id, label: t.label })),
-    agent: { configured: !!process.env.ANTHROPIC_API_KEY, model: healthAgentModel(), scheduled: !!process.env.CRON_SECRET },
+    agent: { configured: !!healthAgentApiKey(), model: healthAgentModel(), scheduled: !!process.env.CRON_SECRET },
   });
 }
 
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
   const parsed = generateSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return apiError('INVALID_INPUT', 'Please choose a topic from the list.');
   if (parsed.data.topic && !HEALTH_TOPICS.some((t) => t.id === parsed.data.topic)) return apiError('INVALID_INPUT', 'Unknown topic.');
-  if (!process.env.ANTHROPIC_API_KEY) return apiError('NOT_CONFIGURED', 'The health agent needs ANTHROPIC_API_KEY to be set on the server.', 503);
+  if (!healthAgentApiKey()) return apiError('NOT_CONFIGURED', 'The health agent needs HEALTH_AGENT_API_KEY (or ANTHROPIC_API_KEY) to be set on the server.', 503);
 
   const [result] = await runHealthAgent({ topicIds: parsed.data.topic ? [parsed.data.topic] : undefined, count: 1, force: true });
   if (result.outcome === 'error') return apiError('AGENT_FAILED', result.reason, 502);

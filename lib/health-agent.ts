@@ -28,6 +28,42 @@ export const MIN_DAYS_BETWEEN_SAME_TOPIC = 21;
 /** The scheduled run stops adding drafts once this many are waiting for an admin. */
 export const MAX_PENDING_DRAFTS = 6;
 
+/** The agent's own key if one is set, so its spending cap is separate from the voice assistant's; otherwise the shared one. */
+export const healthAgentApiKey = () => process.env.HEALTH_AGENT_API_KEY || process.env.ANTHROPIC_API_KEY || '';
+
+/** Turns an Anthropic error response into a sentence an admin can act on. Exported for testing. */
+export function describeApiError(status: number, bodyText: string): string {
+  let type = '';
+  let message = '';
+  try {
+    const parsed = JSON.parse(bodyText) as { error?: { type?: string; message?: string } };
+    type = parsed.error?.type ?? '';
+    message = parsed.error?.message ?? '';
+  } catch {
+    message = bodyText.slice(0, 200);
+  }
+  const lower = message.toLowerCase();
+
+  if (/usage limit|spend limit|spending limit/.test(lower)) {
+    const when = message.match(/You will regain access[^.]*\./i)?.[0];
+    return `The Anthropic account has reached its usage limit. ${when ? `${when} ` : ''}To use it sooner, raise the limit in the Anthropic console.`;
+  }
+  if (/credit balance/.test(lower)) return 'The Anthropic account is out of credit. Add credit in the Anthropic console.';
+  if (/web.?search/.test(lower)) {
+    return `Web search is not available for this Anthropic account. Switch it on in the Anthropic console, then try again. (Anthropic said: ${message})`;
+  }
+  if (status === 404 || (type === 'not_found_error' && /model/.test(lower))) {
+    return `The model "${healthAgentModel()}" was not found for this key. Set HEALTH_AGENT_MODEL to a model your account can use. (Anthropic said: ${message})`;
+  }
+  if (status === 401 || type === 'authentication_error') {
+    return 'The Anthropic API key was not accepted. Check HEALTH_AGENT_API_KEY (or ANTHROPIC_API_KEY) on the server.';
+  }
+  if (status === 403 || type === 'permission_error') return 'The Anthropic API key is not allowed to do this (permission denied).';
+  if (status === 429 || type === 'rate_limit_error') return 'Anthropic is limiting how fast requests can be sent. Please try again in a minute.';
+  if (status === 529 || type === 'overloaded_error') return 'Anthropic is busy right now. Please try again shortly.';
+  return `Anthropic API answered ${status}: ${message || 'no details given'}`;
+}
+
 export class HealthAgentError extends Error {
   constructor(public code: 'NOT_CONFIGURED' | 'MODEL_ERROR', message: string) {
     super(message);
@@ -94,8 +130,8 @@ export function readResponseContent(content: unknown[], into: { text: string; ur
 }
 
 export const callModelWithSearch: ModelCaller = async (topic) => {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new HealthAgentError('NOT_CONFIGURED', 'ANTHROPIC_API_KEY is not set.');
+  const apiKey = healthAgentApiKey();
+  if (!apiKey) throw new HealthAgentError('NOT_CONFIGURED', 'Neither HEALTH_AGENT_API_KEY nor ANTHROPIC_API_KEY is set.');
 
   const messages: unknown[] = [{ role: 'user', content: userPrompt(topic) }];
   const state = { text: '', urls: new Set<string>() };
@@ -115,7 +151,7 @@ export const callModelWithSearch: ModelCaller = async (topic) => {
       }),
       signal: AbortSignal.timeout(150_000),
     });
-    if (!res.ok) throw new HealthAgentError('MODEL_ERROR', `Anthropic API answered ${res.status}: ${(await res.text()).slice(0, 300)}`);
+    if (!res.ok) throw new HealthAgentError('MODEL_ERROR', describeApiError(res.status, await res.text()));
 
     const data = (await res.json()) as { content?: unknown[]; stop_reason?: string };
     readResponseContent(data.content ?? [], state);
