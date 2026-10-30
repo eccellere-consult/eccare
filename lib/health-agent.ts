@@ -144,7 +144,6 @@ export const callModelWithSearch: ModelCaller = async (topic) => {
       body: JSON.stringify({
         model: healthAgentModel(),
         max_tokens: 3000,
-        temperature: 0.2,
         system: SYSTEM_PROMPT,
         tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 4, allowed_domains: Object.keys(TRUSTED_SOURCES) }],
         messages,
