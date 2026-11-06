@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { CompanionCard } from '@/components/companion-card';
 import { EmergencyActions } from '@/components/emergency-actions';
+import { PrescriptionFileLink } from '@/components/prescription-file-link';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
 
@@ -132,11 +133,9 @@ export function ElderHomeClient({
           </CardHeader>
           <CardContent className="flex flex-col gap-2">
             {prescriptions.map((p) => (
-              <a
+              <PrescriptionFileLink
                 key={p.id}
-                href={p.filePath}
-                target="_blank"
-                rel="noopener noreferrer"
+                filePath={p.filePath}
                 className="flex items-center justify-between gap-3 rounded-xl border border-border px-4 py-3 text-sm transition-colors hover:bg-primary-50"
               >
                 <span className="font-semibold text-text">{p.doctorName ?? p.fileName}</span>
@@ -145,7 +144,7 @@ export function ElderHomeClient({
                     ? new Date(p.prescriptionDate).toLocaleDateString()
                     : new Date(p.createdAt).toLocaleDateString()}
                 </span>
-              </a>
+              </PrescriptionFileLink>
             ))}
           </CardContent>
         </Card>
