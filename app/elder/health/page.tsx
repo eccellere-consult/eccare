@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { HealthEssentials } from '@/components/health-essentials';
 import { PrescriptionUploadSection } from '@/components/prescription-upload-section';
+import { PrescriptionFileLink } from '@/components/prescription-file-link';
 import { healthApi, useHealthData } from '@/lib/health-client';
 import { useCommunityData } from '@/lib/community-client';
 import { getSlotForDate, formatIstTime, SLOT_META, SLOT_ORDER, todayIST, type MedicineSlot } from '@/lib/medicine-slots';
@@ -377,14 +378,12 @@ export default function ElderHealthPage() {
                       </p>
                     )}
                   </div>
-                  <a
-                    href={p.filePath}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <PrescriptionFileLink
+                    filePath={p.filePath}
                     className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border text-primary-600 hover:bg-primary-50"
                   >
                     <Eye className="h-5 w-5" />
-                  </a>
+                  </PrescriptionFileLink>
                 </CardContent>
               </Card>
             ))}

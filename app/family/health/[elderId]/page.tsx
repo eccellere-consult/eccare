@@ -23,6 +23,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { HealthEssentials } from '@/components/health-essentials';
 import { PrescriptionUploadSection } from '@/components/prescription-upload-section';
+import { PrescriptionFileLink } from '@/components/prescription-file-link';
 import { healthApi, useHealthData } from '@/lib/health-client';
 
 interface Medication {
@@ -407,14 +408,12 @@ export default function FamilyHealthPage({
                     <p className="mt-1 text-xs text-text-secondary">Uploaded by {p.uploadedBy.name}</p>
                   </div>
                   <div className="flex shrink-0 gap-2">
-                    <a
-                      href={p.filePath}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <PrescriptionFileLink
+                      filePath={p.filePath}
                       className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border text-text-secondary hover:bg-primary-50"
                     >
                       <Eye className="h-4 w-4" />
-                    </a>
+                    </PrescriptionFileLink>
                     <button
                       onClick={() => deletePrescription(p.id)}
                       className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border text-text-secondary hover:bg-danger-50 hover:text-danger-600"
