@@ -38,8 +38,11 @@ export default function PricingPage() {
   const [content, setContent] = useState<PricingContent | null>(null);
   const [loggedIn, setLoggedIn] = useState(false);
   const [tab, setTab] = useState<Tab>('elder');
+  // Google Play does not allow a price for a digital plan inside the Android app (its web view adds "ECApp/").
+  const [inApp, setInApp] = useState(false);
 
   useEffect(() => {
+    setInApp(/ECApp\//.test(navigator.userAgent));
     fetch('/api/v1/pricing')
       .then((r) => r.json())
       .then((j) => { if (j.success) setContent(j.data); })
@@ -100,11 +103,13 @@ export default function PricingPage() {
               {tab === 'family' && (
                 <PlanPanel
                   price={
-                    content.familyMonthlyPrice > 0
+                    inApp
+                      ? ''
+                      : content.familyMonthlyPrice > 0
                       ? `₹${content.familyMonthlyPrice}/month or ₹${content.familyAnnualPrice}/year — ${content.trialDays}-day free trial`
                       : 'Free'
                   }
-                  intro={content.familyIntro}
+                  intro={inApp ? '' : content.familyIntro}
                   features={content.familyFeatures}
                 />
               )}
@@ -122,8 +127,8 @@ export default function PricingPage() {
 function PlanPanel({ price, intro, features }: { price: string; intro: string; features: string[] }) {
   return (
     <div>
-      <p className="text-lg font-bold text-primary-700">{price}</p>
-      <p className="mt-1 text-text-secondary">{intro}</p>
+      {price && <p className="text-lg font-bold text-primary-700">{price}</p>}
+      {intro && <p className="mt-1 text-text-secondary">{intro}</p>}
       <ul className="mt-4 list-disc space-y-2 pl-5 leading-relaxed text-text-secondary">
         {features.map((f, i) => (
           <li key={i}>{f}</li>
