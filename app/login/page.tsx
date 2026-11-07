@@ -850,6 +850,12 @@ function LoginPageContent() {
           <p className="mt-1 text-text-secondary">{t('login.tagline')}</p>
         </div>
 
+        {params.get('deleted') === '1' && (
+          <p role="status" className="mb-4 rounded-xl bg-success-50 p-3 text-center text-sm font-semibold text-success-600">
+            Your account has been deleted. Thank you for using EC.
+          </p>
+        )}
+
         <div className="mb-4 flex justify-center gap-1.5" role="group" aria-label={t('login.chooseLanguage')}>
           {SUPPORTED_LANGUAGES.map((l) => (
             <button

@@ -288,6 +288,9 @@ model FamilySubscription {
   razorpayPaymentId String?
   paidAt            DateTime?
   amountPaid        Decimal?                 @db.Decimal(10, 2)
+  /// When the "how to pay" message (email / WhatsApp) was last sent to this
+  /// family member, so the Android app can offer it without sending a pile of them.
+  payLinkSentAt     DateTime?
   createdAt         DateTime                 @default(now())
   updatedAt         DateTime                 @updatedAt
 

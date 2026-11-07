@@ -21,7 +21,7 @@ export default function PrivacyPolicyPage() {
 
       <main className="mx-auto max-w-3xl px-6 py-12 text-text">
         <h1 className="text-3xl font-bold text-text">Privacy Policy</h1>
-        <p className="mt-2 text-sm text-text-secondary">Last updated: August 15, 2026</p>
+        <p className="mt-2 text-sm text-text-secondary">Last updated: November 7, 2026</p>
 
         <p className="mt-8 leading-relaxed text-text-secondary">
           EC ("Just Easy.", "EC", "we", "us", or "our") is a care companion app for elders and the
@@ -185,7 +185,7 @@ export default function PrivacyPolicyPage() {
         <Section title="7. Your Rights and Choices">
           <Ul items={[
             'Access & correction — you can view and update most of your profile and health information directly in the app, or ask a linked family member with the right permission to do so.',
-            'Deletion — you can request deletion of your account and personal data by contacting us at the email below.',
+            'Deletion — you can delete your account and personal data yourself at any time: sign in, open Profile and choose “Delete my account”. If you cannot sign in, email us at the address below. Full details of what is removed and what is kept are at eccare.in/delete-account.',
             'Permission controls — you can grant or revoke a linked family member’s access to your health information or SOS notifications at any time from within the app.',
             'Device permissions — you can allow or deny EC’s access to location, camera, microphone, contacts, and notifications at any time from your device’s settings. Denying a permission may limit the related feature (for example, the SOS button will still dial for help, but won’t be able to share your location).',
             'Marketing — EC does not currently send marketing communications; the notifications we send relate directly to reminders, alerts, and account activity.',

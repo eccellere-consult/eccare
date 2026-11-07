@@ -4,11 +4,13 @@ import { prisma } from '@/lib/db';
 import { getAuthUser } from '@/lib/auth';
 import { verifyPaymentSignature } from '@/lib/razorpay';
 import { resolveFamilyPrice, periodLengthMs } from '@/lib/family-subscription';
+import { verifyPayToken } from '@/lib/family-pay-link';
 
 const schema = z.object({
   razorpayPaymentId: z.string(),
   razorpayOrderId: z.string(),
   razorpaySignature: z.string(),
+  payToken: z.string().optional(),
 });
 
 const fail = (code: string, message: string, status: number) =>
@@ -16,12 +18,13 @@ const fail = (code: string, message: string, status: number) =>
 
 export async function POST(req: NextRequest) {
   const auth = await getAuthUser(req);
-  if (!auth) return fail('UNAUTHORIZED', 'Please log in.', 401);
-
-  const parsed = schema.safeParse(await req.json());
+  const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return fail('INVALID_INPUT', 'Please try again.', 400);
 
-  const subscription = await prisma.familySubscription.findUnique({ where: { caregiverUserId: auth.userId } });
+  const caregiverUserId = (await verifyPayToken(parsed.data.payToken)) ?? auth?.userId ?? null;
+  if (!caregiverUserId) return fail('UNAUTHORIZED', 'Please log in, or use the latest link we sent you.', 401);
+
+  const subscription = await prisma.familySubscription.findUnique({ where: { caregiverUserId } });
   if (!subscription) return fail('NOT_FOUND', 'No subscription found for your account.', 404);
   if (subscription.razorpayOrderId !== parsed.data.razorpayOrderId) {
     return fail('MISMATCH', 'This payment does not match your current order.', 400);

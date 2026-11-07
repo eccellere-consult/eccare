@@ -40,7 +40,9 @@ export async function POST(req: NextRequest) {
   }
 
   const token = await createToken(user.id, user.role);
-  const res = NextResponse.json({ success: true, data: { user: toSafeUser(user) } });
+  // The token is also in the body so the Android app (which signs in with a Bearer token, not a cookie)
+  // can offer the same one-tap demo. The web page ignores it.
+  const res = NextResponse.json({ success: true, data: { user: toSafeUser(user), token } });
   setSessionCookie(res, token, false); // a session cookie: it ends when the browser is closed
   return res;
 }

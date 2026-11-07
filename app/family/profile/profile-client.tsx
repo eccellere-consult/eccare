@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ChangePasswordCard } from '@/components/change-password-card';
+import { DeleteAccountCard } from '@/components/delete-account-card';
 import { ProfileDobField } from '@/components/profile-dob';
 import { checkDateOfBirth, DOB_ERROR_MESSAGES } from '@/lib/age';
 import { isValidEmail, isValidAnyPhone, EMAIL_FORMAT_MESSAGE, ANY_PHONE_FORMAT_MESSAGE } from '@/lib/validation';
@@ -129,6 +130,8 @@ export function FamilyProfileClient({ profile }: { profile: Profile }) {
       <div className="mt-6">
         <ChangePasswordCard />
       </div>
+
+      <DeleteAccountCard />
     </div>
   );
 }
