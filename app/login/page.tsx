@@ -373,12 +373,15 @@ function CreateAccountForm({
   onSuccess,
   t,
   uiLanguage,
+  initialKind = 'person',
 }: {
   onSuccess: (role: string) => void;
   t: (k: TranslationKey) => string;
   uiLanguage: string;
+  /** 'provider' when the page was opened from a "register as a service provider" link (?join=provider). */
+  initialKind?: 'person' | 'provider';
 }) {
-  const [accountKind, setAccountKind] = useState<'person' | 'provider'>('person');
+  const [accountKind, setAccountKind] = useState<'person' | 'provider'>(initialKind);
   const [dob, setDob] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -816,7 +819,10 @@ function LoginPageContent() {
   const [uiLanguage, setUiLanguage] = useLoginLanguage();
   const t = (key: TranslationKey) => translate(key, uiLanguage);
 
-  const [view, setView] = useState<'signin' | 'register'>('signin');
+  // "?join=provider" (used by the Android app's "register as a service provider" link) opens the
+  // create-account form with the service-provider choice already selected.
+  const joinAsProvider = params.get('join') === 'provider';
+  const [view, setView] = useState<'signin' | 'register'>(joinAsProvider ? 'register' : 'signin');
   // The WhatsApp-code option only appears once the server says it's actually
   // set up (see /api/v1/auth/otp-status) — never as a dead end.
   const [otpAvailable, setOtpAvailable] = useState(false);
@@ -905,7 +911,7 @@ function LoginPageContent() {
                 )}
               </>
             ) : (
-              <CreateAccountForm onSuccess={handleRegistered} t={t} uiLanguage={uiLanguage} />
+              <CreateAccountForm onSuccess={handleRegistered} t={t} uiLanguage={uiLanguage} initialKind={joinAsProvider ? 'provider' : 'person'} />
             )}
 
             {view === 'signin' && <DemoSignIn onSuccess={handleSuccess} />}

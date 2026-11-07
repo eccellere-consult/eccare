@@ -2665,3 +2665,26 @@ model HouseLocation {
 
   @@unique([neighborhoodId, houseKey])
 }
+
+/// An enquiry from a company or person who wants to support EC: CSR funding, sponsoring free
+/// access for elders, community or offline-support partnerships. Taken from the public /partner
+/// page. No money is collected there; the team follows up by phone or email. `notifiedAt` is set
+/// once the email to the team went out, and stays empty while email is not set up, so the admin
+/// list (Admin > Partner enquiries) is the place to read them until then.
+model PartnerEnquiry {
+  id           String    @id @default(cuid())
+  /// csr | sponsor_elders | community | offline_services | other
+  interest     String
+  name         String
+  organisation String?
+  phone        String
+  email        String?
+  message      String    @db.Text
+  /// new | contacted | closed
+  status       String    @default("new")
+  notifiedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([status, createdAt])
+}

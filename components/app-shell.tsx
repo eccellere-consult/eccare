@@ -97,6 +97,7 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
       { label: 'Users', href: '/admin/users', icon: Users },
       { label: 'Communities', href: '/admin/communities', icon: Building2 },
       { label: 'Community Applications', href: '/admin/community-applications', icon: MapPin },
+      { label: 'Partner Enquiries', href: '/admin/partner-enquiries', icon: HeartHandshake },
       { label: 'SOS Feed', href: '/admin/sos-feed', icon: AlertTriangle },
       { label: 'Backlog', href: '/admin/backlog', icon: Kanban },
       { label: 'Quotes', href: '/admin/quotes', icon: Sparkles },
