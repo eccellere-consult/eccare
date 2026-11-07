@@ -25,6 +25,8 @@ export function DedicationFooter() {
       <p className="mt-3 text-[10px] text-text-secondary/70">
         <Link href="/pricing" className="underline hover:text-primary-600">Plans</Link>
         {' · '}
+        <Link href="/partner" className="underline hover:text-primary-600">Partner with us</Link>
+        {' · '}
         <Link href="/privacy" className="underline hover:text-primary-600">Privacy Policy</Link>
         {' · '}
         <Link href="/terms" className="underline hover:text-primary-600">Terms &amp; Conditions</Link>

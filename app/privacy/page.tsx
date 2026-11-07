@@ -115,6 +115,13 @@ export default function PrivacyPolicyPage() {
             record (amount, status, and date) needed for your order history and receipts.
           </P>
 
+          <SubHeading>Partner enquiries</SubHeading>
+          <P>
+            If you write to us from the Partner page (for example about CSR funding or sponsorship), we
+            store your name, organisation, phone number, optional email and your message, and use them
+            only to reply to you.
+          </P>
+
           <SubHeading>Device &amp; usage information</SubHeading>
           <P>
             We collect a push-notification device token so we can deliver reminders and alerts, and
