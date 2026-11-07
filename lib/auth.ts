@@ -2,6 +2,7 @@ import { hash, compare } from 'bcryptjs';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { isCaregiverEligible } from '@/lib/age';
+import { isDeletedEmail } from '@/lib/account-deletion';
 import { verifyToken, createToken, SESSION_COOKIE } from '@/lib/session-token';
 
 // Token creation/verification lives in lib/session-token.ts (edge-safe, so the
@@ -70,15 +71,16 @@ export async function getAuthUser(req: NextRequest) {
 
   try {
     const payload = await verifyToken(token);
-    if (payload.role === 'caregiver') {
-      // One primary-key lookup, only for caregivers. Read fresh (not baked into
-      // the 30-day token) so an admin exception or a newly entered date of birth
-      // takes effect immediately.
-      const user = await prisma.user.findUnique({
-        where: { id: payload.userId },
-        select: { dateOfBirth: true, caregiverException: true },
-      });
-      if (user && !isCaregiverEligible(user)) return { ...payload, role: INELIGIBLE_CAREGIVER_ROLE };
+    // One primary-key lookup, read fresh (not baked into the 30-day token) so a deleted account
+    // stops working at once, and an admin exception or a newly entered date of birth takes effect
+    // immediately.
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { email: true, dateOfBirth: true, caregiverException: true },
+    });
+    if (user && isDeletedEmail(user.email)) return null;
+    if (payload.role === 'caregiver' && user && !isCaregiverEligible(user)) {
+      return { ...payload, role: INELIGIBLE_CAREGIVER_ROLE };
     }
     return payload;
   } catch {
