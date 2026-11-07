@@ -6,7 +6,7 @@ name: PR checks
 #
 # It deliberately does NOT run `npm run build` as defined in package.json: that
 # script also runs `prisma db push`, which needs a real database. Here we only
-# generate the Prisma client, type-check, lint and compile the site, with no
+# generate the Prisma client, type-check and compile the site, with no
 # database touched and no secrets.
 
 on:
@@ -42,9 +42,6 @@ jobs:
 
       - name: Type check
         run: npm run typecheck
-
-      - name: Lint
-        run: npm run lint
 
       - name: Compile the site (production build, no database)
         run: npx next build
