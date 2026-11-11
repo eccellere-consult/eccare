@@ -51,6 +51,38 @@ interface Props {
  *  per-elder page — the backend (requireHealthAccess) already allowed an
  *  elder to upload their own prescription; only the caregiver page ever had
  *  this UI before. */
+/** Phone camera photos are often 4-10 MB, which is slow to send and can be cut off by the host.
+ *  Shrinks the picture to at most 1800 px on its longest side as a JPEG (still easy to read),
+ *  usually under 1 MB. If anything goes wrong the original file is sent unchanged. */
+async function shrinkPhoto(file: File): Promise<File> {
+  try {
+    if (file.size < 1_200_000 || !file.type.startsWith('image/')) return file;
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, 1800 / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return file;
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close?.();
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+    if (!blob || blob.size >= file.size) return file;
+    const name = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+    return new File([blob], name, { type: 'image/jpeg' });
+  } catch {
+    return file;
+  }
+}
+
+function uploadFailureMessage(status: number): string {
+  if (status === 413) return 'The photo is too large. Please take a smaller photo and try again.';
+  if (status === 502 || status === 503 || status === 504) {
+    return 'The server took too long to read the photo. Please try again in a minute.';
+  }
+  return `Server error (${status}). Please try again, or add the medicines by hand.`;
+}
+
 export function PrescriptionUploadSection({ elderUserId, onSaved }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -70,7 +102,7 @@ export function PrescriptionUploadSection({ elderUserId, onSaved }: Props) {
     setReviewError('');
     try {
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', await shrinkPhoto(file));
       if (elderUserId) formData.append('elderUserId', elderUserId);
 
       const res = await fetch('/api/v1/health/prescriptions', {
@@ -99,7 +131,7 @@ export function PrescriptionUploadSection({ elderUserId, onSaved }: Props) {
       try {
         json = JSON.parse(text);
       } catch {
-        throw new Error(`Server error (${res.status}). Please try again.`);
+        throw new Error(uploadFailureMessage(res.status));
       }
       if (!res.ok || !json.success || !json.data?.prescription) {
         throw new Error(json?.error?.message || 'Upload failed.');
