@@ -368,8 +368,8 @@ export default function FamilyHealthPage({
           <Upload className="h-5 w-5 text-primary-600" /> Prescriptions
         </h2>
         <p className="mt-1 text-sm text-text-secondary">
-          Upload a prescription photo — AI will read it and set up the medicine calendar automatically.
-          The elder can also upload their own from their Health page.
+          Upload a prescription photo — AI reads it, then you check the medicines and press <b>Save to calendar</b>.
+          Nothing reaches the medicine schedule until you save. The elder can also upload their own from their Health page.
         </p>
 
         <PrescriptionUploadSection

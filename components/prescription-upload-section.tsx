@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Upload, Loader2, X, Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,26 @@ interface ReviewState {
   includeAppointment: boolean;
   aiNotes: string | null;
   aiProvider: string | null;
+}
+
+interface PendingDraft {
+  id: string;
+  fileName: string;
+  reviewed: boolean;
+  notes: string | null;
+  doctorName: string | null;
+  hospitalName: string | null;
+  extractedData: {
+    nextVisitDate?: string | null;
+    medications?: {
+      name?: string;
+      dosage?: string;
+      frequency?: string;
+      timeSlots?: string[];
+      instructions?: string | null;
+      durationDays?: number | null;
+    }[];
+  } | null;
 }
 
 interface Props {
@@ -93,6 +113,45 @@ export function PrescriptionUploadSection({ elderUserId, onSaved }: Props) {
   const [saveSummary, setSaveSummary] = useState<{ medications: number; appointment: boolean } | null>(null);
   const reviewKeyCounter = useRef(0);
   const nextReviewKey = () => (reviewKeyCounter.current += 1);
+
+  // Photos already uploaded and read but never saved to the calendar (the page was reloaded or
+  // left before "Save to calendar" was pressed). They stay "Needs review" in the list, so they
+  // get a button here to reopen the review box with what the AI read.
+  const [pending, setPending] = useState<PendingDraft[]>([]);
+  const loadPending = useCallback(() => {
+    const q = elderUserId ? `?elderUserId=${encodeURIComponent(elderUserId)}` : '';
+    healthApi
+      .get<PendingDraft[]>(`/prescriptions${q}`)
+      .then((list) => setPending(list.filter((p) => !p.reviewed)))
+      .catch(() => setPending([]));
+  }, [elderUserId]);
+  useEffect(() => { loadPending(); }, [loadPending]);
+
+  function openDraft(d: PendingDraft) {
+    const x = d.extractedData ?? {};
+    const nextVisit = x.nextVisitDate ?? null;
+    setSaveSummary(null);
+    setReviewError('');
+    setReview({
+      prescriptionId: d.id,
+      fileName: d.fileName,
+      medications: (x.medications ?? []).map((m) => ({
+        key: nextReviewKey(),
+        name: m.name ?? '',
+        dosage: m.dosage ?? '',
+        frequency: m.frequency ?? 'Daily',
+        timeSlots: (m.timeSlots ?? []).join(', '),
+        instructions: m.instructions ?? '',
+        durationDays: m.durationDays != null ? String(m.durationDays) : '',
+      })),
+      appointment: nextVisit
+        ? { doctorName: d.doctorName ?? '', hospital: d.hospitalName ?? '', specialty: '', datetime: `${nextVisit}T09:00`, notes: 'Follow-up from prescription' }
+        : null,
+      includeAppointment: Boolean(nextVisit),
+      aiNotes: d.notes,
+      aiProvider: null,
+    });
+  }
 
   async function uploadPrescription(file: File) {
     setUploading(true);
@@ -163,6 +222,7 @@ export function PrescriptionUploadSection({ elderUserId, onSaved }: Props) {
         aiProvider: json.data.aiProvider ?? null,
       });
       onSaved?.();
+      loadPending();
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Upload failed.');
     } finally {
@@ -239,6 +299,7 @@ export function PrescriptionUploadSection({ elderUserId, onSaved }: Props) {
       setSaveSummary({ medications: data.createdMedications, appointment: Boolean(data.appointment) });
       setReview(null);
       onSaved?.();
+      loadPending();
     } catch (err) {
       setReviewError(err instanceof Error ? err.message : 'Could not save. Please try again.');
     } finally {
@@ -255,6 +316,7 @@ export function PrescriptionUploadSection({ elderUserId, onSaved }: Props) {
     setReview(null);
     setReviewError('');
     onSaved?.();
+    loadPending();
   }
 
   return (
@@ -286,6 +348,24 @@ export function PrescriptionUploadSection({ elderUserId, onSaved }: Props) {
       </div>
 
       {uploadError && <p className="mt-2 text-sm text-danger-600">{uploadError}</p>}
+
+      {pending
+        .filter((d) => d.id !== review?.prescriptionId)
+        .map((d) => (
+          <Card key={d.id} className="mt-3 border-accent-100 bg-accent-50">
+            <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+              <div className="min-w-0">
+                <p className="font-semibold text-text">&ldquo;{d.fileName}&rdquo; is not saved to the calendar yet</p>
+                <p className="text-sm text-text-secondary">
+                  {(d.extractedData?.medications?.length ?? 0) > 0
+                    ? `AI found ${d.extractedData?.medications?.length} medicine(s). Check them and press Save.`
+                    : 'AI could not read any medicines. You can add them by hand.'}
+                </p>
+              </div>
+              <Button onClick={() => openDraft(d)}>Review &amp; save</Button>
+            </CardContent>
+          </Card>
+        ))}
 
       {saveSummary && (
         <Card className="mt-3 border-success-200 bg-success-50">
