@@ -188,16 +188,41 @@ const PROVIDERS: Provider[] = [
   { name: 'grok', available: () => !!process.env.XAI_API_KEY, extract: extractWithGrok },
 ];
 
+// The website host cuts a request off after about a minute and then shows a blank 500, so
+// the AI reading gets a hard time budget: each provider is cut off at PER_PROVIDER_MS, and no
+// new provider is started once TOTAL_BUDGET_MS has been used. A slow or failing AI then
+// ends as "please add the medicines manually" instead of a server error.
+const PER_PROVIDER_MS = 35_000;
+const TOTAL_BUDGET_MS = 50_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} took too long`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 export async function extractPrescription(
   imageBase64: string,
   mediaType: MediaType,
 ): Promise<PrescriptionExtraction & { provider?: string }> {
   const errors: string[] = [];
+  const startedAt = Date.now();
 
   for (const provider of PROVIDERS) {
     if (!provider.available()) continue;
+    const remaining = TOTAL_BUDGET_MS - (Date.now() - startedAt);
+    if (remaining < 5_000) {
+      errors.push(`${provider.name}: skipped, out of time`);
+      continue;
+    }
     try {
-      const result = await provider.extract(imageBase64, mediaType);
+      const result = await withTimeout(
+        provider.extract(imageBase64, mediaType),
+        Math.min(PER_PROVIDER_MS, remaining),
+        provider.name,
+      );
       return { ...result, provider: provider.name };
     } catch (err) {
       errors.push(`${provider.name}: ${err instanceof Error ? err.message : String(err)}`);

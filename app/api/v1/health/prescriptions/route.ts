@@ -13,22 +13,38 @@ const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 type AllowedType = (typeof ALLOWED_TYPES)[number];
 
 export async function GET(req: NextRequest) {
-  const guard = await requireHealthAccess(req);
-  if (guard instanceof Response) return guard;
+  try {
+    const guard = await requireHealthAccess(req);
+    if (guard instanceof Response) return guard;
 
-  const prescriptions = await prisma.prescription.findMany({
-    where: { userId: guard.elderUserId },
-    include: {
-      uploadedBy: { select: { name: true } },
-      medications: { select: { id: true, name: true, dosage: true, isActive: true } },
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+    const prescriptions = await prisma.prescription.findMany({
+      where: { userId: guard.elderUserId },
+      include: {
+        uploadedBy: { select: { name: true } },
+        medications: { select: { id: true, name: true, dosage: true, isActive: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
 
-  return ok(prescriptions);
+    return ok(prescriptions);
+  } catch (err) {
+    console.error('Prescription list error:', err instanceof Error ? err.message : err);
+    return fail('SERVER_ERROR', 'Could not load prescriptions right now. Please try again.', 500);
+  }
 }
 
+// Whatever goes wrong inside, the person always gets a readable JSON answer (never a blank
+// 500 page), and the real reason is written to the server log.
 export async function POST(req: NextRequest) {
+  try {
+    return await handleUpload(req);
+  } catch (err) {
+    console.error('Prescription upload crashed:', err instanceof Error ? err.stack || err.message : err);
+    return fail('SERVER_ERROR', 'Something went wrong while saving the prescription. Please try again.', 500);
+  }
+}
+
+async function handleUpload(req: NextRequest) {
   let formData: FormData;
   try {
     formData = await req.formData();
@@ -58,7 +74,13 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(bytes);
     const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
     const filename = `${guard.elderUserId}_${Date.now()}.${ext}`;
-    const filePath = await uploadToStorage(`prescriptions/${filename}`, buffer, file.type);
+    let filePath: string;
+    try {
+      filePath = await uploadToStorage(`prescriptions/${filename}`, buffer, file.type);
+    } catch (storageErr) {
+      console.error('Prescription photo storage error:', storageErr instanceof Error ? storageErr.message : storageErr);
+      return fail('STORAGE_FAILED', 'The photo could not be stored (file storage problem). Please tell EC support.', 502);
+    }
 
     let extraction: PrescriptionExtraction = {
       doctorName: null,
@@ -109,8 +131,7 @@ export async function POST(req: NextRequest) {
       201,
     );
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Upload failed unexpectedly.';
-    console.error('Prescription upload error:', message);
-    return fail('SERVER_ERROR', message, 500);
+    console.error('Prescription upload error:', err instanceof Error ? err.stack || err.message : err);
+    return fail('SERVER_ERROR', 'Could not save the prescription photo. Please try again in a minute.', 500);
   }
 }
