@@ -85,7 +85,7 @@ const ml: Record<TranslationKey, string> = {
   'elder.health.yogaExerciseMeditation': 'യോഗ, വ്യായാമം & ധ്യാനം',
   'elder.health.fromYourFamily': 'നിങ്ങളുടെ കുടുംബത്തിൽ നിന്ന്',
   'elder.health.uploadPrescriptionHelper':
-    'ഒരു കുറിപ്പടിയുടെ ഫോട്ടോ നിങ്ങൾ തന്നെ അപ്‌ലോഡ് ചെയ്യുക — AI അത് വായിച്ച് സ്വയമേവ മരുന്ന് കലണ്ടർ തയ്യാറാക്കും.',
+    'ഒരു കുറിപ്പടിയുടെ ഫോട്ടോ നിങ്ങൾ തന്നെ അപ്ലോഡ് ചെയ്യുക — AI അത് വായിക്കും, തുടർന്ന് മരുന്നുകൾ പരിശോധിച്ച് "സേവ്" അമർത്തിയാൽ അവ മരുന്ന് കലണ്ടറിൽ ചേരും.',
 
   'elder.contacts.emergencyTab': 'അടിയന്തരം',
   'elder.contacts.allContactsTab': 'എല്ലാ കോൺടാക്റ്റുകളും',

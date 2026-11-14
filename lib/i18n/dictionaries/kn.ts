@@ -85,7 +85,7 @@ const kn: Record<TranslationKey, string> = {
   'elder.health.yogaExerciseMeditation': 'ಯೋಗ, ವ್ಯಾಯಾಮ ಮತ್ತು ಧ್ಯಾನ',
   'elder.health.fromYourFamily': 'ನಿಮ್ಮ ಕುಟುಂಬದಿಂದ',
   'elder.health.uploadPrescriptionHelper':
-    'ಔಷಧಿ ಚೀಟಿಯ ಫೋಟೋವನ್ನು ನೀವೇ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ — AI ಅದನ್ನು ಓದಿ ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಔಷಧಿ ಕ್ಯಾಲೆಂಡರ್ ಸಿದ್ಧಪಡಿಸುತ್ತದೆ.',
+    'ಔಷಧಿ ಚೀಟಿಯ ಫೋಟೋವನ್ನು ನೀವೇ ಅಪ್ಲೋಡ್ ಮಾಡಿ — AI ಅದನ್ನು ಓದುತ್ತದೆ, ನಂತರ ಔಷಧಿಗಳನ್ನು ಪರಿಶೀಲಿಸಿ "ಸೇವ್" ಒತ್ತಿದರೆ ಅವು ಔಷಧಿ ಕ್ಯಾಲೆಂಡರ್‌ಗೆ ಸೇರುತ್ತವೆ.',
 
   'elder.contacts.emergencyTab': 'ತುರ್ತು',
   'elder.contacts.allContactsTab': 'ಎಲ್ಲಾ ಸಂಪರ್ಕಗಳು',

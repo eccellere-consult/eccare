@@ -85,7 +85,7 @@ const hi: Record<TranslationKey, string> = {
   'elder.health.yogaExerciseMeditation': 'योग, व्यायाम और ध्यान',
   'elder.health.fromYourFamily': 'आपके परिवार की ओर से',
   'elder.health.uploadPrescriptionHelper':
-    'खुद एक नुस्खे की फोटो अपलोड करें — AI इसे पढ़ेगा और अपने आप दवा कैलेंडर बना देगा।',
+    'खुद नुस्खे की फोटो अपलोड करें — AI उसे पढ़ेगा, फिर दवाएँ जाँचकर "सेव" दबाएँ, तब वे दवा कैलेंडर में जुड़ेंगी।',
 
   'elder.contacts.emergencyTab': 'आपातकाल',
   'elder.contacts.allContactsTab': 'सभी संपर्क',
