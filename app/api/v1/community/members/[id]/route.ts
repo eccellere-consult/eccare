@@ -4,6 +4,8 @@ import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { requireMembership, invalidInput, ok } from '@/lib/community-route';
 import { normalizeHouseInput } from '@/lib/house';
+import { COMMITTEE_TITLES, checkDelegationEnd } from '@/lib/committee-powers';
+import { loadPowers } from '@/lib/committee-powers-db';
 
 const schema = z.object({
   role: z.enum(['member', 'committee', 'admin']).optional(),
@@ -18,6 +20,10 @@ const schema = z.object({
   // handled in its own branch below (see approve/reject handling).
   action: z.enum(['approve', 'reject']).optional(),
   rejectionReason: z.string().trim().max(500).optional(),
+  // President / Secretary / Treasurer (null clears it). One holder per title: giving it moves it.
+  committeeTitle: z.enum(COMMITTEE_TITLES).nullable().optional(),
+  // The admin lends admin powers to a committee member until this moment (null ends it now).
+  delegateAdminUntil: z.string().max(40).nullable().optional(),
 });
 
 const forbidden = (message: string) =>
@@ -85,7 +91,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return ok(updated);
   }
 
-  if (parsed.data.role === undefined && parsed.data.flatNumber === undefined && parsed.data.name === undefined) {
+  if (
+    parsed.data.role === undefined &&
+    parsed.data.flatNumber === undefined &&
+    parsed.data.name === undefined &&
+    parsed.data.committeeTitle === undefined &&
+    parsed.data.delegateAdminUntil === undefined
+  ) {
     return invalidInput('Nothing to update.');
   }
 
@@ -99,10 +111,46 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     flatNumber = house.value;
   }
 
-  const callerIsAdminTier = guard.membership.role === 'admin';
-  const touchesAdmin = parsed.data.role === 'admin' || target.role === 'admin';
-  if (parsed.data.role !== undefined && touchesAdmin && !callerIsAdminTier) {
-    return forbidden('Only a community admin can grant or remove admin status.');
+  const { powers } = await loadPowers(guard.auth.userId, target.neighborhoodId, guard.membership.role);
+  const roleChanging = parsed.data.role !== undefined && parsed.data.role !== target.role;
+  const newRole = parsed.data.role ?? target.role;
+
+  // Granting or removing ADMIN is the real admin's alone (an acting admin cannot, so a lent power
+  // can never be turned into a permanent one). Making someone committee, or taking it away, needs
+  // the admin to have switched that right on for the committee (or lent admin powers).
+  if (roleChanging) {
+    const touchesAdmin = parsed.data.role === 'admin' || target.role === 'admin';
+    if (touchesAdmin && !powers.canAdminister) {
+      return forbidden('Only a community admin can grant or remove admin status.');
+    }
+    if (!touchesAdmin && !powers.canManageCommittee) {
+      return forbidden('Making someone committee, or taking it away, needs the community admin to allow it. Ask your admin to switch it on.');
+    }
+  }
+
+  // President / Secretary / Treasurer: same right as making committee. Only committee or admin can hold one.
+  if (parsed.data.committeeTitle !== undefined) {
+    if (!powers.canManageCommittee) {
+      return forbidden('Setting a committee title needs the community admin to allow it. Ask your admin to switch it on.');
+    }
+    if (parsed.data.committeeTitle !== null && newRole === 'member') {
+      return invalidInput('Only a committee member can hold a title. Make them committee first.');
+    }
+  }
+
+  // Lending admin powers for a while: the real admin only, to a committee member only.
+  let delegation: { until: Date | null } | undefined;
+  if (parsed.data.delegateAdminUntil !== undefined) {
+    if (!powers.canAdminister) return forbidden('Only the community admin can lend admin powers.');
+    if (parsed.data.delegateAdminUntil === null) {
+      delegation = { until: null };
+    } else {
+      if (newRole !== 'committee') return invalidInput('Admin powers can be lent to a committee member only.');
+      if (target.userId === guard.auth.userId) return invalidInput('You are the admin already.');
+      const checked = checkDelegationEnd(parsed.data.delegateAdminUntil);
+      if (!checked.ok) return invalidInput(checked.message);
+      delegation = { until: checked.date };
+    }
   }
 
   if (parsed.data.role !== undefined && target.role === 'admin' && parsed.data.role !== 'admin') {
@@ -123,31 +171,41 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
+  // Becoming an ordinary member drops the office and any lent powers; becoming admin makes a lent
+  // window pointless. An explicit title / delegation in the request wins over these defaults.
+  const droppedToMember = roleChanging && newRole === 'member';
   const memberUpdateData = {
     ...(parsed.data.role !== undefined ? { role: parsed.data.role } : {}),
     ...(flatNumber !== undefined ? { flatNumber } : {}),
+    ...(droppedToMember ? { committeeTitle: null, adminDelegatedUntil: null, adminDelegatedById: null } : {}),
+    ...(roleChanging && newRole === 'admin' ? { adminDelegatedUntil: null, adminDelegatedById: null } : {}),
+    ...(parsed.data.committeeTitle !== undefined ? { committeeTitle: parsed.data.committeeTitle } : {}),
+    ...(delegation
+      ? { adminDelegatedUntil: delegation.until, adminDelegatedById: delegation.until ? guard.auth.userId : null }
+      : {}),
   };
+  const include = { user: { select: { id: true, name: true, phone: true } } };
 
-  // Name lives on User, not NeighborhoodMember — when both are being changed,
-  // run them as one transaction so a mid-write failure can't leave the two out of
-  // sync (e.g. role updated but the name change silently dropped).
-  const updated =
-    parsed.data.name !== undefined
-      ? (
-          await prisma.$transaction([
-            prisma.user.update({ where: { id: target.userId }, data: { name: parsed.data.name } }),
-            prisma.neighborhoodMember.update({
-              where: { id },
-              data: memberUpdateData,
-              include: { user: { select: { id: true, name: true, phone: true } } },
-            }),
-          ])
-        )[1]
-      : await prisma.neighborhoodMember.update({
-          where: { id },
-          data: memberUpdateData,
-          include: { user: { select: { id: true, name: true, phone: true } } },
-        });
+  // One transaction for everything that has to stay in step: the name (on User), taking a title
+  // off its previous holder (one per community), and the member row itself.
+  const steps = [
+    ...(parsed.data.name !== undefined
+      ? [prisma.user.update({ where: { id: target.userId }, data: { name: parsed.data.name } })]
+      : []),
+    ...(parsed.data.committeeTitle
+      ? [
+          prisma.neighborhoodMember.updateMany({
+            where: { neighborhoodId: target.neighborhoodId, committeeTitle: parsed.data.committeeTitle, id: { not: id } },
+            data: { committeeTitle: null },
+          }),
+        ]
+      : []),
+  ];
+  const results = await prisma.$transaction([
+    ...steps,
+    prisma.neighborhoodMember.update({ where: { id }, data: memberUpdateData, include }),
+  ]);
+  const updated = results[results.length - 1];
 
   return ok(updated);
 }
@@ -176,8 +234,16 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     if (guard.membership.role !== 'committee' && guard.membership.role !== 'admin') {
       return forbidden('Only the management committee can do this.');
     }
-    if (target.role === 'admin' && guard.membership.role !== 'admin') {
+    // Removing someone is the easiest mistake to make, so the admin decides whether the committee may.
+    const { powers } = await loadPowers(guard.auth.userId, target.neighborhoodId, guard.membership.role);
+    if (!powers.canRemoveMembers) {
+      return forbidden('Removing a resident needs the community admin to allow it. Ask your admin to switch it on.');
+    }
+    if (target.role === 'admin' && !powers.canAdminister) {
       return forbidden('Only a community admin can remove another admin.');
+    }
+    if (target.role === 'committee' && !powers.canManageCommittee) {
+      return forbidden('Removing a committee member needs the community admin to allow it. Ask your admin to switch it on.');
     }
   }
 

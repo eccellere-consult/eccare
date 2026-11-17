@@ -1242,6 +1242,12 @@ model Neighborhood {
   unregisteredResidents UnregisteredResident[]
   houseLocations HouseLocation[]
 
+  // What ordinary committee members may do, switched by the community admin (both Off by default,
+  // so nobody can be removed or promoted by accident). The admin, and a committee member the admin
+  // has lent admin powers to for a while, can always do both. See lib/committee-powers.ts.
+  committeeCanManageCommittee Boolean @default(false)
+  committeeCanRemoveMembers   Boolean @default(false)
+
   @@index([pincode])
 }
 
@@ -1344,6 +1350,13 @@ model NeighborhoodMember {
   // Residents can stay in the community but keep themselves out of the public
   // directory — a privacy affordance both reference apps get wrong by default.
   showInDirectory Boolean          @default(true)
+  // Optional office held on the committee: 'president' | 'secretary' | 'treasurer'. One holder per
+  // title per community (assigning it moves it; enforced in the members route).
+  committeeTitle  String?          @db.VarChar(20)
+  // The admin can lend admin powers to a committee member until this moment, after which they
+  // simply stop working (nothing has to run to switch them off: every check compares to now).
+  adminDelegatedUntil DateTime?
+  adminDelegatedById  String?
   // Where the person said their house is when they asked to join, kept until the committee
   // approves the request (a pending member can't pin a house yet). On approval it becomes the
   // house's saved location if the house has none (see lib/house-location.ts).

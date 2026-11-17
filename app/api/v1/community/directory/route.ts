@@ -6,6 +6,7 @@ import { getAuthUser } from '@/lib/auth';
 import { getElderNeighborhoodId } from '@/lib/community-access';
 import { getVisiblePlaceholders } from '@/lib/directory-link';
 import { houseKey } from '@/lib/house';
+import { loadPowers } from '@/lib/committee-powers-db';
 
 /** The house/flat number to show for a registered member. The community-specific
  *  number wins; the join form's field is optional though, so many members never set
@@ -149,6 +150,11 @@ export async function GET(req: NextRequest) {
   // residents get favourite/hello/call only, even for a contact they shared
   // themselves — see the contact-entry mapping below.
   const isManager = guard.membership.role === 'committee' || guard.membership.role === 'admin';
+  // Editing a house number stays with every manager, but REMOVING a resident only with those the
+  // admin has allowed (see lib/committee-powers.ts) — so the bin icon is hidden from everyone else.
+  const { powers } = isManager
+    ? await loadPowers(guard.auth.userId, guard.neighborhoodId, guard.membership.role)
+    : { powers: null };
 
   const [membersUnsorted, sharedContacts, unregistered, favorites] = await Promise.all([
     prisma.neighborhoodMember.findMany({
@@ -205,6 +211,12 @@ export async function GET(req: NextRequest) {
     // the membership entirely — they'd need to rejoin by join code.
     canManage: isManager,
     canModerate: false,
+    canRemove:
+      !!powers &&
+      m.user.id !== guard.auth.userId &&
+      powers.canRemoveMembers &&
+      (m.role !== 'admin' || powers.canAdminister) &&
+      (m.role !== 'committee' || powers.canManageCommittee),
   }));
 
   const contactEntries = await Promise.all(

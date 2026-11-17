@@ -37,6 +37,8 @@ interface Neighbour {
   isFavorite: boolean;
   canManage: boolean;
   canModerate: boolean;
+  /** Members only: whether the viewer may remove this person (the admin decides — see committee-powers). */
+  canRemove?: boolean;
 }
 
 /** A not-yet-registered entry the viewer (committee/admin) manages — can be ticked. */
@@ -658,14 +660,16 @@ export function DirectoryList({
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
-                      <button
-                        disabled={busyId === n.id}
-                        onClick={() => handleDelete(n)}
-                        aria-label={`Remove ${n.name}`}
-                        className="flex h-11 w-11 items-center justify-center rounded-full border border-border text-text-secondary hover:bg-danger-50 hover:text-danger-600 disabled:opacity-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {(n.source !== 'member' || n.canRemove) && (
+                        <button
+                          disabled={busyId === n.id}
+                          onClick={() => handleDelete(n)}
+                          aria-label={`Remove ${n.name}`}
+                          className="flex h-11 w-11 items-center justify-center rounded-full border border-border text-text-secondary hover:bg-danger-50 hover:text-danger-600 disabled:opacity-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
                     </>
                   )}
                   {!n.canManage && n.canModerate && n.source === 'contact' && (

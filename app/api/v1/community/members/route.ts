@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireMembership, ok, compareByFlatNumberAsc } from '@/lib/community-route';
+import { isDelegationActive } from '@/lib/committee-powers';
 
 /** Every member of the community — committee/admin only. Unlike the public
  *  directory (`/community/directory`), this ignores `showInDirectory` opt-outs:
@@ -27,6 +28,7 @@ export async function GET(req: NextRequest) {
   // join order — so a manager scanning the list can actually find a flat quickly.
   const members = [...membersUnsorted].sort(compareByFlatNumberAsc);
 
+  const now = new Date();
   return ok(
     members.map((m) => ({
       id: m.id,
@@ -34,6 +36,9 @@ export async function GET(req: NextRequest) {
       flatNumber: m.flatNumber,
       createdAt: m.createdAt,
       user: m.user,
+      committeeTitle: m.committeeTitle,
+      // Only while the lent powers are still running; an expired date is as good as none.
+      adminDelegatedUntil: isDelegationActive(m.adminDelegatedUntil, now) ? m.adminDelegatedUntil : null,
     })),
   );
 }
