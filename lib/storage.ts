@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 
 /**
  * Cloudflare R2 (S3-compatible) object storage for every uploaded file — photos,
@@ -63,4 +63,20 @@ export async function deleteFromStorage(url: string): Promise<void> {
   if (!isStorageConfigured() || !url.startsWith(`${R2_PUBLIC_URL}/`)) return;
   const key = url.slice(R2_PUBLIC_URL!.length + 1);
   await client().send(new DeleteObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key })).catch(() => {});
+}
+
+/** Reads back the object behind a stored URL so the site can show it to a signed-in person from
+ *  its own address (no dependence on the storage bucket being open to the public). Returns null
+ *  for a legacy "/uploads/..." path, when storage is not configured, or when the object is gone. */
+export async function getFromStorage(url: string): Promise<{ body: Buffer; contentType: string } | null> {
+  if (!isStorageConfigured() || !url.startsWith(`${R2_PUBLIC_URL}/`)) return null;
+  const key = url.slice(R2_PUBLIC_URL!.length + 1);
+  try {
+    const res = await client().send(new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key }));
+    if (!res.Body) return null;
+    const bytes = await res.Body.transformToByteArray();
+    return { body: Buffer.from(bytes), contentType: res.ContentType || 'image/jpeg' };
+  } catch {
+    return null;
+  }
 }

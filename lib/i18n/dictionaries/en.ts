@@ -88,7 +88,7 @@ const en = {
   'elder.health.yogaExerciseMeditation': 'Yoga, exercise & meditation',
   'elder.health.fromYourFamily': 'From Your Family',
   'elder.health.uploadPrescriptionHelper':
-    'Upload a prescription photo yourself — AI will read it and set up the medicine calendar automatically.',
+    'Upload a prescription photo yourself — AI will read it, then check the medicines and press Save to put them in the medicine calendar.',
 
   'elder.contacts.emergencyTab': 'Emergency',
   'elder.contacts.allContactsTab': 'All Contacts',

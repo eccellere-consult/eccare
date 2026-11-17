@@ -110,7 +110,7 @@ export function PrescriptionUploadSection({ elderUserId, onSaved }: Props) {
   const [review, setReview] = useState<ReviewState | null>(null);
   const [savingReview, setSavingReview] = useState(false);
   const [reviewError, setReviewError] = useState('');
-  const [saveSummary, setSaveSummary] = useState<{ medications: number; appointment: boolean } | null>(null);
+  const [saveSummary, setSaveSummary] = useState<{ medications: number; appointment: boolean; skipped: string[]; warnings: string[] } | null>(null);
   const reviewKeyCounter = useRef(0);
   const nextReviewKey = () => (reviewKeyCounter.current += 1);
 
@@ -292,11 +292,21 @@ export function PrescriptionUploadSection({ elderUserId, onSaved }: Props) {
               }
             : null,
       };
-      const data = await healthApi.post<{ createdMedications: number; appointment: unknown }>(
+      const data = await healthApi.post<{
+        createdMedications: number;
+        appointment: unknown;
+        skippedDuplicates?: { name: string; dosage: string }[];
+        warnings?: string[];
+      }>(
         `/prescriptions/${review.prescriptionId}/confirm`,
         body,
       );
-      setSaveSummary({ medications: data.createdMedications, appointment: Boolean(data.appointment) });
+      setSaveSummary({
+        medications: data.createdMedications,
+        appointment: Boolean(data.appointment),
+        skipped: (data.skippedDuplicates ?? []).map((m) => `${m.name} ${m.dosage}`),
+        warnings: data.warnings ?? [],
+      });
       setReview(null);
       onSaved?.();
       loadPending();
@@ -376,6 +386,16 @@ export function PrescriptionUploadSection({ elderUserId, onSaved }: Props) {
                 : 'Saved — no medications were added.'}
               {saveSummary.appointment && ' Appointment added too.'}
             </p>
+            {saveSummary.skipped.length > 0 && (
+              <p className="mt-1 text-sm text-success-900">
+                Already on the medicine list, so not added again: {saveSummary.skipped.join(', ')}.
+              </p>
+            )}
+            {saveSummary.warnings.map((w) => (
+              <p key={w} className="mt-1 text-sm font-semibold text-accent-900">
+                {w}
+              </p>
+            ))}
           </CardContent>
         </Card>
       )}
