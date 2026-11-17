@@ -5,6 +5,7 @@ import { requireMembership, invalidInput, ok } from '@/lib/community-route';
 import { getAuthUser } from '@/lib/auth';
 import { canAccessElder } from '@/lib/family-access';
 import { getElderNeighborhoodId } from '@/lib/community-access';
+import { getProviderRatingSummaries } from '@/lib/ratings';
 
 const HOME_MAINTENANCE_CATEGORIES = [
   'leakage', 'cleaning', 'maid', 'cook', 'painting', 'gardening', 'electrical', 'carpentry', 'other',
@@ -108,11 +109,23 @@ export async function GET(req: NextRequest) {
               ? {}
               : { homeMaintenanceCategory: null, shopCategory: null, elderCareCategory: null }),
     },
-    include: { addedBy: { select: { id: true, name: true } } },
+    include: {
+      addedBy: { select: { id: true, name: true } },
+      providerListing: { select: { providerId: true } },
+    },
     orderBy: [{ verified: 'desc' }, { name: 'asc' }],
   });
 
-  return ok(listings);
+  // Star average + count for shops that are real provider accounts (one batch query, not one per card).
+  const summaries = await getProviderRatingSummaries(
+    listings.flatMap((l) => (l.providerListing ? [l.providerListing.providerId] : [])),
+  );
+  return ok(
+    listings.map(({ providerListing, ...listing }) => {
+      const summary = providerListing ? summaries.get(providerListing.providerId) : undefined;
+      return { ...listing, rating: summary && summary.count > 0 ? summary : null };
+    }),
+  );
 }
 
 /** Any member can add a general vendor; `verified` stays false until the committee

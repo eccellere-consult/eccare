@@ -10,6 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { CommunityPageFrame } from '@/components/community/page-frame';
 import { communityApi, useCommunityData } from '@/lib/community-client';
+import { ProviderRatingSummaryDisplay } from '@/components/provider-rating-summary';
+import type { ProviderRatingSummary } from '@/lib/ratings';
 
 type HomeCategory = 'leakage' | 'cleaning' | 'maid' | 'cook' | 'painting' | 'gardening' | 'electrical' | 'carpentry' | 'other';
 type ElderCategory = 'home_treatment' | 'home_nursing' | 'companion_service' | 'local_errands' | 'other';
@@ -45,6 +47,7 @@ interface Vendor {
   homeMaintenanceCategory: HomeCategory | null;
   elderCareCategory: ElderCategory | null;
   shopCategory: string | null;
+  rating?: ProviderRatingSummary | null;
 }
 interface Me { memberships: { role: string }[] }
 interface ProviderRequest {
@@ -282,6 +285,11 @@ export default function VendorsPage() {
                     <Badge variant="muted">{v.category}</Badge>
                     {bucketOf(v) === 'shop' && <Badge variant="muted" className="ml-1.5">Shop</Badge>}
                   </div>
+                  {v.rating && (
+                    <div className="mt-1">
+                      <ProviderRatingSummaryDisplay summary={v.rating} />
+                    </div>
+                  )}
                   {canManage && bucketOf(v) !== 'shop' && (
                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                       <select
