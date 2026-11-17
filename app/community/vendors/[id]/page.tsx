@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, use } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Minus, Package, Phone, Plus, Search, ShoppingCart, X } from 'lucide-react';
+import { ArrowLeft, Minus, Package, Phone, Plus, Search, ShoppingCart, Star, X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useCommunityData } from '@/lib/community-client';
@@ -26,10 +26,31 @@ interface CatalogItem {
   category: string | null;
 }
 
+interface ShopReview {
+  stars: number;
+  comment: string;
+  createdAt: string;
+  by: string;
+}
+
 interface CatalogResponse {
   listingName: string;
+  vendor?: Vendor;
   providerId?: string;
   items: CatalogItem[];
+  rating?: { average: number | null; count: number } | null;
+  reviews?: ShopReview[];
+  boughtBefore?: boolean;
+}
+
+function Stars({ value }: { value: number }) {
+  return (
+    <span className="flex" role="img" aria-label={`${value} out of 5 stars`}>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <Star key={n} className={`h-4 w-4 ${n <= Math.round(value) ? 'text-accent-600' : 'text-border'}`} fill="currentColor" />
+      ))}
+    </span>
+  );
 }
 
 const rupees = (value: string | number) => `₹${Number(value).toLocaleString('en-IN')}`;
@@ -37,8 +58,8 @@ const rupees = (value: string | number) => `₹${Number(value).toLocaleString('e
 export default function VendorDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { data: vendors } = useCommunityData<Vendor[]>('/community/vendors');
-  const vendor = vendors?.find((v) => v.id === id);
   const { data: catalog, loading } = useCommunityData<CatalogResponse>(`/community/vendors/${id}/catalog`);
+  const vendor = catalog?.vendor ?? vendors?.find((v) => v.id === id);
   const cart = useCart();
 
   const [query, setQuery] = useState('');
@@ -130,6 +151,24 @@ export default function VendorDetailPage({ params }: { params: Promise<{ id: str
               {vendor.category}
               {vendor.address ? ` · ${vendor.address}` : ''}
             </p>
+            {(catalog?.rating?.average != null || catalog?.boughtBefore) && (
+              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                {catalog?.rating?.average != null && (
+                  <a href="#reviews" className="flex items-center gap-2 text-sm font-semibold text-text">
+                    <Stars value={catalog.rating.average} />
+                    {catalog.rating.average.toFixed(1)}
+                    <span className="font-normal text-text-secondary">
+                      ({catalog.rating.count} review{catalog.rating.count === 1 ? '' : 's'})
+                    </span>
+                  </a>
+                )}
+                {catalog?.boughtBefore && (
+                  <span className="rounded-full bg-success-50 px-2.5 py-0.5 text-xs font-semibold text-success-600">
+                    You ordered here before
+                  </span>
+                )}
+              </div>
+            )}
           </div>
           <a
             href={`tel:${vendor.phone}`}
@@ -229,6 +268,27 @@ export default function VendorDetailPage({ params }: { params: Promise<{ id: str
           </div>
         )}
       </div>
+
+      {(catalog?.reviews?.length ?? 0) > 0 && (
+        <section id="reviews" className="mt-8 scroll-mt-20">
+          <h2 className="text-lg font-bold text-text">What neighbours say</h2>
+          <div className="mt-3 flex flex-col gap-3">
+            {catalog?.reviews?.map((r, i) => (
+              <Card key={`${r.createdAt}-${i}`}>
+                <CardContent className="flex flex-col gap-1.5 py-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <Stars value={r.stars} />
+                    <span className="text-xs text-text-secondary">
+                      {r.by} · {new Date(r.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </span>
+                  </div>
+                  <p className="whitespace-pre-line text-base text-text">{r.comment}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
 
       {openItem && (
         <div

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireMembership, ok } from '@/lib/community-route';
+import { getProviderRatingSummary } from '@/lib/ratings';
+import { getRecentShopReviews, hasOrderedFromShop } from '@/lib/shop-reviews';
 
 const notFound = () =>
   NextResponse.json(
@@ -24,12 +26,34 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const guard = await requireMembership(req, { neighborhoodId: listing.neighborhoodId ?? undefined });
   if (guard.error) return guard.error;
 
-  if (!listing.providerListing) return ok({ listingName: listing.name, items: [] });
+  // The shop's own details travel with its catalog, so the page does not depend on the general vendor
+  // list (which leaves out shop-tagged listings).
+  const vendor = {
+    id: listing.id,
+    name: listing.name,
+    category: listing.category,
+    phone: listing.phone,
+    address: listing.address,
+    verified: listing.verified,
+  };
 
-  const items = await prisma.catalogItem.findMany({
-    where: { providerId: listing.providerListing.providerId, inStock: true },
-    orderBy: { createdAt: 'desc' },
+  if (!listing.providerListing) return ok({ listingName: listing.name, vendor, items: [], rating: null, reviews: [], boughtBefore: false });
+
+  const providerId = listing.providerListing.providerId;
+  const [items, rating, reviews, boughtBefore] = await Promise.all([
+    prisma.catalogItem.findMany({ where: { providerId, inStock: true }, orderBy: { createdAt: 'desc' } }),
+    getProviderRatingSummary(providerId),
+    getRecentShopReviews(providerId),
+    hasOrderedFromShop(guard.auth.userId, providerId),
+  ]);
+
+  return ok({
+    listingName: listing.name,
+    vendor,
+    providerId,
+    items,
+    rating: rating.count > 0 ? rating : null,
+    reviews,
+    boughtBefore,
   });
-
-  return ok({ listingName: listing.name, providerId: listing.providerListing.providerId, items });
 }
