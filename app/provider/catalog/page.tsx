@@ -25,7 +25,9 @@ async function api(path: string, init?: RequestInit) {
   const res = await fetch(`/api/v1${path}`, { credentials: 'include', ...init });
   const json = await res.json().catch(() => ({}));
   if (!res.ok || !json.success) {
-    throw new Error(json?.error?.message || 'Something went wrong. Please try again.');
+    // No message from the server usually means the reply was not ours at all (a host or network
+    // error page): say which status came back so it can be traced, not just "something went wrong".
+    throw new Error(json?.error?.message || `Something went wrong (server answered ${res.status}). Please try again.`);
   }
   return json.data;
 }

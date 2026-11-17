@@ -51,8 +51,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     return NextResponse.json({ success: true, data: updated }, { status: 201 });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Upload failed unexpectedly.';
-    console.error('Catalog image upload error:', message);
-    return fail('SERVER_ERROR', message, 500);
+    // The storage library sometimes throws an error with an empty message, which used to reach the
+    // provider as a bare "Something went wrong". Always name what failed (error name + the storage
+    // service's HTTP status when it gave one) so the real cause can be found and fixed.
+    const e = err as { name?: string; message?: string; $metadata?: { httpStatusCode?: number } } | null;
+    const status = e?.$metadata?.httpStatusCode;
+    const detail = [e?.name, status ? `HTTP ${status}` : '', e?.message].filter(Boolean).join(', ') || 'unknown error';
+    console.error('Catalog image upload error:', detail);
+    return fail('SERVER_ERROR', `The photo store did not accept the file (${detail.slice(0, 160)}).`, 500);
   }
 }
