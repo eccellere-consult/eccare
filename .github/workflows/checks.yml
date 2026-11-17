@@ -43,6 +43,9 @@ jobs:
       - name: Medicine safety rules (duplicate doses, bad times)
         run: node --experimental-strip-types --test lib/medicine-guards.test.mjs
 
+      - name: Shelf photo reader (never invents a price)
+        run: node --experimental-strip-types --test lib/catalog-ai.test.mjs
+
       - name: Type check
         run: npm run typecheck
 

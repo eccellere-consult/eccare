@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Package, Trash2, Pencil, Camera, Sparkles, ImagePlus, X } from 'lucide-react';
+import { Package, Trash2, Pencil, Camera, Sparkles, ImagePlus, LayoutGrid, X } from 'lucide-react';
+import { ShelfBulkAdd } from '@/components/provider/shelf-bulk-add';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +36,8 @@ export default function ProviderCatalogPage() {
   const [items, setItems] = useState<CatalogItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
+  const [shelfOpen, setShelfOpen] = useState(false);
+  const [notice, setNotice] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [photo, setPhoto] = useState<File | null>(null);
@@ -252,13 +255,41 @@ export default function ProviderCatalogPage() {
             Items elders and family can browse and buy. Clear photos help them choose.
           </p>
         </div>
-        {!formOpen && (
-          <Button onClick={openAdd}>
-            <Camera className="h-4 w-4" />
-            Add item with a photo
-          </Button>
+        {!formOpen && !shelfOpen && (
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={openAdd}>
+              <Camera className="h-4 w-4" />
+              Add item with a photo
+            </Button>
+            <Button variant="outline" onClick={() => { setNotice(''); setShelfOpen(true); }}>
+              <LayoutGrid className="h-4 w-4" />
+              Add many from a shelf photo
+            </Button>
+          </div>
         )}
       </div>
+
+      {shelfOpen && (
+        <ShelfBulkAdd
+          onClose={() => setShelfOpen(false)}
+          onSaved={({ created, skipped }) => {
+            setShelfOpen(false);
+            setNotice(
+              `${created === 0 ? 'No new items were added' : created === 1 ? '1 item added' : `${created} items added`}.` +
+                (skipped.length > 0
+                  ? ` ${skipped.length === 1 ? '1 was' : `${skipped.length} were`} already in your catalogue and skipped: ${skipped.join(', ')}.`
+                  : ''),
+            );
+            load();
+          }}
+        />
+      )}
+
+      {notice && !shelfOpen && (
+        <p className="mt-4 rounded-xl bg-success-50 px-4 py-3 text-sm font-semibold text-success-600" role="status">
+          {notice}
+        </p>
+      )}
 
       {items.length > 0 && withoutPhoto > 0 && (
         <p className="mt-4 rounded-xl bg-accent-50 px-4 py-3 text-sm font-semibold text-accent-900">
