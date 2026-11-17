@@ -29,11 +29,24 @@ async function api(path: string, init?: RequestInit) {
     // The request never completed (signal lost, or the phone could not send the picture).
     throw new Error('Could not reach the server. Please check your internet connection and try again.');
   }
-  const json = await res.json().catch(() => ({}));
+  // Read the reply as text first: when the server (or the host in front of it) answers with a plain
+  // page instead of our usual message, show the start of it so the cause can be traced.
+  const raw = await res.text().catch(() => '');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let json: { success?: boolean; data?: any; error?: { message?: string } } = {};
+  try {
+    json = JSON.parse(raw);
+  } catch {
+    /* not our usual reply */
+  }
+  const pageText = raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120);
   if (!res.ok || !json.success) {
     // No message from the server usually means the reply was not ours at all (a host or network
     // error page): say which status came back so it can be traced, not just "something went wrong".
-    throw new Error(json?.error?.message || `Something went wrong (server answered ${res.status}). Please try again.`);
+    throw new Error(
+      json?.error?.message ||
+        `Something went wrong (server answered ${res.status}${pageText ? `: ${pageText}` : ''}). Please try again.`,
+    );
   }
   return json.data;
 }
