@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, X, MessageCircle, MapPin } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, X, MessageCircle, MapPin } from 'lucide-react';
 import { playSirenAlert } from '@/lib/beep';
 import { buildWaLink } from '@/lib/whatsapp';
 
@@ -11,11 +11,13 @@ interface SosEvent {
   lat: number | null;
   lng: number | null;
   createdAt: string;
+  status?: string; // 'triggered' until someone taps "I'm on it"; the siren only rings for these
   user: { id: string; name: string; phone: string | null };
 }
 
 const POLL_MS = 25_000;
 const RE_ALERT_MS = 45_000; // re-siren this often while something is still unacknowledged
+const MAX_SIRENS_PER_ALERT = 3; // then the banner stays, but quietly: an alarm must never be endless
 const ACTIVE_WINDOW_MS = 15 * 60_000; // only alert on events from the last 15 minutes
 
 const TRIGGER_LABEL: Record<string, string> = {
@@ -76,14 +78,41 @@ export function SosAlertBanner({ source }: { source: 'family' | 'committee' }) {
   // event still sirens for one tick every remount before the effect below
   // could load it.
   const [dismissed, setDismissed] = useState<Map<string, number>>(() => loadDismissed(source));
-  const lastAlertedRef = useRef<{ id: string | null; at: number }>({ id: null, at: 0 });
+  const lastAlertedRef = useRef<{ id: string | null; at: number; count: number }>({ id: null, at: 0, count: 0 });
+  const stopSirenRef = useRef<() => void>(() => {});
+  const [answering, setAnswering] = useState(false);
+  const [answerError, setAnswerError] = useState('');
 
   function dismiss(id: string) {
+    stopSirenRef.current(); // cut a siren that is still sounding
     setDismissed((prev) => {
       const next = new Map(prev).set(id, Date.now());
       saveDismissed(source, next);
       return next;
     });
+  }
+
+  /** "I'm on it": tells the server, so the alarm stops on every family member's phone, not just this one. */
+  async function acknowledge(id: string) {
+    setAnswering(true);
+    setAnswerError('');
+    stopSirenRef.current();
+    try {
+      const res = await fetch(`/api/v1/emergency/sos/${id}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'acknowledge' }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) throw new Error(json?.error?.message ?? 'Could not update the alert.');
+      setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, status: 'acknowledged' } : e)));
+    } catch (err) {
+      // The siren is already silenced on this phone. Keep the banner so they can retry or dismiss.
+      setAnswerError(err instanceof Error ? err.message : 'Could not update the alert.');
+    } finally {
+      setAnswering(false);
+    }
   }
 
   // Committee eligibility check — once, not on every poll.
@@ -122,22 +151,34 @@ export function SosAlertBanner({ source }: { source: 'family' | 'committee' }) {
     return () => clearInterval(interval);
   }, [eligible, source]);
 
+  // Only alerts nobody has answered yet: once anyone taps "I'm on it" (or the alert is resolved)
+  // the server status changes and this drops out for every device on the next poll.
   const active = events.filter(
-    (e) => !dismissed.has(e.id) && Date.now() - new Date(e.createdAt).getTime() < ACTIVE_WINDOW_MS,
+    (e) =>
+      (e.status === undefined || e.status === 'triggered') &&
+      !dismissed.has(e.id) &&
+      Date.now() - new Date(e.createdAt).getTime() < ACTIVE_WINDOW_MS,
   );
   const latest = active[0];
 
+  // Leaving the page never leaves a siren running behind.
+  useEffect(() => () => stopSirenRef.current(), []);
+
   useEffect(() => {
-    if (!latest) return;
-    const { id, at } = lastAlertedRef.current;
+    if (!latest) {
+      stopSirenRef.current();
+      return;
+    }
+    const { id, at, count } = lastAlertedRef.current;
     const isNew = id !== latest.id;
-    const dueForReAlert = Date.now() - at > RE_ALERT_MS;
+    const dueForReAlert = Date.now() - at > RE_ALERT_MS && count < MAX_SIRENS_PER_ALERT;
     if (isNew || dueForReAlert) {
-      playSirenAlert();
+      stopSirenRef.current();
+      stopSirenRef.current = playSirenAlert();
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         navigator.vibrate([300, 150, 300, 150, 600]);
       }
-      lastAlertedRef.current = { id: latest.id, at: Date.now() };
+      lastAlertedRef.current = { id: latest.id, at: Date.now(), count: isNew ? 1 : count + 1 };
     }
   }, [latest, events]); // eslint-disable-line react-hooks/exhaustive-deps -- fires on the re-alert timer via `events` re-polling, not just when `latest` identity changes
 
@@ -149,8 +190,8 @@ export function SosAlertBanner({ source }: { source: 'family' | 'committee' }) {
     : null;
 
   return (
-    <div className="fixed inset-x-0 top-0 z-[60] flex justify-center p-3">
-      <div className="flex w-full max-w-xl flex-col gap-3 rounded-2xl border border-danger-200 bg-danger-50 p-4 shadow-lg">
+    <div className="fixed inset-x-0 top-0 z-[60] flex justify-center p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+      <div className="flex w-full max-w-xl flex-col gap-3 rounded-2xl border border-danger-600/30 bg-danger-50 p-4 shadow-lg">
         <div className="flex items-start gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-danger-600 text-white">
             <AlertTriangle className="h-5 w-5" />
@@ -166,11 +207,25 @@ export function SosAlertBanner({ source }: { source: 'family' | 'committee' }) {
           <button
             onClick={() => dismiss(latest.id)}
             aria-label="Dismiss alert"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-danger-900/60 hover:bg-danger-100"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-danger-900/70 hover:bg-danger-100"
           >
-            <X className="h-5 w-5" />
+            <X className="h-6 w-6" />
           </button>
         </div>
+        <button
+          type="button"
+          onClick={() => acknowledge(latest.id)}
+          disabled={answering}
+          className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-danger-600 px-4 text-base font-bold text-white disabled:opacity-60"
+        >
+          <CheckCircle2 className="h-5 w-5" />
+          {answering ? 'Saving…' : "I'm on it · stop alarm for all"}
+        </button>
+        {answerError && (
+          <p className="text-sm font-semibold text-danger-900">
+            {answerError} The alarm is silent on this phone only. Tap again to retry.
+          </p>
+        )}
         <div className="flex flex-wrap gap-2">
           {mapsLink && (
             <a

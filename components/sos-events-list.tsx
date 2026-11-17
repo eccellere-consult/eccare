@@ -68,7 +68,9 @@ export function SosEventsList({ events }: { events: SosEvent[] }) {
                 </a>
               )}
             </div>
-            <Badge variant={event.status === 'resolved' ? 'success' : 'danger'}>{event.status}</Badge>
+            <Badge variant={event.status === 'resolved' ? 'success' : event.status === 'acknowledged' ? 'accent' : 'danger'}>
+              {event.status === 'acknowledged' ? 'someone is on it' : event.status}
+            </Badge>
           </CardContent>
         </Card>
       ))}
