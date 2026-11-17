@@ -24,6 +24,8 @@ export async function GET(req: NextRequest) {
     where: {
       userId: guard.elderUserId,
       scheduledAt: { gte: startOfDay, lte: endOfDay },
+      // A paused medicine never shows a dose, even if an old reminder row for it still exists.
+      medication: { isActive: true },
     },
     include: { medication: { select: { name: true, dosage: true, instructions: true, endDate: true } } },
     orderBy: { scheduledAt: 'asc' },

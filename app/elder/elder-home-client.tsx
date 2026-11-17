@@ -135,7 +135,9 @@ export function ElderHomeClient({
             {prescriptions.map((p) => (
               <PrescriptionFileLink
                 key={p.id}
+                id={p.id}
                 filePath={p.filePath}
+                title={p.doctorName ?? p.fileName}
                 className="flex items-center justify-between gap-3 rounded-xl border border-border px-4 py-3 text-sm transition-colors hover:bg-primary-50"
               >
                 <span className="font-semibold text-text">{p.doctorName ?? p.fileName}</span>
