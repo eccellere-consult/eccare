@@ -43,10 +43,11 @@ export function playMedicineBeep() {
  *  a reminder. Mirrors eccare-mobile's assets/sounds/sos_siren.wav in spirit
  *  (same sweep shape), synthesized fresh here since there's no audio file to
  *  bundle on the web. */
-export function playSirenAlert() {
+export function playSirenAlert(): () => void {
+  const noop = () => {};
   try {
     const AudioContextCtor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioContextCtor) return;
+    if (!AudioContextCtor) return noop;
     const ctx = new AudioContextCtor();
     ctx.resume().catch(() => {});
 
@@ -76,9 +77,22 @@ export function playSirenAlert() {
     osc.start(now);
     osc.stop(now + DURATION);
 
-    setTimeout(() => ctx.close().catch(() => {}), (DURATION + 0.5) * 1000);
+    const closeTimer = setTimeout(() => ctx.close().catch(() => {}), (DURATION + 0.5) * 1000);
+    // Lets the banner cut the siren the moment someone taps "I'm on it" or dismisses.
+    return () => {
+      clearTimeout(closeTimer);
+      try {
+        gain.gain.cancelScheduledValues(ctx.currentTime);
+        gain.gain.setValueAtTime(0, ctx.currentTime);
+        osc.stop();
+      } catch {
+        // already stopped
+      }
+      ctx.close().catch(() => {});
+    };
   } catch {
     // Autoplay blocked, or AudioContext unsupported — the visual banner
     // still gets through, this is a best-effort addition, not the only signal.
+    return noop;
   }
 }
