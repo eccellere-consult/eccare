@@ -40,6 +40,9 @@ jobs:
       - name: Generate the database client
         run: npx prisma generate
 
+      - name: Medicine safety rules (duplicate doses, bad times)
+        run: node --experimental-strip-types --test lib/medicine-guards.test.mjs
+
       - name: Type check
         run: npm run typecheck
 

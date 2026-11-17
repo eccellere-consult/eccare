@@ -409,8 +409,10 @@ export default function FamilyHealthPage({
                   </div>
                   <div className="flex shrink-0 gap-2">
                     <PrescriptionFileLink
+                      id={p.id}
                       filePath={p.filePath}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border text-text-secondary hover:bg-primary-50"
+                      title={p.doctorName ?? p.fileName}
+                      className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-border text-text-secondary hover:bg-primary-50"
                     >
                       <Eye className="h-4 w-4" />
                     </PrescriptionFileLink>

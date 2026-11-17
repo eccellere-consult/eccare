@@ -362,7 +362,12 @@ export default function ElderHealthPage() {
             {prescriptions.data?.map((p) => (
               <Card key={p.id}>
                 <CardContent className="flex items-start justify-between gap-3 pt-6">
-                  <div className="min-w-0">
+                  <PrescriptionFileLink
+                    id={p.id}
+                    filePath={p.filePath}
+                    title={p.doctorName ?? p.fileName}
+                    className="min-w-0 flex-1"
+                  >
                     <p className="font-bold text-text">
                       {p.doctorName ?? p.fileName}
                     </p>
@@ -377,10 +382,12 @@ export default function ElderHealthPage() {
                         {p.medications.map((m) => `${m.name} ${m.dosage}`).join(', ')}
                       </p>
                     )}
-                  </div>
+                  </PrescriptionFileLink>
                   <PrescriptionFileLink
+                    id={p.id}
                     filePath={p.filePath}
-                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border text-primary-600 hover:bg-primary-50"
+                    title={p.doctorName ?? p.fileName}
+                    className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border text-primary-600 hover:bg-primary-50"
                   >
                     <Eye className="h-5 w-5" />
                   </PrescriptionFileLink>
