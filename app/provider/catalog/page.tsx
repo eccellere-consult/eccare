@@ -22,7 +22,13 @@ interface CatalogItem {
 }
 
 async function api(path: string, init?: RequestInit) {
-  const res = await fetch(`/api/v1${path}`, { credentials: 'include', ...init });
+  let res: Response;
+  try {
+    res = await fetch(`/api/v1${path}`, { credentials: 'include', ...init });
+  } catch {
+    // The request never completed (signal lost, or the phone could not send the picture).
+    throw new Error('Could not reach the server. Please check your internet connection and try again.');
+  }
   const json = await res.json().catch(() => ({}));
   if (!res.ok || !json.success) {
     // No message from the server usually means the reply was not ours at all (a host or network
