@@ -172,9 +172,20 @@ export default function ProviderCatalogPage() {
   }
 
   async function uploadPhotoFor(id: string, file: File) {
-    const body = new FormData();
-    body.append('file', file);
-    await api(`/provider/catalog/${id}/image`, { method: 'POST', body });
+    const send = () => {
+      const body = new FormData();
+      body.append('file', file);
+      return api(`/provider/catalog/${id}/image`, { method: 'POST', body });
+    };
+    try {
+      await send();
+    } catch {
+      // The first photo request straight after saving a new item sometimes fails on the host, while
+      // the very same request a moment later goes through (shopkeepers saw "add photo" work the
+      // second time). Try once more, quietly, before telling anyone.
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await send();
+    }
   }
 
   async function save(e: React.FormEvent) {
