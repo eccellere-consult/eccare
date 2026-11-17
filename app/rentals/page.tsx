@@ -256,7 +256,15 @@ export default function RentalsPage() {
                 </div>
               </div>
               <div className="sm:col-span-2">
-                <PhotoField idPrefix="r-new" file={photo} onChange={setPhoto} />
+                <PhotoField
+                  idPrefix="r-new"
+                  file={photo}
+                  onChange={setPhoto}
+                  draftKind="rental"
+                  onDraft={(d) =>
+                    setForm((f) => ({ ...f, title: f.title || d.title, description: f.description || d.description }))
+                  }
+                />
               </div>
               {formError && <p className="text-sm text-danger-600 sm:col-span-2">{formError}</p>}
               <Button type="submit" disabled={saving} className="w-fit sm:col-span-2">
