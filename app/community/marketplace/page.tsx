@@ -238,7 +238,16 @@ export default function MarketplacePage() {
                   <Label htmlFor="mp-house">House / flat number (optional)</Label>
                   <Input id="mp-house" value={form.houseNumber} onChange={(e) => setForm((f) => ({ ...f, houseNumber: e.target.value }))} placeholder="A-204" />
                 </div>
-                <PhotoField idPrefix="mp-new" file={photo} onChange={setPhoto} />
+                <PhotoField
+                  idPrefix="mp-new"
+                  file={photo}
+                  onChange={setPhoto}
+                  draftKind="marketplace"
+                  draftMode={form.listingType}
+                  onDraft={(d) =>
+                    setForm((f) => ({ ...f, title: f.title || d.title, description: f.description || d.description }))
+                  }
+                />
                 {formError && <p className="text-sm text-danger-600">{formError}</p>}
                 <Button type="submit" disabled={busy || !form.title || !form.contactPhone} className="self-start">
                   {busy ? (photo ? 'Posting with photo…' : 'Posting…') : 'Post listing'}

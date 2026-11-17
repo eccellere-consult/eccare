@@ -19,7 +19,7 @@ export interface ShelfDraftItem extends CatalogDraft {
   price: number | null;
 }
 
-type MediaType = 'image/jpeg' | 'image/png' | 'image/webp';
+export type MediaType = 'image/jpeg' | 'image/png' | 'image/webp';
 
 function categoryHint(existingCategories: string[]): string {
   return existingCategories.length
@@ -183,7 +183,7 @@ export function isCatalogAiConfigured(): boolean {
 }
 
 /** Runs the prompt through the first provider that answers; null when none is set up or all failed. */
-async function askFirstAvailable(b64: string, mediaType: MediaType, prompt: string, maxTokens: number): Promise<string | null> {
+export async function askFirstAvailable(b64: string, mediaType: MediaType, prompt: string, maxTokens: number): Promise<string | null> {
   const startedAt = Date.now();
   for (const provider of PROVIDERS) {
     if (!provider.available()) continue;

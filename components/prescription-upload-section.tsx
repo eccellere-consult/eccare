@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { healthApi } from '@/lib/health-client';
+import { AppCameraHint } from '@/components/app-camera-hint';
 
 interface ReviewMedication {
   key: number;
@@ -355,6 +356,10 @@ export function PrescriptionUploadSection({ elderUserId, onSaved }: Props) {
             </>
           )}
         </Button>
+      </div>
+
+      <div className="mt-2">
+        <AppCameraHint />
       </div>
 
       {uploadError && <p className="mt-2 text-sm text-danger-600">{uploadError}</p>}

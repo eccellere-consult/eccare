@@ -52,6 +52,9 @@ jobs:
       - name: Photo upload checks (marketplace and rentals)
         run: node --experimental-strip-types --test lib/upload-guard.test.mjs
 
+      - name: Listing photo helper (never guesses a price or a claim)
+        run: node --experimental-strip-types --test lib/listing-ai.test.mjs
+
       - name: Type check
         run: npm run typecheck
 
