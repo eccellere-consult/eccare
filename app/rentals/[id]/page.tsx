@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { PhotoUploadButtons } from '@/components/photo-upload-buttons';
 import { buildWaLink as waLink } from '@/lib/whatsapp';
+import { uploadPhotoTo } from '@/lib/upload-photo-client';
 
 interface Listing {
   id: string;
@@ -138,21 +139,18 @@ export default function RentalDetailPage({ params }: { params: Promise<{ id: str
   }
 
   async function uploadPhoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const picked = e.target.files?.[0];
+    e.target.value = '';
+    if (!picked) return;
     setUploading(true);
+    setError('');
     try {
-      const body = new FormData();
-      body.append('file', file);
-      const res = await fetch(`/api/v1/rentals/${id}/image`, { method: 'POST', credentials: 'include', body });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Upload failed.');
+      await uploadPhotoTo(`/api/v1/rentals/${id}/image`, picked);
       load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed.');
     } finally {
       setUploading(false);
-      e.target.value = '';
     }
   }
 
@@ -184,6 +182,7 @@ export default function RentalDetailPage({ params }: { params: Promise<{ id: str
             busyLabel={uploading ? 'Uploading…' : undefined}
             onFile={uploadPhoto}
           />
+          {error && <p role="alert" className="mt-2 text-sm text-danger-600">{error}</p>}
         </div>
       )}
 

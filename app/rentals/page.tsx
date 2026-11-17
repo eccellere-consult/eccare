@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { PhotoUploadButtons } from '@/components/photo-upload-buttons';
+import { PhotoField } from '@/components/photo-field';
+import { uploadPhotoTo } from '@/lib/upload-photo-client';
 
 interface Listing {
   id: string;
@@ -62,6 +64,7 @@ export default function RentalsPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
+  const [photo, setPhoto] = useState<File | null>(null);
 
   const [myUserId, setMyUserId] = useState('');
   const [uploadingId, setUploadingId] = useState<string | null>(null);
@@ -94,21 +97,18 @@ export default function RentalsPage() {
   }, [load]);
 
   async function uploadImage(id: string, e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const picked = e.target.files?.[0];
+    e.target.value = '';
+    if (!picked) return;
     setUploadingId(id);
+    setError('');
     try {
-      const body = new FormData();
-      body.append('file', file);
-      const res = await fetch(`/api/v1/rentals/${id}/image`, { method: 'POST', credentials: 'include', body });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Could not upload photo.');
+      await uploadPhotoTo(`/api/v1/rentals/${id}/image`, picked);
       load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not upload photo.');
     } finally {
       setUploadingId(null);
-      e.target.value = '';
     }
   }
 
@@ -152,8 +152,21 @@ export default function RentalsPage() {
       });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Could not create listing.');
+      const chosenPhoto = photo;
       setForm(EMPTY_FORM);
+      setPhoto(null);
       setShowForm(false);
+      setError('');
+      if (chosenPhoto) {
+        // The listing is saved; now its photo. If only the photo fails, say so plainly.
+        try {
+          await uploadPhotoTo(`/api/v1/rentals/${json.data.id}/image`, chosenPhoto, true);
+        } catch (err) {
+          setError(
+            `Your listing was published, but its photo could not be uploaded: ${err instanceof Error ? err.message : 'please try again'} Use "Take photo" or "Upload" on the listing to add it.`,
+          );
+        }
+      }
       load();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Could not create listing.');
@@ -242,9 +255,12 @@ export default function RentalsPage() {
                   ))}
                 </div>
               </div>
+              <div className="sm:col-span-2">
+                <PhotoField idPrefix="r-new" file={photo} onChange={setPhoto} />
+              </div>
               {formError && <p className="text-sm text-danger-600 sm:col-span-2">{formError}</p>}
               <Button type="submit" disabled={saving} className="w-fit sm:col-span-2">
-                {saving ? 'Publishing…' : 'Publish listing'}
+                {saving ? (photo ? 'Publishing with photo…' : 'Publishing…') : 'Publish listing'}
               </Button>
             </form>
           </CardContent>
