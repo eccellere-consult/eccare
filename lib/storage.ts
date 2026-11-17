@@ -40,6 +40,12 @@ function client(): S3Client {
     region: 'auto',
     endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
     credentials: { accessKeyId: R2_ACCESS_KEY_ID!, secretAccessKey: R2_SECRET_ACCESS_KEY! },
+    // Newer versions of the storage library add an extra "checksum" header to every upload by
+    // default. Cloudflare R2 does not reliably accept it (uploads failed with a server error), and
+    // Cloudflare's own guidance for this library is to send it only when required. See
+    // https://developers.cloudflare.com/r2/examples/aws/aws-sdk-js-v3/
+    requestChecksumCalculation: 'WHEN_REQUIRED',
+    responseChecksumValidation: 'WHEN_REQUIRED',
   });
 }
 

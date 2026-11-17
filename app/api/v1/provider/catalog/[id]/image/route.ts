@@ -13,7 +13,20 @@ const fail = (code: string, message: string, status = 400) =>
 /** Upload a catalog item's photo — mirrors the certification upload pattern
  *  (R2 object storage via lib/storage.ts) with the same size validation shape,
  *  JPEG/PNG only this time. */
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  // Safety net: anything that goes wrong anywhere below still comes back as a readable message,
+  // never as a blank server error page.
+  try {
+    return await handleUpload(req, ctx);
+  } catch (err) {
+    const e = err as { name?: string; message?: string } | null;
+    const detail = [e?.name, e?.message].filter(Boolean).join(', ') || 'unknown error';
+    console.error('Catalog image upload crashed:', detail);
+    return fail('SERVER_ERROR', `The photo could not be saved (${detail.slice(0, 160)}).`, 500);
+  }
+}
+
+async function handleUpload(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await getAuthUser(req);
   if (!auth) return fail('UNAUTHORIZED', 'Please log in.', 401);
   if (auth.role !== 'provider') return fail('FORBIDDEN', 'Providers only.', 403);
