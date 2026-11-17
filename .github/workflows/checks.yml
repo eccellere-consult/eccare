@@ -46,6 +46,9 @@ jobs:
       - name: Shelf photo reader (never invents a price)
         run: node --experimental-strip-types --test lib/catalog-ai.test.mjs
 
+      - name: Photo type detection (camera photos with an empty type)
+        run: node --experimental-strip-types --test lib/shrink-photo.test.mjs
+
       - name: Type check
         run: npm run typecheck
 

@@ -34,18 +34,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const file = formData.get('file') as File | null;
   if (!file) return fail('VALIDATION', 'No file uploaded.');
-  if (!ALLOWED_TYPES.includes(file.type as AllowedType)) {
-    return fail('VALIDATION', 'Only JPEG and PNG images are accepted.');
-  }
   if (file.size > MAX_SIZE) return fail('VALIDATION', 'File must be under 10 MB.');
   if (!isStorageConfigured()) return fail('NOT_CONFIGURED', 'Photo uploads are not available right now.', 503);
 
   try {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const ext = file.type === 'image/png' ? 'png' : 'jpg';
+    // Judge the picture by what it really is, not by the label the phone gave it: a camera photo
+    // can arrive with an empty or odd type even though it is a perfectly good JPEG.
+    const isJpeg = buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+    const isPng = buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47;
+    const type: AllowedType | null = isJpeg ? 'image/jpeg' : isPng ? 'image/png' : null;
+    if (!type) return fail('VALIDATION', 'Only JPEG and PNG images are accepted.');
+    const ext = type === 'image/png' ? 'png' : 'jpg';
     const filename = `${item.id}_${Date.now()}.${ext}`;
-    const filePath = await uploadToStorage(`catalog/${filename}`, buffer, file.type);
+    const filePath = await uploadToStorage(`catalog/${filename}`, buffer, type);
 
     const updated = await prisma.catalogItem.update({ where: { id }, data: { imagePath: filePath } });
 
