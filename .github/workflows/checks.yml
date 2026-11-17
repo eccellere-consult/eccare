@@ -49,6 +49,9 @@ jobs:
       - name: Photo type detection (camera photos with an empty type)
         run: node --experimental-strip-types --test lib/shrink-photo.test.mjs
 
+      - name: Photo upload checks (marketplace and rentals)
+        run: node --experimental-strip-types --test lib/upload-guard.test.mjs
+
       - name: Type check
         run: npm run typecheck
 

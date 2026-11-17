@@ -9,7 +9,10 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { CommunityPageFrame } from '@/components/community/page-frame';
 import { PhotoUploadButtons } from '@/components/photo-upload-buttons';
+import { PhotoField } from '@/components/photo-field';
 import { communityApi, useCommunityData } from '@/lib/community-client';
+import { shrinkPhoto } from '@/lib/shrink-photo';
+import { uploadPhotoTo } from '@/lib/upload-photo-client';
 
 interface Listing {
   id: string;
@@ -72,6 +75,8 @@ export default function MarketplacePage() {
   const [formError, setFormError] = useState('');
   const [actionId, setActionId] = useState<string | null>(null);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [photoError, setPhotoError] = useState('');
 
   const filtered = (data ?? []).filter((l) => l.listingType === activeTab);
 
@@ -84,7 +89,7 @@ export default function MarketplacePage() {
       if (form.price && (Number.isNaN(price) || (price ?? 0) <= 0)) {
         throw new Error('Please enter a valid price.');
       }
-      await communityApi.post('/community/marketplace', {
+      const created = await communityApi.post<{ id: string }>('/community/marketplace', {
         listingType: form.listingType,
         title: form.title,
         description: form.description || undefined,
@@ -94,8 +99,20 @@ export default function MarketplacePage() {
         houseNumber: form.houseNumber || undefined,
         preferredContactTime: form.preferredContactTime || undefined,
       });
+      const chosenPhoto = photo;
       setForm({ ...EMPTY_FORM, listingType: activeTab });
+      setPhoto(null);
       setShowForm(false);
+      if (chosenPhoto) {
+        // The listing is saved; now its photo. If only the photo fails, say so plainly.
+        try {
+          await uploadPhotoTo(`/api/v1/community/marketplace/${created.id}/image`, chosenPhoto, true);
+        } catch (err) {
+          setPhotoError(
+            `Your listing was posted, but its photo could not be uploaded: ${err instanceof Error ? err.message : 'please try again'} Use "Take photo" or "Upload" on the listing to add it.`,
+          );
+        }
+      }
       reload();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Could not post listing.');
@@ -126,25 +143,18 @@ export default function MarketplacePage() {
   }
 
   async function uploadImage(id: string, e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const picked = e.target.files?.[0];
+    e.target.value = '';
+    if (!picked) return;
     setUploadingId(id);
+    setPhotoError('');
     try {
-      const body = new FormData();
-      body.append('file', file);
-      const res = await fetch(`/api/v1/community/marketplace/${id}/image`, {
-        method: 'POST',
-        credentials: 'include',
-        body,
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json?.error?.message || 'Upload failed.');
+      await uploadPhotoTo(`/api/v1/community/marketplace/${id}/image`, await shrinkPhoto(picked), true);
       reload();
-    } catch {
-      /* keep it simple — a failed photo upload doesn't need its own alert banner */
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : 'The photo could not be uploaded.');
     } finally {
       setUploadingId(null);
-      e.target.value = '';
     }
   }
 
@@ -157,6 +167,11 @@ export default function MarketplacePage() {
       error={error}
     >
       <div className="flex flex-col gap-4">
+        {photoError && (
+          <p role="alert" className="rounded-xl border border-danger-100 bg-danger-50 px-4 py-3 text-sm text-danger-900">
+            {photoError}
+          </p>
+        )}
         <div className="flex flex-wrap gap-2">
           {TABS.map((t) => (
             <Button
@@ -223,9 +238,10 @@ export default function MarketplacePage() {
                   <Label htmlFor="mp-house">House / flat number (optional)</Label>
                   <Input id="mp-house" value={form.houseNumber} onChange={(e) => setForm((f) => ({ ...f, houseNumber: e.target.value }))} placeholder="A-204" />
                 </div>
+                <PhotoField idPrefix="mp-new" file={photo} onChange={setPhoto} />
                 {formError && <p className="text-sm text-danger-600">{formError}</p>}
                 <Button type="submit" disabled={busy || !form.title || !form.contactPhone} className="self-start">
-                  {busy ? 'Posting…' : 'Post listing'}
+                  {busy ? (photo ? 'Posting with photo…' : 'Posting…') : 'Post listing'}
                 </Button>
               </form>
             </CardContent>
