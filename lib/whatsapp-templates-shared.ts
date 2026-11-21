@@ -26,7 +26,7 @@ export interface WhatsAppTemplateDef {
    *  until an admin customises that language (stored in
    *  WhatsAppTemplateTranslation). AI-translated; worth a native speaker's
    *  review before relying on them. {{placeholders}} stay in English. */
-  translations: Record<'hi' | 'kn' | 'ml', string>;
+  translations: Record<'hi' | 'kn' | 'ml' | 'ta' | 'te', string>;
 }
 
 export const WHATSAPP_TEMPLATES: WhatsAppTemplateDef[] = [
@@ -82,6 +82,28 @@ export const WHATSAPP_TEMPLATES: WhatsAppTemplateDef[] = [
 
 ഇവിടെ രജിസ്റ്റർ ചെയ്യുക: {{link}}
 {{community_line}}`,
+      ta: `EC — Just Easy. 👵👴
+
+வணக்கம் {{name}},
+
+✅ ஒரே தட்டலில் SOS, நேரடி இருப்பிடத்துடன் நேராகக் குடும்பத்துக்கு
+✅ குடும்பத்துக்கும் தெரிவிக்கும் மருந்து நினைவூட்டல்கள்
+✅ அண்டை வீட்டார் பட்டியலும் சமூக அறிவிப்புகளும்
+✅ அருகிலுள்ள கடைகள், சேவைகள், மருத்துவர்கள் — ஓரிடத்தில்
+
+இங்கே பதிவு செய்யுங்கள்: {{link}}
+{{community_line}}`,
+      te: `EC — Just Easy. 👵👴
+
+నమస్కారం {{name}},
+
+✅ ఒక్క నొక్కుతో SOS, లైవ్ లొకేషన్‌తో నేరుగా కుటుంబానికి
+✅ కుటుంబానికి కూడా తెలియజేసే మందుల రిమైండర్లు
+✅ పొరుగువారి డైరెక్టరీ, కమ్యూనిటీ నోటీసులు
+✅ దగ్గరలోని షాపులు, సేవలు, డాక్టర్లు — ఒకే చోట
+
+ఇక్కడ నమోదు చేసుకోండి: {{link}}
+{{community_line}}`,
     },
   },
   {
@@ -120,6 +142,20 @@ export const WHATSAPP_TEMPLATES: WhatsAppTemplateDef[] = [
 {{date_line}}
 {{rate_line}}
 ഈ യാത്ര പറ്റുമെന്ന് മറുപടി നൽകി ഉറപ്പാക്കുക. നന്ദി!`,
+      ta: `வணக்கம், EC மூலம் உங்கள் ஆட்டோவை முன்பதிவு செய்ய வேண்டும்.
+பயணம்: {{trip}}
+பிக்கப்: {{pickup}}
+டிராப்: {{drop}}
+{{date_line}}
+{{rate_line}}
+இந்தப் பயணத்துக்கு உங்களால் வர முடியுமா என்பதைப் பதிலளித்து உறுதிசெய்யுங்கள். நன்றி!`,
+      te: `నమస్కారం, EC ద్వారా మీ ఆటోను బుక్ చేయాలి.
+ప్రయాణం: {{trip}}
+పికప్: {{pickup}}
+డ్రాప్: {{drop}}
+{{date_line}}
+{{rate_line}}
+ఈ ప్రయాణానికి మీరు రాగలరా అని సమాధానమిచ్చి నిర్ధారించండి. ధన్యవాదాలు!`,
     },
   },
   {
@@ -150,6 +186,16 @@ export const WHATSAPP_TEMPLATES: WhatsAppTemplateDef[] = [
 സമയം: {{time}}
 കൺസൾട്ടേഷൻ ഫീസ്: ₹{{fee}}
 ദയവായി വിളിച്ചോ മറുപടി നൽകിയോ ഈ സ്ലോട്ട് ഉറപ്പാക്കുക. നന്ദി!`,
+      ta: `வணக்கம், EC மூலம் முன்பதிவு செய்த சந்திப்பை உறுதிசெய்ய விரும்புகிறேன்.
+நோயாளி: {{patient}}
+நேரம்: {{time}}
+ஆலோசனைக் கட்டணம்: ₹{{fee}}
+இந்த நேரத்தை அழைத்தோ பதிலளித்தோ உறுதிசெய்யுங்கள். நன்றி!`,
+      te: `నమస్కారం, EC ద్వారా బుక్ చేసిన అపాయింట్‌మెంట్‌ను నిర్ధారించాలనుకుంటున్నాను.
+రోగి: {{patient}}
+సమయం: {{time}}
+కన్సల్టేషన్ ఫీజు: ₹{{fee}}
+దయచేసి కాల్ చేసి లేదా సమాధానమిచ్చి ఈ స్లాట్‌ను నిర్ధారించండి. ధన్యవాదాలు!`,
     },
   },
   {
@@ -162,6 +208,8 @@ export const WHATSAPP_TEMPLATES: WhatsAppTemplateDef[] = [
       hi: `यह आपातकाल है, मुझे मदद चाहिए।{{location}}`,
       kn: `ಇದು ತುರ್ತು ಪರಿಸ್ಥಿತಿ, ನನಗೆ ಸಹಾಯ ಬೇಕು.{{location}}`,
       ml: `ഇത് അടിയന്തര സാഹചര്യമാണ്, എനിക്ക് സഹായം വേണം.{{location}}`,
+      ta: `இது அவசரநிலை, எனக்கு உதவி தேவை.{{location}}`,
+      te: `ఇది అత్యవసర పరిస్థితి, నాకు సహాయం కావాలి.{{location}}`,
     },
   },
 ];
@@ -187,8 +235,8 @@ export function renderTemplate(body: string, vars: Record<string, string>): stri
 // fill {{placeholders}} with small phrases ("Drop only", "My location: …"), and
 // those need to be in the same language or the message reads half-translated.
 
-export type MessageLanguage = 'en' | 'hi' | 'kn' | 'ml';
-export const MESSAGE_LANGUAGE_CODES: MessageLanguage[] = ['en', 'hi', 'kn', 'ml'];
+export type MessageLanguage = 'en' | 'hi' | 'kn' | 'ml' | 'ta' | 'te';
+export const MESSAGE_LANGUAGE_CODES: MessageLanguage[] = ['en', 'hi', 'kn', 'ml', 'ta', 'te'];
 
 export function toMessageLanguage(code: string | null | undefined): MessageLanguage {
   return (MESSAGE_LANGUAGE_CODES as string[]).includes(code ?? '') ? (code as MessageLanguage) : 'en';
@@ -256,6 +304,26 @@ const FRAGMENTS: Record<MessageLanguage, Fragments> = {
     communityLine: (name, code) => `തുടർന്ന് ഞങ്ങളുടെ കമ്മ്യൂണിറ്റി "${name}" ൽ കോഡ് ${code} ഉപയോഗിച്ച് ചേരൂ`,
     genericName: 'സർ/മാഡം',
     locale: 'ml-IN',
+  },
+  ta: {
+    tripDrop: 'இறக்கி விடுதல் மட்டும்',
+    tripRoundTrip: 'சென்று திரும்பி வருதல்',
+    dateLine: (d, t) => `தேதி: ${d}${t ? `, ${t}` : ''}`,
+    rateLine: (km, min) => `தோராயக் கட்டணம்: ₹${km}/கி.மீ, காத்திருப்புக்கு ₹${min}/நிமிடம்.`,
+    locationLine: (url) => ` என் இருப்பிடம்: ${url}`,
+    communityLine: (name, code) => `பிறகு எங்கள் சமூகம் "${name}"-இல் குறியீடு ${code} மூலம் சேருங்கள்`,
+    genericName: 'ஐயா/அம்மா',
+    locale: 'ta-IN',
+  },
+  te: {
+    tripDrop: 'డ్రాప్ మాత్రమే',
+    tripRoundTrip: 'వెళ్లి తిరిగి రావడం',
+    dateLine: (d, t) => `తేదీ: ${d}${t ? `, ${t}` : ''}`,
+    rateLine: (km, min) => `అంచనా రేటు: ₹${km}/కి.మీ, వేచి ఉండటానికి ₹${min}/నిమిషం.`,
+    locationLine: (url) => ` నా లొకేషన్: ${url}`,
+    communityLine: (name, code) => `తర్వాత మా కమ్యూనిటీ "${name}" లో కోడ్ ${code} తో చేరండి`,
+    genericName: 'సర్/మేడమ్',
+    locale: 'te-IN',
   },
 };
 

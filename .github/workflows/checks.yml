@@ -55,6 +55,9 @@ jobs:
       - name: Listing photo helper (never guesses a price or a claim)
         run: node --experimental-strip-types --test lib/listing-ai.test.mjs
 
+      - name: Languages (every language complete, no lost placeholders)
+        run: node --experimental-strip-types --test lib/i18n/languages.test.mjs
+
       - name: Type check
         run: npm run typecheck
 

@@ -4,6 +4,8 @@ export const TRANSLATION_LANGUAGE_NAMES: Record<string, string> = {
   hi: 'Hindi',
   kn: 'Kannada',
   ml: 'Malayalam',
+  ta: 'Tamil',
+  te: 'Telugu',
 };
 
 const SYSTEM_PROMPT = `You translate short WhatsApp messages for an elder-care app used in India.
