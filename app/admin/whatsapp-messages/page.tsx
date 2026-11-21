@@ -83,12 +83,12 @@ export default function AdminWhatsAppMessagesPage() {
       // The English wording just changed, so the other languages would now be
       // out of date — translate and save them too unless the admin opted out.
       if (lang === 'en' && autoTranslate) {
-        setNotice('Saved. Translating into Hindi, Kannada and Malayalam…');
+        setNotice('Saved. Translating into Hindi, Kannada, Malayalam, Tamil and Telugu…');
         try {
           const tr = await requestTranslation(key, undefined, true);
           setNotice(
             tr.failed.length === 0
-              ? 'Saved, and translated into Hindi, Kannada and Malayalam. Check the other tabs to review them.'
+              ? 'Saved, and translated into Hindi, Kannada, Malayalam, Tamil and Telugu. Check the other tabs to review them.'
               : `Saved. Could not translate ${tr.failed.map(langName).join(', ')} — use "Translate from English" on that tab to retry.`,
           );
         } catch (err) {
@@ -205,7 +205,7 @@ export default function AdminWhatsAppMessagesPage() {
             className="mt-0.5 h-4 w-4 rounded border-border"
           />
           <span>
-            When I save an English message, also translate it into Hindi, Kannada and Malayalam (replaces the
+            When I save an English message, also translate it into Hindi, Kannada, Malayalam, Tamil and Telugu (replaces the
             saved wording in those languages — review them in their tabs afterwards).
           </span>
         </label>

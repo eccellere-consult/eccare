@@ -12,6 +12,8 @@ export const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
   { code: 'hi', label: 'Hindi', native: 'हिन्दी' },
   { code: 'kn', label: 'Kannada', native: 'ಕನ್ನಡ' },
   { code: 'ml', label: 'Malayalam', native: 'മലയാളം' },
+  { code: 'ta', label: 'Tamil', native: 'தமிழ்' },
+  { code: 'te', label: 'Telugu', native: 'తెలుగు' },
 ];
 
 export const SUPPORTED_LANGUAGE_CODES = SUPPORTED_LANGUAGES.map((l) => l.code);

@@ -7,7 +7,7 @@ import { getEffectiveTemplates, getEffectiveTemplatesAllLanguages } from '@/lib/
  *  invite composer) calls this to get the current effective body per template
  *  key, then fills in its own {{placeholders}} via renderTemplate().
  *
- *  `?lang=hi` (en/hi/kn/ml) returns that language's wording; no param is
+ *  `?lang=hi` (en/hi/kn/ml/ta/te) returns that language's wording; no param is
  *  English, so already-installed mobile builds keep working unchanged.
  *  `?lang=all` returns { en: {...}, hi: {...}, ... } for pages that combine
  *  languages in one message. Editing lives under

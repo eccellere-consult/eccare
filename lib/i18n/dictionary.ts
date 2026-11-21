@@ -2,8 +2,10 @@ import en, { type TranslationKey } from './dictionaries/en';
 import hi from './dictionaries/hi';
 import kn from './dictionaries/kn';
 import ml from './dictionaries/ml';
+import ta from './dictionaries/ta';
+import te from './dictionaries/te';
 
-const DICTIONARIES: Record<string, Record<TranslationKey, string>> = { en, hi, kn, ml };
+const DICTIONARIES: Record<string, Record<TranslationKey, string>> = { en, hi, kn, ml, ta, te };
 
 export type { TranslationKey };
 

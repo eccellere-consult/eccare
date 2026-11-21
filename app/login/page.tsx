@@ -862,7 +862,7 @@ function LoginPageContent() {
           </p>
         )}
 
-        <div className="mb-4 flex justify-center gap-1.5" role="group" aria-label={t('login.chooseLanguage')}>
+        <div className="mb-4 flex flex-wrap justify-center gap-1.5" role="group" aria-label={t('login.chooseLanguage')}>
           {SUPPORTED_LANGUAGES.map((l) => (
             <button
               key={l.code}
