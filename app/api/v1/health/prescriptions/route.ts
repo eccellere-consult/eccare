@@ -94,7 +94,7 @@ async function handleUpload(req: NextRequest) {
     let aiProvider: string | undefined;
     if (isConfigured()) {
       const base64 = buffer.toString('base64');
-      const result = await extractPrescription(base64, file.type as AllowedType);
+      const result = await extractPrescription(base64, file.type as AllowedType, guard.elderUserId);
       aiProvider = result.provider;
       extraction = result;
     } else {

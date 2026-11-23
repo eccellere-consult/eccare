@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
+import { AI_CAPABILITIES, anthropicUsage, openAiUsage, trackAiCall, type AiCallHandle, type AiCapability } from './aiops.ts';
 
 /**
  * Looks at a photo and drafts what a shop would write about it: one product (draftCatalogItem) or
@@ -113,7 +114,7 @@ export function parseShelf(text: string): ShelfDraftItem[] {
   return out;
 }
 
-async function askClaude(b64: string, mediaType: MediaType, prompt: string, maxTokens: number): Promise<string> {
+async function askClaude(b64: string, mediaType: MediaType, prompt: string, maxTokens: number, call?: AiCallHandle): Promise<string> {
   const client = new Anthropic();
   const message = await client.messages.create({
     model: 'claude-sonnet-5',
@@ -128,11 +129,12 @@ async function askClaude(b64: string, mediaType: MediaType, prompt: string, maxT
       },
     ],
   });
+  call?.setUsage(anthropicUsage(message)); // technical numbers only, for the AI Control Tower
   const block = message.content.find((b) => b.type === 'text');
   return block?.type === 'text' ? block.text : '';
 }
 
-async function askOpenAiCompatible(client: OpenAI, model: string, b64: string, mediaType: MediaType, prompt: string, maxTokens: number): Promise<string> {
+async function askOpenAiCompatible(client: OpenAI, model: string, b64: string, mediaType: MediaType, prompt: string, maxTokens: number, call?: AiCallHandle): Promise<string> {
   const response = await client.chat.completions.create({
     model,
     max_tokens: maxTokens,
@@ -147,23 +149,26 @@ async function askOpenAiCompatible(client: OpenAI, model: string, b64: string, m
       },
     ],
   });
+  call?.setUsage(openAiUsage(response)); // technical numbers only, for the AI Control Tower
   return response.choices[0]?.message?.content ?? '';
 }
 
-type Ask = (b64: string, mediaType: MediaType, prompt: string, maxTokens: number) => Promise<string>;
+type Ask = (b64: string, mediaType: MediaType, prompt: string, maxTokens: number, call: AiCallHandle) => Promise<string>;
 
-const PROVIDERS: { name: string; available: () => boolean; run: Ask }[] = [
-  { name: 'anthropic', available: () => !!process.env.ANTHROPIC_API_KEY, run: askClaude },
+const PROVIDERS: { name: string; report: { provider: string; model: string }; available: () => boolean; run: Ask }[] = [
+  { name: 'anthropic', report: { provider: 'anthropic', model: 'claude-sonnet-5' }, available: () => !!process.env.ANTHROPIC_API_KEY, run: askClaude },
   {
     name: 'openai',
+    report: { provider: 'openai', model: 'gpt-4o' },
     available: () => !!process.env.OPENAI_API_KEY,
-    run: (b64, mt, prompt, max) => askOpenAiCompatible(new OpenAI(), 'gpt-4o', b64, mt, prompt, max),
+    run: (b64, mt, prompt, max, call) => askOpenAiCompatible(new OpenAI(), 'gpt-4o', b64, mt, prompt, max, call),
   },
   {
     name: 'grok',
+    report: { provider: 'xai', model: 'grok-4.5' },
     available: () => !!process.env.XAI_API_KEY,
-    run: (b64, mt, prompt, max) =>
-      askOpenAiCompatible(new OpenAI({ apiKey: process.env.XAI_API_KEY, baseURL: 'https://api.x.ai/v1' }), 'grok-4.5', b64, mt, prompt, max),
+    run: (b64, mt, prompt, max, call) =>
+      askOpenAiCompatible(new OpenAI({ apiKey: process.env.XAI_API_KEY, baseURL: 'https://api.x.ai/v1' }), 'grok-4.5', b64, mt, prompt, max, call),
   },
 ];
 
@@ -183,14 +188,24 @@ export function isCatalogAiConfigured(): boolean {
 }
 
 /** Runs the prompt through the first provider that answers; null when none is set up or all failed. */
-export async function askFirstAvailable(b64: string, mediaType: MediaType, prompt: string, maxTokens: number): Promise<string | null> {
+export async function askFirstAvailable(
+  b64: string,
+  mediaType: MediaType,
+  prompt: string,
+  maxTokens: number,
+  /** What this call is for, as named in the AI Control Tower. */
+  capability: AiCapability = AI_CAPABILITIES.catalogItemDraft,
+): Promise<string | null> {
   const startedAt = Date.now();
   for (const provider of PROVIDERS) {
     if (!provider.available()) continue;
     const remaining = TOTAL_BUDGET_MS - (Date.now() - startedAt);
     if (remaining < 5_000) break;
     try {
-      return await withTimeout(provider.run(b64, mediaType, prompt, maxTokens), Math.min(PER_PROVIDER_MS, remaining), provider.name);
+      // The report wraps the time limit too, so a call the app gave up on is reported as a timeout.
+      return await trackAiCall({ ...capability, ...provider.report }, (call) =>
+        withTimeout(provider.run(b64, mediaType, prompt, maxTokens, call), Math.min(PER_PROVIDER_MS, remaining), provider.name),
+      );
     } catch (err) {
       console.warn(`[catalog-ai] ${provider.name} failed:`, err instanceof Error ? err.message : err);
     }
@@ -215,6 +230,6 @@ export async function draftShelfItems(
   mediaType: MediaType,
   existingCategories: string[],
 ): Promise<ShelfDraftItem[] | null> {
-  const text = await askFirstAvailable(imageBase64, mediaType, buildShelfPrompt(existingCategories), 2400);
+  const text = await askFirstAvailable(imageBase64, mediaType, buildShelfPrompt(existingCategories), 2400, AI_CAPABILITIES.catalogShelfDraft);
   return text === null ? null : parseShelf(text);
 }

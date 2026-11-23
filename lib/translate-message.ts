@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { AI_CAPABILITIES, anthropicUsage, trackAiCall } from '@/lib/aiops';
 
 export const TRANSLATION_LANGUAGE_NAMES: Record<string, string> = {
   hi: 'Hindi',
@@ -27,12 +28,17 @@ async function translateOne(english: string, language: string): Promise<string> 
   // One retry: the only thing worth retrying for is a model that dropped or
   // altered a {{placeholder}}, which would silently break the message.
   for (let attempt = 0; attempt < 2; attempt++) {
-    const message = await anthropic.messages.create({
-      model: 'claude-haiku-4-5',
-      max_tokens: 1500,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: `Translate into ${name}:\n\n${english}` }],
-    });
+    const message = await trackAiCall(
+      { ...AI_CAPABILITIES.whatsappTranslation, provider: 'anthropic', model: 'claude-haiku-4-5', retryCount: attempt },
+      () =>
+        anthropic.messages.create({
+          model: 'claude-haiku-4-5',
+          max_tokens: 1500,
+          system: SYSTEM_PROMPT,
+          messages: [{ role: 'user', content: `Translate into ${name}:\n\n${english}` }],
+        }),
+      anthropicUsage,
+    );
     const block = message.content.find((b) => b.type === 'text');
     const text = block?.type === 'text' ? block.text.trim() : '';
     if (text && placeholdersOf(text) === wanted) return text;

@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
 import { getAuthUser } from '@/lib/auth';
+import { AI_CAPABILITIES, trackAiCall } from '@/lib/aiops';
 import { ok, fail } from '@/lib/health-access';
 
 const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
@@ -47,10 +48,15 @@ export async function POST(req: NextRequest) {
     const bytes = await file.arrayBuffer();
     const audioFile = await OpenAI.toFile(Buffer.from(bytes), file.name || 'recording.m4a');
 
-    const transcription = await client.audio.transcriptions.create({
-      file: audioFile,
-      model: 'whisper-1',
-    });
+    // Reported to the AI Control Tower with technical facts only (no audio, no text). Whisper gives no token counts.
+    const transcription = await trackAiCall(
+      { ...AI_CAPABILITIES.speechToText, provider: 'openai', model: 'whisper-1', userId: auth.userId },
+      () =>
+        client.audio.transcriptions.create({
+          file: audioFile,
+          model: 'whisper-1',
+        }),
+    );
 
     return ok({ transcript: transcription.text });
   } catch (err) {

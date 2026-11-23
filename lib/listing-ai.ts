@@ -75,6 +75,7 @@ export async function draftListing(
 ): Promise<ListingDraft | null> {
   // Loaded when needed, so the pure parts above can be tested on their own without the AI libraries.
   const { askFirstAvailable } = await import('@/lib/catalog-ai');
-  const text = await askFirstAvailable(imageBase64, mediaType, buildListingPrompt(kind, mode), 400);
+  const { AI_CAPABILITIES } = await import('@/lib/aiops');
+  const text = await askFirstAvailable(imageBase64, mediaType, buildListingPrompt(kind, mode), 400, AI_CAPABILITIES.listingPhotoDraft);
   return text === null ? null : parseListingDraft(text, kind);
 }
