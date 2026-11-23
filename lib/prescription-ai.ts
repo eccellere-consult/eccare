@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
+import { AI_CAPABILITIES, anthropicUsage, openAiUsage, trackAiCall, type AiCallHandle } from '@/lib/aiops';
 
 export interface ExtractedMedication {
   name: string;
@@ -101,6 +102,7 @@ type MediaType = 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif';
 async function extractWithAnthropic(
   imageBase64: string,
   mediaType: MediaType,
+  call?: AiCallHandle,
 ): Promise<PrescriptionExtraction> {
   const client = new Anthropic();
   const message = await client.messages.create({
@@ -121,6 +123,7 @@ async function extractWithAnthropic(
       },
     ],
   });
+  call?.setUsage(anthropicUsage(message)); // technical numbers only, for the AI Control Tower
   // Sonnet 5 runs adaptive thinking by default, which puts a thinking block
   // before the text block — content[0] is not reliably the text block.
   const textBlock = message.content.find((block) => block.type === 'text');
@@ -131,6 +134,7 @@ async function extractWithAnthropic(
 async function extractWithOpenAI(
   imageBase64: string,
   mediaType: MediaType,
+  call?: AiCallHandle,
 ): Promise<PrescriptionExtraction> {
   const client = new OpenAI();
   const dataUrl = `data:${mediaType};base64,${imageBase64}`;
@@ -147,6 +151,7 @@ async function extractWithOpenAI(
       },
     ],
   });
+  call?.setUsage(openAiUsage(response)); // technical numbers only, for the AI Control Tower
   const text = response.choices[0]?.message?.content ?? '';
   return parseExtraction(text);
 }
@@ -154,6 +159,7 @@ async function extractWithOpenAI(
 async function extractWithGrok(
   imageBase64: string,
   mediaType: MediaType,
+  call?: AiCallHandle,
 ): Promise<PrescriptionExtraction> {
   const client = new OpenAI({
     apiKey: process.env.XAI_API_KEY,
@@ -176,16 +182,23 @@ async function extractWithGrok(
       },
     ],
   });
+  call?.setUsage(openAiUsage(response)); // technical numbers only, for the AI Control Tower
   const text = response.choices[0]?.message?.content ?? '';
   return parseExtraction(text);
 }
 
-type Provider = { name: string; available: () => boolean; extract: (b64: string, mt: MediaType) => Promise<PrescriptionExtraction> };
+type Provider = {
+  name: string;
+  /** How this provider and model are named in the AI Control Tower. */
+  report: { provider: string; model: string };
+  available: () => boolean;
+  extract: (b64: string, mt: MediaType, call: AiCallHandle) => Promise<PrescriptionExtraction>;
+};
 
 const PROVIDERS: Provider[] = [
-  { name: 'anthropic', available: () => !!process.env.ANTHROPIC_API_KEY, extract: extractWithAnthropic },
-  { name: 'openai', available: () => !!process.env.OPENAI_API_KEY, extract: extractWithOpenAI },
-  { name: 'grok', available: () => !!process.env.XAI_API_KEY, extract: extractWithGrok },
+  { name: 'anthropic', report: { provider: 'anthropic', model: 'claude-sonnet-5' }, available: () => !!process.env.ANTHROPIC_API_KEY, extract: extractWithAnthropic },
+  { name: 'openai', report: { provider: 'openai', model: 'gpt-4o' }, available: () => !!process.env.OPENAI_API_KEY, extract: extractWithOpenAI },
+  { name: 'grok', report: { provider: 'xai', model: 'grok-4.5' }, available: () => !!process.env.XAI_API_KEY, extract: extractWithGrok },
 ];
 
 // The website host cuts a request off after about a minute and then shows a blank 500, so
@@ -206,6 +219,8 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 export async function extractPrescription(
   imageBase64: string,
   mediaType: MediaType,
+  /** Only used to count AI calls per person in the Control Tower (hashed there); never sent as is. */
+  userId?: string | number,
 ): Promise<PrescriptionExtraction & { provider?: string }> {
   const errors: string[] = [];
   const startedAt = Date.now();
@@ -218,10 +233,10 @@ export async function extractPrescription(
       continue;
     }
     try {
-      const result = await withTimeout(
-        provider.extract(imageBase64, mediaType),
-        Math.min(PER_PROVIDER_MS, remaining),
-        provider.name,
+      // The report wraps the time limit too, so a call the app gave up on is reported as a timeout.
+      const result = await trackAiCall(
+        { ...AI_CAPABILITIES.prescriptionReading, ...provider.report, userId },
+        (call) => withTimeout(provider.extract(imageBase64, mediaType, call), Math.min(PER_PROVIDER_MS, remaining), provider.name),
       );
       return { ...result, provider: provider.name };
     } catch (err) {

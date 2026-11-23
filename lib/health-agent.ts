@@ -8,6 +8,7 @@
 // on for the organisation in the Anthropic Console).
 
 import { prisma } from '@/lib/db';
+import { AI_CAPABILITIES, anthropicUsage, trackAiCall } from '@/lib/aiops';
 import { HEALTH_TOPICS, TRUSTED_SOURCES, publisherFor, topicById, type HealthTopic } from './health-sources';
 import {
   checkFields,
@@ -138,21 +139,31 @@ export const callModelWithSearch: ModelCaller = async (topic) => {
 
   // A long search can pause the turn (stop_reason "pause_turn"); sending it back lets it carry on.
   for (let turn = 0; turn < 4; turn++) {
-    const res = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({
-        model: healthAgentModel(),
-        max_tokens: 3000,
-        system: SYSTEM_PROMPT,
-        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 4, allowed_domains: Object.keys(TRUSTED_SOURCES) }],
-        messages,
-      }),
-      signal: AbortSignal.timeout(150_000),
-    });
-    if (!res.ok) throw new HealthAgentError('MODEL_ERROR', describeApiError(res.status, await res.text()));
-
-    const data = (await res.json()) as { content?: unknown[]; stop_reason?: string };
+    // Each round trip to the model is one call in the AI Control Tower (technical numbers only: no topic, text or URL).
+    const data = await trackAiCall(
+      { ...AI_CAPABILITIES.healthBulletinDraft, provider: 'anthropic', model: healthAgentModel() },
+      async (call) => {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+          body: JSON.stringify({
+            model: healthAgentModel(),
+            max_tokens: 3000,
+            system: SYSTEM_PROMPT,
+            tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 4, allowed_domains: Object.keys(TRUSTED_SOURCES) }],
+            messages,
+          }),
+          signal: AbortSignal.timeout(150_000),
+        });
+        if (!res.ok) {
+          call.setErrorCode(`http_${res.status}`);
+          throw new HealthAgentError('MODEL_ERROR', describeApiError(res.status, await res.text()));
+        }
+        const json = (await res.json()) as { content?: unknown[]; stop_reason?: string };
+        call.setUsage(anthropicUsage(json));
+        return json;
+      },
+    );
     readResponseContent(data.content ?? [], state);
     if (data.stop_reason !== 'pause_turn') break;
     messages.push({ role: 'assistant', content: data.content });

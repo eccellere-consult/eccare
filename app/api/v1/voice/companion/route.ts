@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const greeting = await generateCompanionGreeting({ name: user.name, timeOfDay, note: apptNote });
+  const greeting = await generateCompanionGreeting({ name: user.name, timeOfDay, note: apptNote, userId: auth.userId });
 
   return NextResponse.json({
     success: true,

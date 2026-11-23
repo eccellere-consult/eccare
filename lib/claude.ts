@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { AI_CAPABILITIES, anthropicUsage, trackAiCall } from '@/lib/aiops';
 
 const EC_SYSTEM_PROMPT = `You are Arya, the caring voice of the EC app — a warm, composed Indian woman in her thirties who acts as a counsellor and guide for elderly people aged 65 and above.
 
@@ -130,6 +131,8 @@ export async function generateCompanionGreeting(facts: {
   name: string;
   timeOfDay: 'morning' | 'afternoon' | 'evening' | 'night';
   note?: string;
+  /** Only used to count AI calls per person in the Control Tower (hashed there); never sent as is. */
+  userId?: string | number;
 }): Promise<string> {
   const greetingWord =
     facts.timeOfDay === 'morning' ? 'Good morning' : facts.timeOfDay === 'evening' || facts.timeOfDay === 'night' ? 'Good evening' : 'Hello';
@@ -145,12 +148,17 @@ export async function generateCompanionGreeting(facts: {
       .filter(Boolean)
       .join('\n');
 
-    const message = await anthropic.messages.create({
-      model: 'claude-haiku-4-5',
-      max_tokens: 60,
-      system: COMPANION_SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: userMessage }],
-    });
+    const message = await trackAiCall(
+      { ...AI_CAPABILITIES.companionGreeting, provider: 'anthropic', model: 'claude-haiku-4-5', userId: facts.userId },
+      () =>
+        anthropic.messages.create({
+          model: 'claude-haiku-4-5',
+          max_tokens: 60,
+          system: COMPANION_SYSTEM_PROMPT,
+          messages: [{ role: 'user', content: userMessage }],
+        }),
+      anthropicUsage,
+    );
 
     const textBlock = message.content.find((block) => block.type === 'text');
     const text = textBlock?.type === 'text' ? textBlock.text.trim() : '';
@@ -164,6 +172,7 @@ export async function generateCompanionGreeting(facts: {
 export async function processVoiceInput(
   transcript: string,
   userContext?: string,
+  userId?: string | number,
 ): Promise<VoiceResult> {
   const systemPrompt = userContext
     ? `${EC_SYSTEM_PROMPT}\n\nUser context:\n${userContext}`
@@ -177,12 +186,17 @@ export async function processVoiceInput(
   // again") would be worse than the honest degraded response.
   try {
     const anthropic = new Anthropic();
-    const message = await anthropic.messages.create({
-      model: 'claude-haiku-4-5',
-      max_tokens: 256,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: transcript }],
-    });
+    const message = await trackAiCall(
+      { ...AI_CAPABILITIES.voiceCommand, provider: 'anthropic', model: 'claude-haiku-4-5', userId },
+      () =>
+        anthropic.messages.create({
+          model: 'claude-haiku-4-5',
+          max_tokens: 256,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: transcript }],
+        }),
+      anthropicUsage,
+    );
 
     // Defensive against block ordering the same way lib/quote-ai.ts is — Haiku 4.5
     // doesn't run thinking by default, but content[0] being reliably the text

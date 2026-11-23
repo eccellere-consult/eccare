@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { z } from 'zod';
 import { getAuthUser } from '@/lib/auth';
+import { AI_CAPABILITIES, trackAiCall } from '@/lib/aiops';
 import { fail } from '@/lib/health-access';
 
 // Arya's spoken voice. Browser speechSynthesis (lib/speech.ts) is the last-resort
@@ -100,8 +101,17 @@ export async function POST(req: NextRequest) {
 
   const text = parsed.data.text;
   const attempts: Array<{ provider: string; run: () => Promise<Buffer> }> = [];
-  if (useAzure) attempts.push({ provider: 'azure', run: () => synthesizeWithAzure(text) });
-  if (useOpenAI) attempts.push({ provider: 'openai', run: () => synthesizeWithOpenAI(text) });
+  // Each try is reported to the AI Control Tower with technical facts only (no text, no audio). Speech has no token counts.
+  const speechCall = (provider: string, model: string) => ({ ...AI_CAPABILITIES.textToSpeech, provider, model, userId: auth.userId });
+  if (useAzure) {
+    attempts.push({
+      provider: 'azure',
+      run: () => trackAiCall(speechCall('azure', process.env.AZURE_SPEECH_VOICE || 'en-IN-NeerjaNeural'), () => synthesizeWithAzure(text)),
+    });
+  }
+  if (useOpenAI) {
+    attempts.push({ provider: 'openai', run: () => trackAiCall(speechCall('openai', 'gpt-4o-mini-tts'), () => synthesizeWithOpenAI(text)) });
+  }
 
   for (const { provider, run } of attempts) {
     try {

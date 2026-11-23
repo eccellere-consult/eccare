@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
       ].join('\n')
     : undefined;
 
-  const result = await processVoiceInput(parsed.data.transcript, userContext);
+  const result = await processVoiceInput(parsed.data.transcript, userContext, auth.userId);
 
   await prisma.voiceLog.create({
     data: {

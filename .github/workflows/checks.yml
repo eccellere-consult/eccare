@@ -58,6 +58,9 @@ jobs:
       - name: Languages (every language complete, no lost placeholders)
         run: node --experimental-strip-types --test lib/i18n/languages.test.mjs
 
+      - name: AI Control Tower reporting (silent without settings, never throws, sends no text)
+        run: node --experimental-strip-types --test lib/aiops.test.mjs
+
       - name: Type check
         run: npm run typecheck
 
