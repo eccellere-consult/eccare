@@ -22,10 +22,12 @@ import {
   Store,
   Stethoscope,
   Hammer,
+  UserCheck,
   type LucideIcon,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { ALL_OFF, type FeatureSwitches } from '@/lib/feature-switches-shared';
 
 interface Provider {
   name: string;
@@ -131,8 +133,11 @@ export function ServicesClient({
   role,
   elder,
   self,
+  features = ALL_OFF,
 }: {
   role: string | null;
+  /** Launch-day features that are On (lib/feature-switches.ts). */
+  features?: FeatureSwitches;
   /** null when the caregiver has no accepted elder yet, or the viewer isn't a
    *  caregiver at all — "for myself" becomes the only option rather than a
    *  dead end. */
@@ -189,6 +194,23 @@ export function ServicesClient({
           </CardContent>
         </Card>
       </Link>
+
+      {features.careStaff && (
+        <Link href="/services/home-staff" className="mt-4 block">
+          <Card className="border-primary-100 bg-primary-50 transition-shadow hover:shadow-md">
+            <CardContent className="flex items-center gap-4 pt-6">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-surface">
+                <UserCheck className="h-6 w-6 text-primary-600" />
+              </span>
+              <div className="flex-1">
+                <p className="font-bold text-text">Home-care staff, checked by EC</p>
+                <p className="text-sm text-text-secondary">Nurse or doctor at home, full-time nurse, caretaker, security, cook, house help</p>
+              </div>
+              <ChevronRight className="h-5 w-5 shrink-0 text-text-secondary" />
+            </CardContent>
+          </Card>
+        </Link>
+      )}
 
       <Link href={`/services/advisory${elderParam}`} className="mt-4 block">
         <Card className="border-border bg-surface transition-shadow hover:shadow-md">

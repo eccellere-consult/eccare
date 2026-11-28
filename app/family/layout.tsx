@@ -1,6 +1,7 @@
 import { headers } from 'next/headers';
 import { AppShell } from '@/components/app-shell';
 import { getServerUser } from '@/lib/server-session';
+import { getFeatureSwitches } from '@/lib/feature-switches';
 import { getFamilySubscriptionState } from '@/lib/family-subscription';
 import { FamilySubscriptionGate } from '@/components/family-subscription-gate';
 import { CaregiverAgeGate } from '@/components/caregiver-age-gate';
@@ -24,7 +25,7 @@ export default async function FamilyLayout({ children }: { children: React.React
   const blocked = user?.role === 'caregiver' && !ageBlocked && (await getFamilySubscriptionState(user.id)).blocked;
 
   return (
-    <AppShell role="family" userName={user?.name} needsDateOfBirth={!!user && !user.dateOfBirth}>
+    <AppShell role="family" userName={user?.name} needsDateOfBirth={!!user && !user.dateOfBirth} features={await getFeatureSwitches()}>
       {ageBlocked ? <CaregiverAgeGate /> : blocked ? <FamilySubscriptionGate inApp={inApp} /> : children}
     </AppShell>
   );

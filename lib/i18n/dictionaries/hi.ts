@@ -23,6 +23,7 @@ const hi: Record<TranslationKey, string> = {
   'nav.orders': 'ऑर्डर',
   'nav.payments': 'भुगतान',
   'nav.memories': 'यादें',
+  'nav.offers': 'ऑफ़र',
   'nav.profile': 'प्रोफ़ाइल',
   'nav.logOut': 'लॉग आउट',
 

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Store, Inbox, CalendarClock, Car, Scale, Home, Bike, ChevronRight, type LucideIcon } from 'lucide-react';
+import { Store, Inbox, CalendarClock, Car, Scale, Home, Bike, UserCheck, ChevronRight, type LucideIcon } from 'lucide-react';
 import { prisma } from '@/lib/db';
 import { getServerUser } from '@/lib/server-session';
 import { Card, CardContent } from '@/components/ui/card';
@@ -22,6 +22,7 @@ const CATEGORY_PAGES: { category: string; href: string; label: string; descripti
   { category: 'insurance', href: '/provider/advisory', label: 'Advisory profile & consultations', description: 'Manage your profile and move consultations along', icon: Scale },
   { category: 'property_management', href: '/provider/property-management', label: 'Rates, clients & inspections', description: 'Set your rates and submit inspection reports', icon: Home },
   { category: 'delivery', href: '/provider/delivery', label: 'Your free time & vehicle', description: 'Tell EC when you can deliver, how far and how heavy', icon: Bike },
+  { category: 'home_care_staff', href: '/provider/home-staff', label: 'Your home-care staff', description: 'Add each person, upload their ID and certificates, propose rates', icon: UserCheck },
 ];
 
 /**

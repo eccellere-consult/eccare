@@ -1,6 +1,7 @@
 import { AppShell } from '@/components/app-shell';
 import { getServerUser } from '@/lib/server-session';
 import { prisma } from '@/lib/db';
+import { getFeatureSwitches } from '@/lib/feature-switches';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +15,7 @@ export default async function ProviderLayout({ children }: { children: React.Rea
     : null;
 
   return (
-    <AppShell role="provider" userName={user?.name} providerCategory={provider?.category}>
+    <AppShell role="provider" userName={user?.name} providerCategory={provider?.category} features={await getFeatureSwitches()}>
       {children}
     </AppShell>
   );

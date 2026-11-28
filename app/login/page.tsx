@@ -27,6 +27,7 @@ import { TourButton } from '@/components/tour/TourButton';
 import { DedicationFooter } from '@/components/dedication-footer';
 import { PROVIDER_CATEGORIES } from '@/lib/provider-categories';
 import { DELIVERY_CATEGORY } from '@/lib/delivery-pricing';
+import { CARE_STAFF_CATEGORY } from '@/lib/care-staff';
 import { ShareLocationButton } from '@/components/share-location-button';
 import { SUPPORTED_LANGUAGES } from '@/lib/i18n/languages';
 import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
@@ -393,6 +394,7 @@ function CreateAccountForm({
   const [otherCategory, setOtherCategory] = useState('');
   // "Delivery partner" is offered only once the admin has switched delivery On.
   const [deliveryOpen, setDeliveryOpen] = useState(false);
+  const [careStaffOpen, setCareStaffOpen] = useState(false);
   const [backupContactName, setBackupContactName] = useState('');
   const [backupContactPhone, setBackupContactPhone] = useState('');
   const [lat, setLat] = useState('');
@@ -427,6 +429,10 @@ function CreateAccountForm({
       .then((r) => r.json())
       .then((j) => setDeliveryOpen(Boolean(j?.data?.enabled)))
       .catch(() => setDeliveryOpen(false));
+    fetch('/api/v1/features')
+      .then((r) => r.json())
+      .then((j) => setCareStaffOpen(Boolean(j?.data?.careStaff)))
+      .catch(() => setCareStaffOpen(false));
   }, [role]);
 
   useEffect(() => {
@@ -775,6 +781,7 @@ function CreateAccountForm({
                 <option key={c.value} value={c.value}>{c.label}</option>
               ))}
               {deliveryOpen && <option value={DELIVERY_CATEGORY.value}>{DELIVERY_CATEGORY.label}</option>}
+              {careStaffOpen && <option value={CARE_STAFF_CATEGORY.value}>{CARE_STAFF_CATEGORY.label}</option>}
             </select>
           </div>
           {category === 'other' && (

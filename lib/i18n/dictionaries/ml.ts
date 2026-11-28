@@ -23,6 +23,7 @@ const ml: Record<TranslationKey, string> = {
   'nav.orders': 'ഓർഡറുകൾ',
   'nav.payments': 'പേയ്‌മെന്റുകൾ',
   'nav.memories': 'ഓർമ്മകൾ',
+  'nav.offers': 'ഓഫറുകൾ',
   'nav.profile': 'പ്രൊഫൈൽ',
   'nav.logOut': 'ലോഗ് ഔട്ട്',
 

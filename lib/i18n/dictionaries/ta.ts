@@ -22,6 +22,7 @@ const ta: Record<TranslationKey, string> = {
   'nav.orders': 'ஆர்டர்கள்',
   'nav.payments': 'கட்டணங்கள்',
   'nav.memories': 'நினைவுகள்',
+  'nav.offers': 'சலுகைகள்',
   'nav.profile': 'சுயவிவரம்',
   'nav.logOut': 'வெளியேறு',
   'elder.home.hello': 'வணக்கம்,',

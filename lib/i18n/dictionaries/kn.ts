@@ -23,6 +23,7 @@ const kn: Record<TranslationKey, string> = {
   'nav.orders': 'ಆರ್ಡರ್‌ಗಳು',
   'nav.payments': 'ಪಾವತಿಗಳು',
   'nav.memories': 'ನೆನಪುಗಳು',
+  'nav.offers': 'ಆಫರ್‌ಗಳು',
   'nav.profile': 'ಪ್ರೊಫೈಲ್',
   'nav.logOut': 'ಲಾಗ್ ಔಟ್',
 

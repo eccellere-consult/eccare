@@ -22,6 +22,7 @@ const te: Record<TranslationKey, string> = {
   'nav.orders': 'ఆర్డర్లు',
   'nav.payments': 'చెల్లింపులు',
   'nav.memories': 'జ్ఞాపకాలు',
+  'nav.offers': 'ఆఫర్లు',
   'nav.profile': 'ప్రొఫైల్',
   'nav.logOut': 'లాగ్ అవుట్',
   'elder.home.hello': 'నమస్కారం,',

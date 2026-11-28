@@ -269,6 +269,16 @@ model PricingPageContent {
   updatedById       String?
 }
 
+/// Launch switches for whole features that are built but not yet open to everyone
+/// (lib/feature-switches.ts). A missing row means Off, so a new feature always starts Off.
+/// key: care_staff (verified home-care staff) | offers (provider offers and paid ad space).
+model FeatureSwitch {
+  key         String   @id
+  enabled     Boolean  @default(false)
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+}
+
 enum BillingCycle {
   monthly
   annual
@@ -2400,6 +2410,8 @@ model ServiceProvider {
   communityListings CommunityProviderListing[]
   catalogItems       CatalogItem[]
   orders             Order[]
+  // Home-care staff this provider offers (category home_care_staff): one row per person.
+  careStaffListings  CareStaffListing[]
   // Doctors & Elder Transport module: a directory entry optionally links
   // here — a real self-service link, one row per community the provider has
   // joined (see LocalDoctor/AutoDriver's own comments). Legacy admin-added
@@ -2494,6 +2506,79 @@ enum ElderCareCategory {
   companion_service
   local_errands
   other
+}
+
+/// One person a home-care provider offers: a nurse or doctor for home visits, a full-time
+/// home nurse or caretaker, a security guard, a part-time cook or house help. An individual
+/// lists themselves; an agency lists each worker. Rules in lib/care-staff.ts. Families see
+/// a listing only after EC checks the documents and approves the rates.
+model CareStaffListing {
+  id              String    @id @default(cuid())
+  providerId      String
+  personName      String
+  // lib/care-staff.ts STAFF_ROLES value, e.g. home_visit_nurse, cook
+  role            String
+  qualification   String?
+  experienceYears Int?
+  languages       String?
+  about           String?   @db.Text
+  // Only the last 4 digits are ever stored (Aadhaar rules); never the full number.
+  aadhaarLast4    String?   @db.VarChar(4)
+  // Optional: the monthly salary the person expects, for full-time and part-time work.
+  expectedSalary  Decimal?  @db.Decimal(10, 2)
+  // draft | submitted | changes_needed | approved | rejected | paused
+  status          String    @default("draft")
+  adminNote       String?   @db.Text
+  submittedAt     DateTime?
+  reviewedAt      DateTime?
+  reviewedById    String?
+  // "EC verified until": EC checks the person again by this date; not listed after it.
+  verifiedUntil   DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  provider  ServiceProvider    @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  documents CareStaffDocument[]
+  rates     CareStaffRate[]
+
+  @@index([providerId])
+  @@index([status, role])
+}
+
+/// A document uploaded for a home-care staff listing. Shown only to the provider who uploaded
+/// it and to EC admins, through the app (never a public link).
+model CareStaffDocument {
+  id          String    @id @default(cuid())
+  listingId   String
+  // id_proof | certificate | police_verification | photo | other
+  kind        String
+  fileName    String
+  filePath    String
+  contentType String
+  expiresOn   DateTime?
+  // What the AI read from a certificate photo (name, qualification, expiry), for the admin.
+  aiNote      String?   @db.Text
+  createdAt   DateTime  @default(now())
+
+  listing CareStaffListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+}
+
+/// A rate for a home-care staff listing: the provider proposes, EC approves (only approved
+/// rates are shown to families).
+model CareStaffRate {
+  id             String   @id @default(cuid())
+  listingId      String
+  // visit | hour | day | month
+  unit           String
+  proposedAmount Decimal  @db.Decimal(10, 2)
+  approvedAmount Decimal? @db.Decimal(10, 2)
+  note           String?
+
+  listing CareStaffListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
 }
 
 /// Connects a registered ServiceProvider to one community's Vendors directory.
