@@ -10,6 +10,8 @@ import { checkDateOfBirth, roleForAge, DOB_ERROR_MESSAGES } from '@/lib/age';
 import { planCommunityJoin, saveMembership, finishJoin } from '@/lib/community-join';
 import { DELIVERY_CATEGORY } from '@/lib/delivery-pricing';
 import { isDeliveryEnabled } from '@/lib/delivery-settings';
+import { CARE_STAFF_CATEGORY } from '@/lib/care-staff';
+import { isFeatureOn } from '@/lib/feature-switches';
 
 // Phone is the primary identifier — required, and the default way people sign in.
 // Email is optional: useful for password-recovery links and directory contact, but
@@ -139,6 +141,13 @@ export async function POST(req: NextRequest) {
   if (category === DELIVERY_CATEGORY.value && !(await isDeliveryEnabled())) {
     return NextResponse.json(
       { success: false, error: { code: 'DELIVERY_OFF', message: 'Delivery partner sign-up is not open yet.' } },
+      { status: 400 },
+    );
+  }
+  // Home-care staff can only sign up once the admin has switched that feature On.
+  if (category === CARE_STAFF_CATEGORY.value && !(await isFeatureOn('care_staff'))) {
+    return NextResponse.json(
+      { success: false, error: { code: 'CARE_STAFF_OFF', message: 'Home-care staff sign-up is not open yet.' } },
       { status: 400 },
     );
   }

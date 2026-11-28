@@ -109,6 +109,7 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
       { label: 'Health Bulletins', href: '/admin/health-bulletins', icon: Stethoscope },
       { label: 'Self-Help Guides', href: '/admin/help-guides', icon: GraduationCap },
       { label: 'Providers', href: '/admin/providers', icon: Briefcase },
+      { label: 'Home-care staff', href: '/admin/home-staff', icon: UserCheck },
       { label: 'Delivery', href: '/admin/delivery', icon: Bike },
       { label: 'Volunteers', href: '/admin/volunteers', icon: HeartHandshake },
       { label: 'Newsletters', href: '/admin/newsletters', icon: Mail },
@@ -158,6 +159,9 @@ function getProviderNavItems(category: string | null | undefined): NavItem[] {
       break;
     case 'property_management':
       items.push({ label: 'Property Management', href: '/provider/property-management', icon: Home });
+      break;
+    case 'home_care_staff':
+      // Their page (Home-care staff) is added by withFeatureItems once the feature is On.
       break;
     default:
       // Retail, Pharmacy, Grocery, Nursing, Physiotherapy, Food & Restaurant,
