@@ -28,6 +28,7 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { ALL_OFF, type FeatureSwitches } from '@/lib/feature-switches-shared';
+import { SponsoredSlot } from '@/components/offers/offer-card';
 
 interface Provider {
   name: string;
@@ -179,6 +180,8 @@ export function ServicesClient({
           ))}
         </div>
       )}
+
+      {features.offers && <SponsoredSlot slot="services_top" />}
 
       <Link href="/services/elder-care" className="mt-6 block">
         <Card className="border-accent-100 bg-accent-50 transition-shadow hover:shadow-md">
