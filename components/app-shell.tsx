@@ -37,6 +37,8 @@ import {
   CalendarClock,
   Car,
   Bike,
+  UserCheck,
+  Megaphone,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -47,6 +49,7 @@ import { VoiceAssistant } from '@/components/voice-assistant';
 import { ReminderAlerts } from '@/components/reminder-alerts';
 import { MedicineAlerts } from '@/components/medicine-alerts';
 import { SosAlertBanner } from '@/components/sos-alert-banner';
+import { ALL_OFF, type FeatureSwitches } from '@/lib/feature-switches-shared';
 
 export type PortalRole = 'elder' | 'family' | 'admin' | 'provider';
 
@@ -166,6 +169,34 @@ function getProviderNavItems(category: string | null | undefined): NavItem[] {
   return items;
 }
 
+/** Menu items of launch-day features, shown only once the admin switches the feature On
+ *  (lib/feature-switches.ts). Elder and family get them just above Profile. */
+function withFeatureItems(
+  role: PortalRole,
+  items: NavItem[],
+  providerCategory: string | null | undefined,
+  features: FeatureSwitches,
+): NavItem[] {
+  const extra: NavItem[] = [];
+  if (role === 'elder' || role === 'family') {
+    if (features.offers) {
+      extra.push({ label: 'Offers', labelKey: role === 'elder' ? 'nav.offers' : undefined, href: '/services/offers', icon: Megaphone });
+    }
+    if (extra.length === 0) return items;
+    const profileAt = items.findIndex((i) => i.href.endsWith('/profile'));
+    const at = profileAt === -1 ? items.length : profileAt;
+    return [...items.slice(0, at), ...extra, ...items.slice(at)];
+  }
+  if (role === 'provider') {
+    if (features.careStaff && providerCategory === 'home_care_staff') {
+      extra.push({ label: 'Home-care staff', href: '/provider/home-staff', icon: UserCheck });
+    }
+    if (features.offers) extra.push({ label: 'Offers & ads', href: '/provider/marketing', icon: Megaphone });
+    return [...items, ...extra];
+  }
+  return items;
+}
+
 function LanguageToggle({ compact }: { compact?: boolean }) {
   const lang = useLanguage();
   if (!lang || !lang.secondaryLanguage) return null;
@@ -192,10 +223,12 @@ interface AppShellProps {
   providerCategory?: string | null;
   /** Account pre-dates the date-of-birth requirement: shows a prompt to add one. */
   needsDateOfBirth?: boolean;
+  /** Launch-day features that are On (lib/feature-switches.ts). Omitted = all Off. */
+  features?: FeatureSwitches;
   children: React.ReactNode;
 }
 
-export function AppShell({ role, userName, providerCategory, needsDateOfBirth, children }: AppShellProps) {
+export function AppShell({ role, userName, providerCategory, needsDateOfBirth, features = ALL_OFF, children }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -206,7 +239,12 @@ export function AppShell({ role, userName, providerCategory, needsDateOfBirth, c
   // LanguageProvider), so this naturally leaves family/admin/provider chrome
   // in English while translating the elder's.
   const displayPortalLabel = lang ? t('nav.portalLabel.elder') : portalLabel;
-  const navItems = role === 'provider' ? getProviderNavItems(providerCategory) : NAV_CONFIG[role].items;
+  const navItems = withFeatureItems(
+    role,
+    role === 'provider' ? getProviderNavItems(providerCategory) : NAV_CONFIG[role].items,
+    providerCategory,
+    features,
+  );
   const logOutLabel = lang ? t('nav.logOut') : 'Log out';
 
   async function handleLogout() {

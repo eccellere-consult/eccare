@@ -26,6 +26,7 @@ const en = {
   'nav.orders': 'Orders',
   'nav.payments': 'Payments',
   'nav.memories': 'Memories',
+  'nav.offers': 'Offers',
   'nav.profile': 'Profile',
   'nav.logOut': 'Log out',
 

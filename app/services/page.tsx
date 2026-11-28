@@ -1,6 +1,7 @@
 import { isCaregiverEligible } from '@/lib/age';
 import { prisma } from '@/lib/db';
 import { getServerUser } from '@/lib/server-session';
+import { getFeatureSwitches } from '@/lib/feature-switches';
 import { ServicesClient } from './services-client';
 
 export const dynamic = 'force-dynamic';
@@ -26,6 +27,7 @@ export default async function ServicesPage() {
       role={user?.role ?? null}
       elder={relation ? { id: relation.elderUserId, name: relation.elderUser.name } : null}
       self={user ? { id: user.id, name: user.name } : null}
+      features={await getFeatureSwitches()}
     />
   );
 }

@@ -22,10 +22,12 @@ import {
   Store,
   Stethoscope,
   Hammer,
+  UserCheck,
   type LucideIcon,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { ALL_OFF, type FeatureSwitches } from '@/lib/feature-switches-shared';
 
 interface Provider {
   name: string;
@@ -131,8 +133,11 @@ export function ServicesClient({
   role,
   elder,
   self,
+  features = ALL_OFF,
 }: {
   role: string | null;
+  /** Launch-day features that are On (lib/feature-switches.ts). */
+  features?: FeatureSwitches;
   /** null when the caregiver has no accepted elder yet, or the viewer isn't a
    *  caregiver at all — "for myself" becomes the only option rather than a
    *  dead end. */

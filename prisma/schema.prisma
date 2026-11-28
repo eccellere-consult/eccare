@@ -260,6 +260,16 @@ model PricingPageContent {
   updatedById       String?
 }
 
+/// Launch switches for whole features that are built but not yet open to everyone
+/// (lib/feature-switches.ts). A missing row means Off, so a new feature always starts Off.
+/// key: care_staff (verified home-care staff) | offers (provider offers and paid ad space).
+model FeatureSwitch {
+  key         String   @id
+  enabled     Boolean  @default(false)
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+}
+
 enum BillingCycle {
   monthly
   annual

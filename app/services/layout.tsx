@@ -1,5 +1,6 @@
 import { AppShell } from '@/components/app-shell';
 import { getServerUser } from '@/lib/server-session';
+import { getFeatureSwitches } from '@/lib/feature-switches';
 import type { PortalRole } from '@/components/app-shell';
 
 export const dynamic = 'force-dynamic';
@@ -9,7 +10,7 @@ export default async function ServicesLayout({ children }: { children: React.Rea
   const role: PortalRole = user?.role === 'caregiver' ? 'family' : (user?.role as PortalRole) ?? 'elder';
 
   return (
-    <AppShell role={role} userName={user?.name}>
+    <AppShell role={role} userName={user?.name} features={await getFeatureSwitches()}>
       {children}
     </AppShell>
   );
