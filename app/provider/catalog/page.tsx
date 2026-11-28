@@ -159,6 +159,7 @@ export default function ProviderCatalogPage() {
         await api('/provider/catalog/draft', { method: 'POST', body });
       if (result.draft) {
         setForm((f) => ({
+          ...f,
           name: f.name || result.draft!.name,
           category: f.category || result.draft!.category,
           description: f.description || result.draft!.description,
