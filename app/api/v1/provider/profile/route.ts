@@ -20,6 +20,8 @@ const patchSchema = z.object({
     .enum(['home_treatment', 'home_nursing', 'companion_service', 'local_errands', 'other'])
     .nullable()
     .optional(),
+  // Off = the shop delivers its own orders, so EC adds no delivery charge and opens no delivery job.
+  usesEcDelivery: z.boolean().optional(),
 });
 
 const fail = (code: string, message: string, status = 400) =>

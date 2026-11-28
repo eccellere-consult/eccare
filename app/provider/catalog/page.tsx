@@ -18,6 +18,8 @@ interface CatalogItem {
   price: string;
   imagePath: string | null;
   category: string | null;
+  weightKg?: string | null;
+  parcelSize?: string | null;
   inStock: boolean;
 }
 
@@ -51,7 +53,7 @@ async function api(path: string, init?: RequestInit) {
   return json.data;
 }
 
-const EMPTY_FORM = { name: '', description: '', price: '', category: '' };
+const EMPTY_FORM = { name: '', description: '', price: '', category: '', weightKg: '', parcelSize: '' };
 
 export default function ProviderCatalogPage() {
   const [items, setItems] = useState<CatalogItem[]>([]);
@@ -124,6 +126,8 @@ export default function ProviderCatalogPage() {
       description: item.description ?? '',
       price: String(Number(item.price)),
       category: item.category ?? '',
+      weightKg: item.weightKg ? String(Number(item.weightKg)) : '',
+      parcelSize: item.parcelSize ?? '',
     });
     setFormOpen(true);
     setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
@@ -202,6 +206,8 @@ export default function ProviderCatalogPage() {
       description: form.description.trim(),
       price,
       category: form.category.trim(),
+      weightKg: form.weightKg.trim() && Number(form.weightKg) >= 0 ? Number(form.weightKg) : null,
+      parcelSize: (form.parcelSize || null) as 'small' | 'medium' | 'large' | null,
     };
     try {
       let id = editingId;
@@ -391,6 +397,27 @@ export default function ProviderCatalogPage() {
                       ))}
                     </datalist>
                   </div>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="c-weight">Weight of one, in kg (optional)</Label>
+                    <Input id="c-weight" value={form.weightKg} onChange={(e) => setForm((f) => ({ ...f, weightKg: e.target.value }))} placeholder="0.5" inputMode="decimal" />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="c-size">Parcel size (optional)</Label>
+                    <select
+                      id="c-size"
+                      value={form.parcelSize}
+                      onChange={(e) => setForm((f) => ({ ...f, parcelSize: e.target.value }))}
+                      className="flex h-11 w-full rounded-xl border border-border bg-surface px-4 py-2 text-base text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+                    >
+                      <option value="">Not set (small)</option>
+                      <option value="small">Small (fits in a bag)</option>
+                      <option value="medium">Medium (a carton)</option>
+                      <option value="large">Large (both hands or a vehicle)</option>
+                    </select>
+                  </div>
+                  <p className="text-xs text-text-secondary sm:col-span-2">Used to work out the EC delivery charge.</p>
                 </div>
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="c-desc">Description (optional)</Label>

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthUser } from '@/lib/auth';
 
+const CARD_WINDOW_MS = 15 * 60_000;
+
 /**
  * Recent SOS/panic events across every elder this person is notified about
  * — either as an accepted family caregiver (FamilyRelation, receivesSos),
@@ -45,5 +47,24 @@ export async function GET(req: NextRequest) {
     take: 10,
   });
 
-  return NextResponse.json({ success: true, data: events });
+  // The elder's emergency card (blood group, allergies, conditions, implants) rides along only on
+  // alerts from the last 15 minutes, so family can read it to the ambulance crew. Never on older
+  // events, never in push notifications, and never on the community committee's panic feed.
+  const recentCutoff = Date.now() - CARD_WINDOW_MS;
+  const recentElderIds = [...new Set(events.filter((e) => e.createdAt.getTime() > recentCutoff).map((e) => e.userId))];
+  const cards = recentElderIds.length
+    ? await prisma.user.findMany({
+        where: { id: { in: recentElderIds } },
+        select: { id: true, bloodGroup: true, allergies: true, medicalConditions: true, implantsDevices: true, emergencyNotes: true },
+      })
+    : [];
+  const cardOf = new Map(cards.map(({ id, ...card }) => [id, card]));
+
+  return NextResponse.json({
+    success: true,
+    data: events.map((e) => ({
+      ...e,
+      emergencyCard: e.createdAt.getTime() > recentCutoff ? cardOf.get(e.userId) ?? null : null,
+    })),
+  });
 }

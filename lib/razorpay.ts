@@ -46,3 +46,20 @@ export function verifyWebhookSignature(rawBody: string, signature: string): bool
   if (!secret) return false;
   return Razorpay.validateWebhookSignature(rawBody, signature, secret);
 }
+
+/** Razorpay Route: sends part of a captured payment to a linked account (a delivery partner).
+ *  Amount in rupees. Needs Route switched on for EC's Razorpay account. */
+export async function transferToLinkedAccount(paymentId: string, accountId: string, amountRupees: number, notes: Record<string, string>) {
+  const client = getClient();
+  const result = await client.payments.transfer(paymentId, {
+    transfers: [{ account: accountId, amount: Math.round(amountRupees * 100), currency: 'INR', notes }],
+  });
+  return result.items[0];
+}
+
+/** Refunds a payment to the customer, in full or part (rupees). With reverseAll, money already
+ *  sent on to a linked account through Route is pulled back too. */
+export async function refundPayment(paymentId: string, amountRupees: number, reverseAll: boolean) {
+  const client = getClient();
+  return client.payments.refund(paymentId, { amount: Math.round(amountRupees * 100), reverse_all: reverseAll ? 1 : 0 });
+}

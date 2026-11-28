@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Bike, IndianRupee, Power, Calculator, FileText } from 'lucide-react';
+import { Bike, IndianRupee, Power, Calculator, FileText, Landmark, Star } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { communityApi, useCommunityData } from '@/lib/community-client';
 import { PROVIDER_CATEGORIES } from '@/lib/provider-categories';
+import { DeliveryJobsAdmin, type AdminJob } from '@/components/admin/delivery-jobs-admin';
 import { DAY_NAMES, PARCEL_SIZES, VEHICLE_TYPES, minuteToTime, quoteDelivery, type ParcelSize, type RateCard } from '@/lib/delivery-pricing';
 
 interface Partner {
@@ -25,13 +26,17 @@ interface Partner {
     radiusKm: number;
     availableNow: boolean;
     upiId: string | null;
+    razorpayLinkedAccountId: string | null;
     slots: { dayOfWeek: number; startMinute: number; endMinute: number }[];
   } | null;
+  summary: { deliveries: number; unpaid: number; ratingAverage: number | null; ratingCount: number } | null;
 }
 interface DeliveryAdmin {
   enabled: boolean;
+  routePayouts: boolean;
   rateCard: RateCard;
   partners: Partner[];
+  jobs: AdminJob[];
 }
 
 const RATE_FIELDS: { key: Exclude<keyof RateCard, 'categorySurcharges'>; label: string; hint: string; step?: string }[] = [
@@ -41,6 +46,7 @@ const RATE_FIELDS: { key: Exclude<keyof RateCard, 'categorySurcharges'>; label: 
   { key: 'minimumCharge', label: 'Minimum charge (₹)', hint: 'No delivery costs less than this.' },
   { key: 'sizeMediumSurcharge', label: 'Medium parcel extra (₹)', hint: 'A carton.' },
   { key: 'sizeLargeSurcharge', label: 'Large parcel extra (₹)', hint: 'Needs both hands or a vehicle.' },
+  { key: 'partnerSharePercent', label: 'Delivery partner gets (%)', hint: 'Their share of each delivery charge. 100 = all of it.', step: '1' },
   { key: 'roadFactor', label: 'Road allowance (×)', hint: 'Straight-line distance × this ≈ road distance. 1.3 suits most towns.', step: '0.05' },
 ];
 
@@ -60,6 +66,8 @@ export default function AdminDeliveryPage() {
   const [saveError, setSaveError] = useState('');
   const [saved, setSaved] = useState(false);
   const [switching, setSwitching] = useState(false);
+  const [accounts, setAccounts] = useState<Record<string, string>>({});
+  const [accountNote, setAccountNote] = useState<{ id: string; text: string; ok: boolean } | null>(null);
 
   // Example on the page so the admin sees what a customer would pay.
   const [exKm, setExKm] = useState('3');
@@ -67,11 +75,18 @@ export default function AdminDeliveryPage() {
   const [exSize, setExSize] = useState<ParcelSize>('small');
   const [exCategory, setExCategory] = useState('grocery');
 
+  // Refill the rate boxes only when the saved rate card itself changes, so refreshing the
+  // deliveries list never wipes rates the admin is still typing.
+  const rateKey = data ? JSON.stringify(data.rateCard) : '';
   useEffect(() => {
     if (!data) return;
     setRates(Object.fromEntries(RATE_FIELDS.map((f) => [f.key, String(data.rateCard[f.key])])));
     setSurcharges(Object.fromEntries(Object.entries(data.rateCard.categorySurcharges).map(([k, v]) => [k, String(v)])));
-  }, [data]);
+  }, [rateKey]); // data is read through rateKey on purpose
+
+  const refresh = () => {
+    communityApi.get<DeliveryAdmin>('/admin/delivery').then(setData).catch(() => undefined);
+  };
 
   const draftCard: RateCard | null = useMemo(() => {
     const nums = Object.fromEntries(RATE_FIELDS.map((f) => [f.key, Number(rates[f.key])]));
@@ -99,6 +114,39 @@ export default function AdminDeliveryPage() {
       setSaveError(err instanceof Error ? err.message : 'Could not switch.');
     } finally {
       setSwitching(false);
+    }
+  }
+
+  async function toggleRoute() {
+    if (!data) return;
+    const next = !data.routePayouts;
+    if (
+      next &&
+      !window.confirm(
+        'Switch automatic payouts On? Only do this once Razorpay Route is active on your Razorpay account and each partner has a linked account ID below. Partners paid online will then get their share sent by Razorpay when a delivery finishes.',
+      )
+    )
+      return;
+    setSwitching(true);
+    try {
+      setData(await communityApi.patch<DeliveryAdmin>('/admin/delivery', { routePayouts: next }));
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Could not switch.');
+    } finally {
+      setSwitching(false);
+    }
+  }
+
+  async function saveAccount(providerId: string) {
+    setAccountNote(null);
+    try {
+      await communityApi.patch(`/admin/delivery/partners/${providerId}`, {
+        razorpayLinkedAccountId: (accounts[providerId] ?? '').trim() || null,
+      });
+      setAccountNote({ id: providerId, text: 'Saved.', ok: true });
+      refresh();
+    } catch (err) {
+      setAccountNote({ id: providerId, text: err instanceof Error ? err.message : 'Could not save.', ok: false });
     }
   }
 
@@ -153,6 +201,28 @@ export default function AdminDeliveryPage() {
           </div>
           <Button variant={data.enabled ? 'outline' : 'primary'} onClick={toggle} disabled={switching}>
             {switching ? 'Switching…' : data.enabled ? 'Switch Off' : 'Switch On'}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardContent className="flex flex-wrap items-center gap-4 pt-6">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-50">
+            <Landmark className="h-5 w-5 text-primary-600" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 font-bold text-text">
+              Automatic payouts (Razorpay Route)
+              <Badge variant={data.routePayouts ? 'success' : 'muted'}>{data.routePayouts ? 'On' : 'Off'}</Badge>
+            </div>
+            <p className="text-sm text-text-secondary">
+              {data.routePayouts
+                ? 'When a delivery paid online finishes, Razorpay sends the partner their share. Cash orders: the partner keeps it from the cash.'
+                : 'You pay partners by UPI yourself and press "Mark paid" below. Switch On only after Razorpay Route is active on your account.'}
+            </p>
+          </div>
+          <Button variant="outline" onClick={toggleRoute} disabled={switching}>
+            {data.routePayouts ? 'Switch Off' : 'Switch On'}
           </Button>
         </CardContent>
       </Card>
@@ -264,6 +334,8 @@ export default function AdminDeliveryPage() {
         </Card>
       </form>
 
+      <DeliveryJobsAdmin jobs={data.jobs} routePayouts={data.routePayouts} onChanged={refresh} />
+
       <h2 className="mt-8 flex items-center gap-2 text-lg font-bold text-text">
         <Bike className="h-5 w-5 text-primary-600" /> Delivery partners
         <span className="text-sm font-normal text-text-secondary">· {data.partners.length} signed up, {verified} approved</span>
@@ -304,6 +376,35 @@ export default function AdminDeliveryPage() {
                             .join(', ')}
                     </p>
                     <p className="text-text-secondary">UPI: {p.deliveryProfile.upiId ?? 'not added yet'}</p>
+                    {p.summary && (
+                      <p className="flex flex-wrap items-center gap-x-3 text-text">
+                        <span>{p.summary.deliveries} deliveries</span>
+                        <span className={p.summary.unpaid > 0 ? 'font-semibold text-accent-900' : ''}>₹{p.summary.unpaid} to pay</span>
+                        {p.summary.ratingAverage !== null && (
+                          <span className="flex items-center gap-1">
+                            <Star className="h-4 w-4 fill-current text-accent-600" /> {p.summary.ratingAverage} ({p.summary.ratingCount})
+                          </span>
+                        )}
+                      </p>
+                    )}
+                    <div className="flex flex-wrap items-end gap-2">
+                      <div className="flex flex-col gap-1">
+                        <Label htmlFor={`acc-${p.id}`} className="text-xs">Razorpay linked account ID (for automatic payouts)</Label>
+                        <Input
+                          id={`acc-${p.id}`}
+                          className="h-9 w-56"
+                          placeholder="acc_…"
+                          value={accounts[p.id] ?? p.deliveryProfile.razorpayLinkedAccountId ?? ''}
+                          onChange={(e) => setAccounts((a) => ({ ...a, [p.id]: e.target.value }))}
+                        />
+                      </div>
+                      <Button size="sm" variant="outline" type="button" onClick={() => saveAccount(p.id)}>
+                        Save
+                      </Button>
+                    </div>
+                    {accountNote?.id === p.id && (
+                      <p className={accountNote.ok ? 'text-success-600' : 'text-danger-600'}>{accountNote.text}</p>
+                    )}
                   </>
                 ) : (
                   <p className="text-text-secondary">Has not filled in delivery details yet.</p>

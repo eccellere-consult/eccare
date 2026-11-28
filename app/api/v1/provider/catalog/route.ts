@@ -9,6 +9,9 @@ const schema = z.object({
   price: z.number().positive().max(1_000_000),
   category: z.string().max(60).optional(),
   inStock: z.boolean().optional(),
+  // For the EC delivery charge: weight of one unit and its parcel size. Optional.
+  weightKg: z.number().min(0).max(500).nullable().optional(),
+  parcelSize: z.enum(['small', 'medium', 'large']).nullable().optional(),
 });
 
 const fail = (code: string, message: string, status: number) =>

@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { PackageCheck, Phone, Navigation } from 'lucide-react';
+import { PackageCheck, Phone, Navigation, Bike, Banknote } from 'lucide-react';
 import { mapsDirectionsUrl } from '@/lib/geo';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { ShopDeliverySwitch } from '@/components/provider/shop-delivery-switch';
 
 interface OrderItem {
   id: string;
@@ -22,7 +23,24 @@ interface Order {
   createdAt: string;
   items: OrderItem[];
   elderUser: { name: string; phone: string | null; location?: { lat: number; lng: number } | null };
+  paymentMethod?: 'razorpay' | 'cod';
+  deliveryCharge?: string | null;
+  deliveryJob?: {
+    id: string;
+    status: 'open' | 'accepted' | 'picked_up' | 'delivered' | 'cancelled';
+    cashToShop: string | null;
+    cashHandedToShopAt: string | null;
+    partner: { provider: { user: { name: string; phone: string | null } } } | null;
+  } | null;
 }
+
+const JOB_LINE: Record<string, string> = {
+  open: 'Finding an EC delivery partner',
+  accepted: 'is coming to pick it up',
+  picked_up: 'has picked it up and is on the way',
+  delivered: 'delivered it',
+  cancelled: 'Delivery cancelled',
+};
 
 const STATUS_VARIANT = {
   pending: 'muted',
@@ -42,7 +60,19 @@ async function api(path: string, init?: RequestInit) {
   return json.data;
 }
 
-function OrderCard({ order: o, busy, onDecide }: { order: Order; busy: boolean; onDecide: (status: 'confirmed' | 'delivered' | 'cancelled') => void }) {
+function OrderCard({
+  order: o,
+  busy,
+  onDecide,
+  onCashReceived,
+}: {
+  order: Order;
+  busy: boolean;
+  onDecide: (status: 'confirmed' | 'delivered' | 'cancelled') => void;
+  onCashReceived: () => void;
+}) {
+  const job = o.deliveryJob && o.deliveryJob.status !== 'cancelled' ? o.deliveryJob : null;
+  const partner = job?.partner?.provider.user;
   return (
     <Card>
       <CardContent className="pt-6">
@@ -77,11 +107,43 @@ function OrderCard({ order: o, busy, onDecide }: { order: Order; busy: boolean; 
               <span>₹{(Number(i.price) * i.quantity).toFixed(2)}</span>
             </div>
           ))}
+          {o.deliveryCharge && (
+            <div className="flex justify-between text-text-secondary">
+              <span>EC delivery (goes to the delivery partner)</span>
+              <span>₹{Number(o.deliveryCharge).toFixed(2)}</span>
+            </div>
+          )}
           <div className="mt-1 flex justify-between font-bold text-text">
             <span>Total</span>
             <span>₹{o.totalAmount}</span>
           </div>
+          {o.paymentMethod === 'cod' && <p className="text-xs text-text-secondary">Cash on delivery</p>}
         </div>
+        {job && (
+          <div className="mt-3 rounded-xl border border-primary-100 bg-primary-50 p-3 text-sm">
+            <p className="flex items-center gap-2 font-semibold text-text">
+              <Bike className="h-4 w-4 shrink-0 text-primary-600" />
+              {job.status === 'open' ? JOB_LINE.open : `${partner?.name ?? 'The delivery partner'} ${JOB_LINE[job.status]}`}
+            </p>
+            {partner?.phone && job.status !== 'delivered' && (
+              <a href={`tel:${partner.phone}`} className="mt-1 flex w-fit items-center gap-1.5 text-primary-600 hover:underline">
+                <Phone className="h-3.5 w-3.5" /> {partner.phone}
+              </a>
+            )}
+            {job.status === 'open' && <p className="mt-1 text-text-secondary">Pack the order; the partner will call when they arrive.</p>}
+            {job.cashToShop && job.status === 'delivered' && (
+              job.cashHandedToShopAt ? (
+                <p className="mt-2 flex items-center gap-1.5 font-semibold text-success-600">
+                  <Banknote className="h-4 w-4" /> ₹{Number(job.cashToShop).toFixed(2)} cash received
+                </p>
+              ) : (
+                <Button size="sm" variant="outline" className="mt-2" disabled={busy} onClick={onCashReceived}>
+                  <Banknote className="mr-1.5 h-4 w-4" /> I received ₹{Number(job.cashToShop).toFixed(2)} from the partner
+                </Button>
+              )
+            )}
+          </div>
+        )}
         {o.status === 'paid' && (
           <div className="mt-4 flex gap-2">
             <Button size="sm" disabled={busy} onClick={() => onDecide('confirmed')}>
@@ -92,7 +154,7 @@ function OrderCard({ order: o, busy, onDecide }: { order: Order; busy: boolean; 
             </Button>
           </div>
         )}
-        {o.status === 'confirmed' && (
+        {o.status === 'confirmed' && !job && (
           <div className="mt-4">
             <Button size="sm" disabled={busy} onClick={() => onDecide('delivered')}>
               Mark delivered
@@ -124,6 +186,16 @@ export default function ProviderOrdersPage() {
     load();
   }, []);
 
+  async function cashReceived(id: string) {
+    setBusyId(id);
+    try {
+      await api(`/provider/orders/${id}/cash-received`, { method: 'POST' });
+      await load();
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function decide(id: string, status: 'confirmed' | 'delivered' | 'cancelled') {
     setBusyId(id);
     try {
@@ -146,6 +218,7 @@ export default function ProviderOrdersPage() {
     <div>
       <h1 className="text-2xl font-bold text-text">Incoming orders</h1>
       <p className="mt-1 text-text-secondary">Orders placed against your catalog.</p>
+      <ShopDeliverySwitch />
 
       <div className="mt-6">
         {loading ? (
@@ -168,7 +241,7 @@ export default function ProviderOrdersPage() {
               ) : (
                 <div className="flex flex-col gap-3">
                   {pendingFulfillment.map((o) => (
-                    <OrderCard key={o.id} order={o} busy={busyId === o.id} onDecide={(status) => decide(o.id, status)} />
+                    <OrderCard key={o.id} order={o} busy={busyId === o.id} onDecide={(status) => decide(o.id, status)} onCashReceived={() => cashReceived(o.id)} />
                   ))}
                 </div>
               )}
@@ -181,7 +254,7 @@ export default function ProviderOrdersPage() {
                 </h2>
                 <div className="flex flex-col gap-3">
                   {awaitingConfirmation.map((o) => (
-                    <OrderCard key={o.id} order={o} busy={busyId === o.id} onDecide={(status) => decide(o.id, status)} />
+                    <OrderCard key={o.id} order={o} busy={busyId === o.id} onDecide={(status) => decide(o.id, status)} onCashReceived={() => cashReceived(o.id)} />
                   ))}
                 </div>
               </div>
@@ -192,7 +265,7 @@ export default function ProviderOrdersPage() {
                 <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-text-secondary">History</h2>
                 <div className="flex flex-col gap-3">
                   {history.map((o) => (
-                    <OrderCard key={o.id} order={o} busy={busyId === o.id} onDecide={(status) => decide(o.id, status)} />
+                    <OrderCard key={o.id} order={o} busy={busyId === o.id} onDecide={(status) => decide(o.id, status)} onCashReceived={() => cashReceived(o.id)} />
                   ))}
                 </div>
               </div>

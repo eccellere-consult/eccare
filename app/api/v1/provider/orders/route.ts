@@ -19,7 +19,19 @@ export async function GET(req: NextRequest) {
 
   const orders = await prisma.order.findMany({
     where: { providerId: provider.id, status: { in: ['paid', 'confirmed', 'delivered', 'closed', 'cancelled'] } },
-    include: { items: true, elderUser: { select: { id: true, name: true, phone: true } } },
+    include: {
+      items: true,
+      elderUser: { select: { id: true, name: true, phone: true } },
+      deliveryJob: {
+        select: {
+          id: true,
+          status: true,
+          cashToShop: true,
+          cashHandedToShopAt: true,
+          partner: { select: { provider: { select: { user: { select: { name: true, phone: true } } } } } },
+        },
+      },
+    },
     orderBy: { createdAt: 'desc' },
   });
 

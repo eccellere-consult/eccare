@@ -21,6 +21,24 @@ export async function setDeliveryEnabled(enabled: boolean, updatedById: string):
   return settings.deliveryEnabled;
 }
 
+/** Automatic payouts to delivery partners through Razorpay Route (Off until Route is active). */
+export async function isRoutePayoutsEnabled(): Promise<boolean> {
+  const settings = await prisma.platformSettings.findUnique({
+    where: { id: SINGLETON_ID },
+    select: { deliveryRoutePayouts: true },
+  });
+  return settings?.deliveryRoutePayouts ?? false;
+}
+
+export async function setRoutePayoutsEnabled(enabled: boolean, updatedById: string): Promise<boolean> {
+  const settings = await prisma.platformSettings.upsert({
+    where: { id: SINGLETON_ID },
+    update: { deliveryRoutePayouts: enabled, updatedById },
+    create: { id: SINGLETON_ID, deliveryRoutePayouts: enabled, updatedById },
+  });
+  return settings.deliveryRoutePayouts;
+}
+
 /** The admin's rate card as plain numbers, creating the row with its defaults on first read. */
 export async function getRateCard(): Promise<RateCard> {
   const [card, categories] = await Promise.all([
@@ -35,6 +53,7 @@ export async function getRateCard(): Promise<RateCard> {
     roadFactor: Number(card.roadFactor),
     sizeMediumSurcharge: Number(card.sizeMediumSurcharge),
     sizeLargeSurcharge: Number(card.sizeLargeSurcharge),
+    partnerSharePercent: Number(card.partnerSharePercent),
     categorySurcharges: Object.fromEntries(categories.map((c) => [c.category, Number(c.surcharge)])),
   };
 }

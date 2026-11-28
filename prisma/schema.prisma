@@ -53,6 +53,12 @@ model User {
   preferredHospitalName     String?
   preferredHospitalLocation String?
 
+  // Emergency card — shown to the family and emergency contacts with an SOS alert.
+  allergies         String? @db.Text
+  medicalConditions String? @db.Text
+  implantsDevices   String? @db.Text
+  emergencyNotes    String? @db.Text
+
   // Relations as elder
   medications        Medication[]
   reminders          MedicationReminder[]
@@ -226,6 +232,9 @@ model PlatformSettings {
   // Delivery partners (sign-up, jobs, delivery charges). Off until launch day: while
   // Off, nobody can register as a delivery partner and no order gets a delivery charge.
   deliveryEnabled   Boolean  @default(false)
+  // Pay delivery partners automatically through Razorpay Route when a paid-online delivery is
+  // done. Off until Route is active on EC's Razorpay account; partners are then paid by UPI.
+  deliveryRoutePayouts Boolean @default(false)
   updatedAt         DateTime @updatedAt
   updatedById       String?
 }
@@ -2381,6 +2390,8 @@ model ServiceProvider {
   featuredUntil         DateTime?
   featuredOrderId       String?                    @unique
   featuredPaidAt        DateTime?
+  // A shop that delivers itself turns this off, so its orders get no EC delivery charge.
+  usesEcDelivery        Boolean                    @default(true)
   createdAt             DateTime                   @default(now())
   updatedAt             DateTime                   @updatedAt
 
@@ -2424,11 +2435,14 @@ model DeliveryPartnerProfile {
   availableNow Boolean  @default(false)
   // Where EC sends their earnings (paid by UPI outside the app until Razorpay Route is on).
   upiId        String?
+  // Set by the admin once the partner is a Razorpay Route linked account (acc_...).
+  razorpayLinkedAccountId String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   provider ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
   slots    DeliverySlot[]
+  jobs     DeliveryJob[]
 }
 
 /// One weekly free-time window of a delivery partner, in India time.
@@ -2459,6 +2473,8 @@ model DeliveryRateCard {
   roadFactor          Decimal  @default(1.3) @db.Decimal(4, 2)
   sizeMediumSurcharge Decimal  @default(10) @db.Decimal(10, 2)
   sizeLargeSurcharge  Decimal  @default(30) @db.Decimal(10, 2)
+  // The delivery partner's share of the delivery charge; the rest is EC's.
+  partnerSharePercent Decimal  @default(100) @db.Decimal(5, 2)
   updatedAt           DateTime @updatedAt
   updatedById         String?
 }
@@ -2525,6 +2541,9 @@ model CatalogItem {
   imagePath   String?
   category    String?
   inStock     Boolean  @default(true)
+  // For the delivery charge: weight of one unit, and the parcel size (small | medium | large).
+  weightKg    Decimal? @db.Decimal(8, 2)
+  parcelSize  String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -2557,6 +2576,9 @@ model Order {
   // Snapshotted from PlatformSettings.platformFeePercent at the moment payment is
   // verified — see lib/platform-settings.ts. Null until paid; a rate change later
   // never rewrites what a past order actually recorded.
+  // Delivery by an EC delivery partner, worked out when the order is placed and already
+  // included in totalAmount. Null = no EC delivery (the shop delivers itself).
+  deliveryCharge         Decimal?     @db.Decimal(10, 2)
   platformFeeAmount      Decimal?     @db.Decimal(10, 2)
   netAmountForProvider   Decimal?     @db.Decimal(10, 2)
   createdAt         DateTime    @default(now())
@@ -2568,9 +2590,78 @@ model Order {
   items     OrderItem[]
   rating    ProviderRating?
   recurringSuggestion RecurringOrderSuggestion?
+  deliveryJob DeliveryJob?
 
   @@index([elderUserId])
   @@index([providerId])
+}
+
+enum DeliveryJobStatus {
+  // Waiting for a delivery partner to accept.
+  open
+  accepted
+  picked_up
+  delivered
+  cancelled
+}
+
+/// One delivery by an EC delivery partner: from the shop to the elder. Opened when the shop
+/// accepts the order (a cash-on-delivery order is accepted straight away). Addresses and
+/// coordinates are copied in when it opens, so a later profile edit never moves a delivery
+/// that is already on the road. Money is in rupees, like the rest of the app.
+model DeliveryJob {
+  id             String            @id @default(cuid())
+  orderId        String            @unique
+  partnerId      String?
+  status         DeliveryJobStatus @default(open)
+
+  pickupName     String
+  pickupPhone    String?
+  pickupAddress  String            @db.Text
+  pickupLat      Decimal?          @db.Decimal(10, 7)
+  pickupLng      Decimal?          @db.Decimal(10, 7)
+  dropName       String
+  dropPhone      String?
+  dropAddress    String            @db.Text
+  dropLat        Decimal?          @db.Decimal(10, 7)
+  dropLng        Decimal?          @db.Decimal(10, 7)
+
+  weightKg       Decimal?          @db.Decimal(8, 2)
+  parcelSize     String?
+  roadKm         Decimal           @default(0) @db.Decimal(6, 1)
+  // What the customer paid for delivery, and the part of it that is the partner's.
+  charge         Decimal           @db.Decimal(10, 2)
+  partnerEarning Decimal           @db.Decimal(10, 2)
+  // Cash on delivery: the partner collects the whole order (goods + delivery) and hands
+  // the goods amount to the shop, which confirms it.
+  cashToCollect      Decimal?      @db.Decimal(10, 2)
+  cashToShop         Decimal?      @db.Decimal(10, 2)
+  cashHandedToShopAt DateTime?
+  // 4 digits the customer reads out at the door; the partner types it to finish the delivery.
+  handoverCode   String
+
+  // unpaid | paid (UPI by the admin) | kept_from_cash | transferred (Razorpay Route) | refunded
+  payoutStatus   String            @default("unpaid")
+  payoutRef      String?
+  paidOutAt      DateTime?
+
+  rating         Int?
+  ratingComment  String?           @db.Text
+  ratedAt        DateTime?
+
+  acceptedAt     DateTime?
+  pickedUpAt     DateTime?
+  deliveredAt    DateTime?
+  cancelledAt    DateTime?
+  cancelReason   String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  order   Order                   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  partner DeliveryPartnerProfile? @relation(fields: [partnerId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([partnerId, status])
 }
 
 /// name/price are snapshotted at order time — survives the catalog item being edited

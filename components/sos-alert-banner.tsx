@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, CheckCircle2, X, MessageCircle, MapPin } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, X, MessageCircle, MapPin, HeartPulse } from 'lucide-react';
 import { playSirenAlert } from '@/lib/beep';
 import { buildWaLink } from '@/lib/whatsapp';
+import { EmergencyCardView } from '@/components/emergency-card-editor';
+import { hasEmergencyCard, type EmergencyCard } from '@/lib/emergency-card';
 
 interface SosEvent {
   id: string;
@@ -13,6 +15,8 @@ interface SosEvent {
   createdAt: string;
   status?: string; // 'triggered' until someone taps "I'm on it"; the siren only rings for these
   user: { id: string; name: string; phone: string | null };
+  /** Family feed only, recent alerts only: what to tell the ambulance or hospital. */
+  emergencyCard?: EmergencyCard | null;
 }
 
 const POLL_MS = 25_000;
@@ -82,6 +86,7 @@ export function SosAlertBanner({ source }: { source: 'family' | 'committee' }) {
   const stopSirenRef = useRef<() => void>(() => {});
   const [answering, setAnswering] = useState(false);
   const [answerError, setAnswerError] = useState('');
+  const [showCard, setShowCard] = useState(false);
 
   function dismiss(id: string) {
     stopSirenRef.current(); // cut a siren that is still sounding
@@ -250,6 +255,24 @@ export function SosAlertBanner({ source }: { source: 'family' | 'committee' }) {
             </a>
           )}
         </div>
+        {source === 'family' && hasEmergencyCard(latest.emergencyCard) && (
+          <div className="rounded-xl bg-surface p-3">
+            <button
+              type="button"
+              onClick={() => setShowCard((v) => !v)}
+              aria-expanded={showCard}
+              className="flex min-h-10 w-full items-center gap-2 text-left text-sm font-bold text-danger-900"
+            >
+              <HeartPulse className="h-4 w-4" />
+              {showCard ? 'Hide' : 'Show'} emergency card (blood group, allergies) for the ambulance
+            </button>
+            {showCard && latest.emergencyCard && (
+              <div className="mt-2">
+                <EmergencyCardView card={latest.emergencyCard} compact />
+              </div>
+            )}
+          </div>
+        )}
         {active.length > 1 && (
           <p className="text-xs text-danger-900/70">+{active.length - 1} more unacknowledged alert{active.length - 1 > 1 ? 's' : ''}</p>
         )}

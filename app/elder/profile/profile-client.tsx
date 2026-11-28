@@ -14,6 +14,7 @@ import { checkDateOfBirth, DOB_ERROR_MESSAGES } from '@/lib/age';
 import { isValidEmail, isValidPhone, EMAIL_FORMAT_MESSAGE, PHONE_FORMAT_MESSAGE } from '@/lib/validation';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
+import { BLOOD_GROUPS, normaliseBloodGroup } from '@/lib/emergency-card';
 
 interface Profile {
   name: string;
@@ -30,7 +31,8 @@ interface Profile {
 export function ProfileClient({ profile }: { profile: Profile }) {
   const lang = useLanguage();
   const t = (key: TranslationKey) => translate(key, lang?.language ?? 'en');
-  const [form, setForm] = useState(profile);
+  // Older profiles typed the blood group freely; show it as one of the 8 when we can read it.
+  const [form, setForm] = useState({ ...profile, bloodGroup: normaliseBloodGroup(profile.bloodGroup) ?? profile.bloodGroup });
   const [newDob, setNewDob] = useState('');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -112,7 +114,22 @@ export function ProfileClient({ profile }: { profile: Profile }) {
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="p-blood">{t('elder.profile.bloodGroup')}</Label>
-              <Input id="p-blood" value={form.bloodGroup ?? ''} onChange={(e) => update('bloodGroup', e.target.value)} placeholder="O+" />
+              <select
+                id="p-blood"
+                value={form.bloodGroup ?? ''}
+                onChange={(e) => update('bloodGroup', e.target.value || null)}
+                className="flex h-11 w-full rounded-xl border border-border bg-surface px-4 py-2 text-base text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+              >
+                <option value="">{t('elder.profile.bloodGroupUnknown')}</option>
+                {BLOOD_GROUPS.map((g) => (
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
+                ))}
+                {form.bloodGroup && !(BLOOD_GROUPS as readonly string[]).includes(form.bloodGroup) && (
+                  <option value={form.bloodGroup}>{form.bloodGroup}</option>
+                )}
+              </select>
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="p-address">{t('elder.profile.address')}</Label>

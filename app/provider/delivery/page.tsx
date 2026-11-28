@@ -4,11 +4,12 @@ import { prisma } from '@/lib/db';
 import { getServerUser } from '@/lib/server-session';
 import { Card, CardContent } from '@/components/ui/card';
 import { DeliveryPartnerSelfService } from '@/components/provider/delivery-partner-self-service';
+import { DeliveryPartnerJobs } from '@/components/provider/delivery-partner-jobs';
 import { DELIVERY_CATEGORY } from '@/lib/delivery-pricing';
 
 export const dynamic = 'force-dynamic';
 
-/** A delivery partner's own page: vehicle, how far and how heavy, UPI, and weekly free time. */
+/** A delivery partner's own page: deliveries to take and carry, earnings, then vehicle, UPI and weekly free time. */
 export default async function ProviderDeliveryPage() {
   const user = await getServerUser();
   const provider = user
@@ -27,7 +28,9 @@ export default async function ProviderDeliveryPage() {
       <h1 className="mt-3 text-2xl font-bold text-text">Delivery</h1>
       {provider?.category === DELIVERY_CATEGORY.value ? (
         <>
-          <p className="mt-1 text-text-secondary">Tell EC when you are free and what you can carry.</p>
+          <p className="mt-1 text-text-secondary">Take deliveries near you, and tell EC when you are free and what you can carry.</p>
+          <DeliveryPartnerJobs />
+          <h2 className="mt-10 text-lg font-bold text-text">Your details and free time</h2>
           <DeliveryPartnerSelfService />
         </>
       ) : (

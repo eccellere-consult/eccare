@@ -26,6 +26,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { healthApi, useHealthData } from '@/lib/health-client';
 import { buildWaLink as waLink } from '@/lib/whatsapp';
+import { EmergencyCardEditor } from '@/components/emergency-card-editor';
 
 interface Props {
   /** Omit on the elder's own page; pass through on the family/caregiver page for
@@ -219,6 +220,8 @@ export function HealthEssentials({ elderUserId }: Props) {
 
   return (
     <>
+      <EmergencyCardEditor elderUserId={elderUserId} />
+
       {/* Family doctor & hospital */}
       <section className="mt-8">
         <h2 className="flex items-center gap-2 text-lg font-bold text-text">
