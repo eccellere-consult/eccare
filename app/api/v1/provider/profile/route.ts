@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { getAuthUser } from '@/lib/auth';
+import { DELIVERY_CATEGORY } from '@/lib/delivery-pricing';
+import { isDeliveryEnabled } from '@/lib/delivery-settings';
 
 const patchSchema = z.object({
   businessName: z.string().min(1).max(160).optional(),
@@ -51,6 +53,15 @@ export async function PATCH(req: NextRequest) {
   const parsed = patchSchema.safeParse(await req.json());
   if (!parsed.success) {
     return fail('INVALID_INPUT', 'Please check the details and try again.');
+  }
+
+  // Switching an existing account to "Delivery partner" is only possible once delivery is On
+  // (an account that already is one may keep saving its profile).
+  if (parsed.data.category === DELIVERY_CATEGORY.value) {
+    const current = await prisma.serviceProvider.findUnique({ where: { userId: auth.userId }, select: { category: true } });
+    if (current?.category !== DELIVERY_CATEGORY.value && !(await isDeliveryEnabled())) {
+      return fail('DELIVERY_OFF', 'Delivery partner accounts are not open yet.');
+    }
   }
 
   const provider = await prisma.serviceProvider.update({

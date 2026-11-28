@@ -8,6 +8,8 @@ import { getPricingContent } from '@/lib/pricing-content';
 import { isSupportedLanguage } from '@/lib/i18n/languages';
 import { checkDateOfBirth, roleForAge, DOB_ERROR_MESSAGES } from '@/lib/age';
 import { planCommunityJoin, saveMembership, finishJoin } from '@/lib/community-join';
+import { DELIVERY_CATEGORY } from '@/lib/delivery-pricing';
+import { isDeliveryEnabled } from '@/lib/delivery-settings';
 
 // Phone is the primary identifier — required, and the default way people sign in.
 // Email is optional: useful for password-recovery links and directory contact, but
@@ -133,6 +135,13 @@ export async function POST(req: NextRequest) {
   }
 
   const { email, password, category, lat, lng, isVolunteer, volunteerAvailability, volunteerAssistanceTypes, billingCycle, language } = parsed.data;
+  // Delivery partners can only sign up once the admin has switched delivery On.
+  if (category === DELIVERY_CATEGORY.value && !(await isDeliveryEnabled())) {
+    return NextResponse.json(
+      { success: false, error: { code: 'DELIVERY_OFF', message: 'Delivery partner sign-up is not open yet.' } },
+      { status: 400 },
+    );
+  }
   // Names are kept in capitals everywhere, so a name looks the same on every screen.
   const name = capitals(parsed.data.name);
   const businessName = parsed.data.businessName ? capitals(parsed.data.businessName) : parsed.data.businessName;

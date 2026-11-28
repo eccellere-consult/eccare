@@ -223,6 +223,9 @@ model PlatformSettings {
   // Which version of the demo content is loaded (lib/demo/helpers.ts DEMO_VERSION). When the code
   // has a newer version the demo refreshes itself once, so content changes reach production.
   demoVersion       Int      @default(0)
+  // Delivery partners (sign-up, jobs, delivery charges). Off until launch day: while
+  // Off, nobody can register as a delivery partner and no order gets a delivery charge.
+  deliveryEnabled   Boolean  @default(false)
   updatedAt         DateTime @updatedAt
   updatedById       String?
 }
@@ -2398,9 +2401,75 @@ model ServiceProvider {
   propertySubscriptions     PropertySubscription[]
   ratings                   ProviderRating[]
   recurringOrderTemplates   RecurringOrderTemplate[]
+  // Only for category "delivery": vehicle, free-time slots, UPI for payouts.
+  deliveryProfile           DeliveryPartnerProfile?
 
   @@index([verificationStatus])
   @@index([elderCareCategory])
+}
+
+/// Delivery partners: local people who deliver orders in their free time. A delivery
+/// partner is a ServiceProvider with category "delivery", so sign-up, ID proof upload,
+/// admin approval and ratings are the provider ones; this row holds only what is
+/// delivery-specific. Created the first time the partner saves their delivery details.
+model DeliveryPartnerProfile {
+  id           String   @id @default(cuid())
+  providerId   String   @unique
+  // walk | bicycle | two_wheeler | auto (lib/delivery-pricing.ts VEHICLE_TYPES)
+  vehicleType  String   @default("two_wheeler")
+  // The heaviest order they are willing to carry, and how far from home they will go.
+  maxWeightKg  Int      @default(10)
+  radiusKm     Int      @default(5)
+  // A quick "I'm free right now" switch on top of the weekly slots below.
+  availableNow Boolean  @default(false)
+  // Where EC sends their earnings (paid by UPI outside the app until Razorpay Route is on).
+  upiId        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  provider ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  slots    DeliverySlot[]
+}
+
+/// One weekly free-time window of a delivery partner, in India time.
+model DeliverySlot {
+  id          String @id @default(cuid())
+  partnerId   String
+  // 0 = Sunday … 6 = Saturday
+  dayOfWeek   Int
+  // Minutes after midnight, e.g. 17:30 = 1050. endMinute is always after startMinute.
+  startMinute Int
+  endMinute   Int
+
+  partner DeliveryPartnerProfile @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([partnerId])
+}
+
+/// The admin's delivery rate card (one row). The charge for one order is worked out by
+/// lib/delivery-pricing.ts: base + per km + per kg + item category + parcel size, never
+/// below the minimum. Money columns match the rest of the app (Decimal 10,2, rupees).
+model DeliveryRateCard {
+  id                  String   @id @default("singleton")
+  baseCharge          Decimal  @default(20) @db.Decimal(10, 2)
+  perKm               Decimal  @default(8) @db.Decimal(10, 2)
+  perKg               Decimal  @default(2) @db.Decimal(10, 2)
+  minimumCharge       Decimal  @default(30) @db.Decimal(10, 2)
+  // Straight-line distance times this = an estimate of the road distance (no maps API).
+  roadFactor          Decimal  @default(1.3) @db.Decimal(4, 2)
+  sizeMediumSurcharge Decimal  @default(10) @db.Decimal(10, 2)
+  sizeLargeSurcharge  Decimal  @default(30) @db.Decimal(10, 2)
+  updatedAt           DateTime @updatedAt
+  updatedById         String?
+}
+
+/// Extra delivery charge for a category of item (a provider category value such as
+/// "pharmacy" or "food_restaurant"), e.g. hot food or fragile goods.
+model DeliveryCategoryRate {
+  id        String   @id @default(cuid())
+  category  String   @unique
+  surcharge Decimal  @db.Decimal(10, 2)
+  updatedAt DateTime @updatedAt
 }
 
 enum ElderCareCategory {

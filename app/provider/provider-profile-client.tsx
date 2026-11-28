@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { PROVIDER_CATEGORIES } from '@/lib/provider-categories';
+import { DELIVERY_CATEGORY } from '@/lib/delivery-pricing';
 import { ShareLocationButton } from '@/components/share-location-button';
 
 type ElderCareCategory = 'home_treatment' | 'home_nursing' | 'companion_service' | 'local_errands' | 'other';
@@ -78,7 +79,8 @@ export function ProviderProfileClient({ initial }: { initial: ServiceProvider })
   // A category saved before this dropdown existed (or "Others" with custom
   // text) won't match any known value — fall back to "other" with that text
   // pre-filled, rather than silently losing/hiding it.
-  const isKnownCategory = PROVIDER_CATEGORIES.some((c) => c.value === initial.category);
+  const isKnownCategory =
+    PROVIDER_CATEGORIES.some((c) => c.value === initial.category) || initial.category === DELIVERY_CATEGORY.value;
   const [category, setCategory] = useState(isKnownCategory ? initial.category : 'other');
   const [otherCategory, setOtherCategory] = useState(isKnownCategory ? '' : initial.category);
   const [description, setDescription] = useState(initial.description ?? '');
@@ -227,6 +229,9 @@ export function ProviderProfileClient({ initial }: { initial: ServiceProvider })
                   {PROVIDER_CATEGORIES.map((c) => (
                     <option key={c.value} value={c.value}>{c.label}</option>
                   ))}
+                  {initial.category === DELIVERY_CATEGORY.value && (
+                    <option value={DELIVERY_CATEGORY.value}>{DELIVERY_CATEGORY.label}</option>
+                  )}
                 </select>
               </div>
               {category === 'other' && (
