@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { Sparkles, X, Check, TriangleAlert } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Sparkles, X, Check, TriangleAlert, ImageOff } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PhotoUploadButtons } from '@/components/photo-upload-buttons';
 import { shrinkPhoto } from '@/lib/shrink-photo';
+import { cropPhoto, openPhoto, type PhotoBox } from '@/lib/crop-photo';
 
 interface Row {
   key: number;
@@ -15,6 +16,10 @@ interface Row {
   description: string;
   price: string; // typed by the shop; pre-filled only when the photo showed a printed price
   fromPhoto: boolean; // the price was read from a tag in the photo: worth a second look
+  photo: File | null; // this product's own picture, cut out of the shelf photo
+  preview: string | null;
+  usePhoto: boolean;
+  existing: { price: number; hasPhoto: boolean } | null; // already in the catalogue: saving updates it
 }
 
 interface DraftItem {
@@ -22,6 +27,16 @@ interface DraftItem {
   category: string;
   description: string;
   price: number | null;
+  box: PhotoBox | null;
+  existing: { price: number; hasPhoto: boolean } | null;
+}
+
+export interface ShelfSaveResult {
+  created: number;
+  updated: number;
+  skipped: string[];
+  photos: number;
+  photosFailed: number;
 }
 
 const field =
@@ -30,15 +45,25 @@ const field =
 /**
  * "Add many from a shelf photo": the shop photographs a shelf, counter or price list, the photo helper
  * lists the products it can see, and the shop ticks, fixes and saves them all at once. Nothing is
- * saved until the shop presses the button, a missing price is never guessed, and every saved item
- * starts without a photo of its own (the catalogue page then nudges the shop to add them).
+ * saved until the shop presses the button. Each product's own picture is cut out of the shelf photo
+ * and saved with it. A price printed on the shelf is filled in; the shop types a price only where
+ * none was printed, and a missing price is never guessed. A product the shop already sells is
+ * updated (price, and a picture if it had none), not added twice.
  */
-export function ShelfBulkAdd({ onClose, onSaved }: { onClose: () => void; onSaved: (result: { created: number; skipped: string[] }) => void }) {
+export function ShelfBulkAdd({ onClose, onSaved }: { onClose: () => void; onSaved: (result: ShelfSaveResult) => void }) {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [reading, setReading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
+  const [progress, setProgress] = useState('');
+  const previews = useRef<string[]>([]);
+
+  function dropPreviews() {
+    previews.current.forEach((url) => URL.revokeObjectURL(url));
+    previews.current = [];
+  }
+  useEffect(() => dropPreviews, []);
 
   async function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = e.target.files?.[0];
@@ -47,6 +72,7 @@ export function ShelfBulkAdd({ onClose, onSaved }: { onClose: () => void; onSave
     setError('');
     setNote('');
     setRows(null);
+    dropPreviews();
     setReading(true);
     try {
       // A shelf needs more detail than one product, so the photo is shrunk less.
@@ -61,21 +87,55 @@ export function ShelfBulkAdd({ onClose, onSaved }: { onClose: () => void; onSave
         setNote(json.data.reason ?? 'No products found. Please try another photo.');
         return;
       }
+      // Cut each product's own picture out of the shelf photo, here in the browser.
+      const opened = await openPhoto(small);
+      const photos: (File | null)[] = [];
+      for (const [i, it] of items.entries()) {
+        photos.push(opened && it.box ? await cropPhoto(opened.source, it.box, `shelf-item-${i + 1}`) : null);
+      }
+      opened?.close();
       setRows(
-        items.map((it, i) => ({
-          key: i,
-          keep: true,
-          name: it.name,
-          category: it.category,
-          description: it.description,
-          price: it.price != null ? String(it.price) : '',
-          fromPhoto: it.price != null,
-        })),
+        items.map((it, i) => {
+          const photo = photos[i];
+          const preview = photo ? URL.createObjectURL(photo) : null;
+          if (preview) previews.current.push(preview);
+          // A printed price wins; otherwise an item the shop already sells keeps today's price.
+          const price = it.price ?? it.existing?.price ?? null;
+          return {
+            key: i,
+            keep: true,
+            name: it.name,
+            category: it.category,
+            description: it.description,
+            price: price != null ? String(price) : '',
+            fromPhoto: it.price != null,
+            photo,
+            preview,
+            usePhoto: !!photo && !it.existing?.hasPhoto,
+            existing: it.existing ?? null,
+          };
+        }),
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not read the photo. Please try again.');
     } finally {
       setReading(false);
+    }
+  }
+
+  async function uploadPhoto(id: string, file: File) {
+    const send = async () => {
+      const body = new FormData();
+      body.append('file', file);
+      const res = await fetch(`/api/v1/provider/catalog/${id}/image`, { method: 'POST', credentials: 'include', body });
+      if (!res.ok) throw new Error('upload failed');
+    };
+    try {
+      await send();
+    } catch {
+      // Same as the single-item form: the first try straight after saving sometimes fails on the host.
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await send();
     }
   }
 
@@ -108,11 +168,41 @@ export function ShelfBulkAdd({ onClose, onSaved }: { onClose: () => void; onSave
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.success) throw new Error(json?.error?.message ?? 'Could not save the items. Please try again.');
-      onSaved({ created: json.data.created ?? 0, skipped: json.data.skipped ?? [] });
+
+      // The items are saved. Now attach each product's picture, a few at a time.
+      const saved: { index: number; id: string; hasPhoto: boolean }[] = json.data.saved ?? [];
+      const jobs = saved
+        .map((s) => ({ id: s.id, hasPhoto: s.hasPhoto, row: kept[s.index] }))
+        .filter((j) => j.row?.photo && j.row.usePhoto && !j.hasPhoto);
+      const total = jobs.length;
+      let done = 0;
+      let failed = 0;
+      const next = async (): Promise<void> => {
+        const job = jobs.shift();
+        if (!job) return;
+        try {
+          await uploadPhoto(job.id, job.row.photo as File);
+        } catch {
+          failed += 1;
+        }
+        done += 1;
+        setProgress(`Adding pictures: ${done} of ${total}…`);
+        return next();
+      };
+      if (total > 0) setProgress(`Adding pictures: 0 of ${total}…`);
+      await Promise.all([next(), next(), next()]);
+      onSaved({
+        created: json.data.created ?? 0,
+        updated: json.data.updated ?? 0,
+        skipped: json.data.skipped ?? [],
+        photos: total - failed,
+        photosFailed: failed,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save the items. Please try again.');
     } finally {
       setSaving(false);
+      setProgress('');
     }
   }
 
@@ -147,9 +237,9 @@ export function ShelfBulkAdd({ onClose, onSaved }: { onClose: () => void; onSave
         {rows && (
           <div className="flex flex-col gap-4">
             <p className="text-text-secondary">
-              Found {rows.length} item{rows.length === 1 ? '' : 's'}. Untick anything wrong, fix the names, and type any price that is missing.
-              Prices are never guessed.{' '}
-              <button type="button" onClick={() => { setRows(null); setNote(''); }} disabled={saving} className="font-semibold text-primary-600 underline">
+              Found {rows.length} item{rows.length === 1 ? '' : 's'}. Untick anything wrong and fix the names. Prices printed on your shelf
+              are filled in. Type a price only where it is missing. Prices are never guessed.{' '}
+              <button type="button" onClick={() => { setRows(null); setNote(''); dropPreviews(); }} disabled={saving} className="font-semibold text-primary-600 underline">
                 Use another photo
               </button>
             </p>
@@ -163,6 +253,28 @@ export function ShelfBulkAdd({ onClose, onSaved }: { onClose: () => void; onSave
                       <input type="checkbox" checked={r.keep} onChange={(e) => update(r.key, { keep: e.target.checked })} className="h-6 w-6 accent-primary-600" />
                       Add this item
                     </label>
+                    <div className="mt-2 flex items-center gap-3">
+                      {r.preview ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={r.preview} alt={`Picture of ${r.name}`} className={`h-20 w-20 shrink-0 rounded-xl border border-border object-cover ${r.usePhoto ? '' : 'opacity-40'}`} />
+                      ) : (
+                        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl border border-dashed border-border text-text-secondary">
+                          <ImageOff className="h-6 w-6" aria-hidden />
+                        </div>
+                      )}
+                      <div className="text-sm text-text-secondary">
+                        {r.existing?.hasPhoto ? (
+                          'Already has a picture in your catalogue. It stays as it is.'
+                        ) : r.preview ? (
+                          <label className="flex min-h-11 items-center gap-2 font-semibold text-text">
+                            <input type="checkbox" checked={r.usePhoto} disabled={!r.keep} onChange={(e) => update(r.key, { usePhoto: e.target.checked })} className="h-6 w-6 accent-primary-600" />
+                            Use this picture
+                          </label>
+                        ) : (
+                          'No clear picture for this one. You can add one later from the item.'
+                        )}
+                      </div>
+                    </div>
                     <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_9rem]">
                       <input aria-label="Item name" className={field} value={r.name} maxLength={160} disabled={!r.keep} onChange={(e) => update(r.key, { name: e.target.value })} />
                       <div>
@@ -193,6 +305,12 @@ export function ShelfBulkAdd({ onClose, onSaved }: { onClose: () => void; onSave
                       </p>
                     )}
                     {r.keep && r.fromPhoto && priceOf(r) > 0 && <p className="mt-1.5 text-xs text-text-secondary">Price read from the tag in your photo. Please check it.</p>}
+                    {r.keep && r.existing && (
+                      <p className="mt-1.5 text-xs font-semibold text-primary-600">
+                        Already in your catalogue at ₹{r.existing.price}.{' '}
+                        {priceOf(r) > 0 && priceOf(r) !== r.existing.price ? `Saving changes the price to ₹${priceOf(r)}.` : 'Saving keeps this price.'}
+                      </p>
+                    )}
                   </li>
                 );
               })}
@@ -203,7 +321,7 @@ export function ShelfBulkAdd({ onClose, onSaved }: { onClose: () => void; onSave
             <div className="sticky bottom-20 flex items-center gap-3 rounded-2xl border border-border bg-surface p-3 shadow-lg md:bottom-4">
               <Button onClick={save} disabled={!canSave} className="shrink-0">
                 <Check className="h-4 w-4" />
-                {saving ? 'Adding…' : `Add ${kept.length} item${kept.length === 1 ? '' : 's'}`}
+                {saving ? progress || 'Saving…' : `Save ${kept.length} item${kept.length === 1 ? '' : 's'}`}
               </Button>
               {incomplete.length > 0 && (
                 <span className="text-xs font-semibold text-text-secondary">

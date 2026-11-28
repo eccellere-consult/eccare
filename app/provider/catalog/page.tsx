@@ -311,13 +311,20 @@ export default function ProviderCatalogPage() {
       {shelfOpen && (
         <ShelfBulkAdd
           onClose={() => setShelfOpen(false)}
-          onSaved={({ created, skipped }) => {
+          onSaved={({ created, updated, skipped, photos, photosFailed }) => {
             setShelfOpen(false);
+            const count = (n: number, one: string, many: string) => (n === 1 ? `1 ${one}` : `${n} ${many}`);
             setNotice(
-              `${created === 0 ? 'No new items were added' : created === 1 ? '1 item added' : `${created} items added`}.` +
-                (skipped.length > 0
-                  ? ` ${skipped.length === 1 ? '1 was' : `${skipped.length} were`} already in your catalogue and skipped: ${skipped.join(', ')}.`
-                  : ''),
+              [
+                created > 0 ? `${count(created, 'item', 'items')} added.` : '',
+                updated > 0 ? `${count(updated, 'item', 'items')} already in your catalogue ${updated === 1 ? 'was' : 'were'} updated.` : '',
+                created === 0 && updated === 0 ? 'No items were saved.' : '',
+                photos > 0 ? `${count(photos, 'picture', 'pictures')} added.` : '',
+                photosFailed > 0 ? `${count(photosFailed, 'picture', 'pictures')} could not be saved. Use "Take photo" on those items.` : '',
+                skipped.length > 0 ? `Listed twice and skipped: ${skipped.join(', ')}.` : '',
+              ]
+                .filter(Boolean)
+                .join(' '),
             );
             load();
           }}

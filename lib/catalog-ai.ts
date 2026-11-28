@@ -18,6 +18,9 @@ export interface CatalogDraft {
 export interface ShelfDraftItem extends CatalogDraft {
   /** Only when a price is clearly printed next to the product in the photo; otherwise null. */
   price: number | null;
+  /** Where the product sits in the photo, as fractions of its width and height: [left, top, right,
+   *  bottom]. Used to cut the product's own picture out of the shelf photo. Null when not given. */
+  box: [number, number, number, number] | null;
 }
 
 export type MediaType = 'image/jpeg' | 'image/png' | 'image/webp';
@@ -47,7 +50,7 @@ function buildShelfPrompt(existingCategories: string[]): string {
   return `You help a small local shop in India fill its online catalogue quickly. The photo shows a shelf, a counter, a display or a printed price list with several products. List the distinct products you can clearly identify.
 
 Return ONLY a valid JSON object with exactly this shape:
-{"items": [{"name": "...", "category": "...", "description": "...", "price": null}]}
+{"items": [{"name": "...", "category": "...", "description": "...", "price": null, "box": [0.10, 0.20, 0.35, 0.60]}]}
 
 Rules:
 - At most ${MAX_SHELF_ITEMS} items. One entry per distinct product; do not repeat the same product.
@@ -56,6 +59,7 @@ Rules:
 - category: ${categoryHint(existingCategories)}
 - description: one plain sentence (at most 160 characters) about what the product is. Do not invent brands, ingredients, quantities, offers or health claims.
 - price: a number in rupees ONLY when a price is clearly printed on a tag, label or list next to that exact product. If there is no clearly matching price, use null. Never estimate a price.
+- box: where that product is in the photo, as [left, top, right, bottom], each a fraction between 0 and 1 of the photo's width (left, right) and height (top, bottom). Draw it tightly around one clear example of the product itself, without its neighbours. For a printed price list with no product pictures, use null.
 - If the photo shows no products (a person, a blank wall), return {"items": []}.`;
 }
 
@@ -78,6 +82,19 @@ export function parseDraft(text: string): CatalogDraft {
   } catch {
     return { ...EMPTY };
   }
+}
+
+/** Reads a product's place in the photo. Accepts fractions (0 to 1) or the 0 to 1000 scale some models
+ *  answer in; anything else, or a box too thin to show a product, becomes null (no picture is cut). */
+export function parseBox(value: unknown): ShelfDraftItem['box'] {
+  if (!Array.isArray(value) || value.length !== 4 || !value.every((n) => typeof n === 'number' && Number.isFinite(n) && n >= 0)) return null;
+  const nums = value as number[];
+  const max = Math.max(...nums);
+  if (max > 1000) return null;
+  const scale = max > 1 ? 1000 : 1;
+  const [x1, y1, x2, y2] = nums.map((n) => Math.min(1, n / scale));
+  if (x2 - x1 < 0.03 || y2 - y1 < 0.03) return null;
+  return [x1, y1, x2, y2].map((n) => Math.round(n * 1000) / 1000) as [number, number, number, number];
 }
 
 /** Reads the model's shelf answer. Tolerant of extra text around the JSON; strict about what it keeps:
@@ -108,7 +125,7 @@ export function parseShelf(text: string): ShelfDraftItem[] {
     const priceText = typeof r.price === 'string' ? r.price.match(/\d[\d,]*(?:\.\d+)?/)?.[0] : undefined;
     const rawPrice = typeof r.price === 'number' ? r.price : priceText ? Number(priceText.replace(/,/g, '')) : NaN;
     const price = Number.isFinite(rawPrice) && rawPrice > 0 && rawPrice <= 1_000_000 ? Math.round(rawPrice * 100) / 100 : null;
-    out.push({ name, category: clean(r.category, 60), description: clean(r.description, 200), price });
+    out.push({ name, category: clean(r.category, 60), description: clean(r.description, 200), price, box: parseBox(r.box) });
     if (out.length >= MAX_SHELF_ITEMS) break;
   }
   return out;
