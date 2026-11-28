@@ -36,6 +36,7 @@ import {
   Wrench,
   CalendarClock,
   Car,
+  Bike,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -105,6 +106,7 @@ const NAV_CONFIG: Record<PortalRole, { label: string; items: NavItem[] }> = {
       { label: 'Health Bulletins', href: '/admin/health-bulletins', icon: Stethoscope },
       { label: 'Self-Help Guides', href: '/admin/help-guides', icon: GraduationCap },
       { label: 'Providers', href: '/admin/providers', icon: Briefcase },
+      { label: 'Delivery', href: '/admin/delivery', icon: Bike },
       { label: 'Volunteers', href: '/admin/volunteers', icon: HeartHandshake },
       { label: 'Newsletters', href: '/admin/newsletters', icon: Mail },
       { label: 'Advisory', href: '/admin/advisory', icon: Scale },
@@ -147,6 +149,9 @@ function getProviderNavItems(category: string | null | undefined): NavItem[] {
     case 'legal_help':
     case 'insurance':
       items.push({ label: 'Advisory', href: '/provider/advisory', icon: Scale });
+      break;
+    case 'delivery':
+      items.push({ label: 'Delivery', href: '/provider/delivery', icon: Bike });
       break;
     case 'property_management':
       items.push({ label: 'Property Management', href: '/provider/property-management', icon: Home });

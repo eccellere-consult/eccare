@@ -26,6 +26,7 @@ import { HelpGuidesSection } from '@/components/help-guides-section';
 import { TourButton } from '@/components/tour/TourButton';
 import { DedicationFooter } from '@/components/dedication-footer';
 import { PROVIDER_CATEGORIES } from '@/lib/provider-categories';
+import { DELIVERY_CATEGORY } from '@/lib/delivery-pricing';
 import { ShareLocationButton } from '@/components/share-location-button';
 import { SUPPORTED_LANGUAGES } from '@/lib/i18n/languages';
 import { t as translate, type TranslationKey } from '@/lib/i18n/dictionary';
@@ -390,6 +391,8 @@ function CreateAccountForm({
   const [businessName, setBusinessName] = useState('');
   const [category, setCategory] = useState('');
   const [otherCategory, setOtherCategory] = useState('');
+  // "Delivery partner" is offered only once the admin has switched delivery On.
+  const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [backupContactName, setBackupContactName] = useState('');
   const [backupContactPhone, setBackupContactPhone] = useState('');
   const [lat, setLat] = useState('');
@@ -417,6 +420,14 @@ function CreateAccountForm({
   const dobCheck = accountKind === 'person' && dob ? checkDateOfBirth(dob) : null;
   const role: 'elder' | 'caregiver' | 'provider' | null =
     accountKind === 'provider' ? 'provider' : dobCheck?.ok ? roleForAge(dobCheck.age) : null;
+
+  useEffect(() => {
+    if (role !== 'provider') return;
+    fetch('/api/v1/delivery/status')
+      .then((r) => r.json())
+      .then((j) => setDeliveryOpen(Boolean(j?.data?.enabled)))
+      .catch(() => setDeliveryOpen(false));
+  }, [role]);
 
   useEffect(() => {
     fetch('/api/v1/pricing')
@@ -763,6 +774,7 @@ function CreateAccountForm({
               {PROVIDER_CATEGORIES.map((c) => (
                 <option key={c.value} value={c.value}>{c.label}</option>
               ))}
+              {deliveryOpen && <option value={DELIVERY_CATEGORY.value}>{DELIVERY_CATEGORY.label}</option>}
             </select>
           </div>
           {category === 'other' && (

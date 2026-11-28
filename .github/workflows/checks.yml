@@ -61,6 +61,9 @@ jobs:
       - name: AI Control Tower reporting (silent without settings, never throws, sends no text)
         run: node --experimental-strip-types --test lib/aiops.test.mjs
 
+      - name: Delivery charges and free-time slots (never below the minimum, never negative)
+        run: node --experimental-strip-types --test lib/delivery-pricing.test.mjs
+
       - name: Type check
         run: npm run typecheck
 
