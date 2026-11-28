@@ -23,7 +23,10 @@ const fail = (code: string, message: string, status: number) =>
   NextResponse.json({ success: false, error: { code, message } }, { status });
 
 /** Saves several catalogue items in one go (the shelf-photo flow, after the shop has checked each row).
- *  An item whose name is already in the catalogue (or repeated in this list) is skipped, not doubled. */
+ *  A new name is added. A name already in the catalogue is updated, not doubled: its price becomes
+ *  the one the shop just confirmed, and an empty description or category is filled in. A name
+ *  repeated inside this list is skipped. The answer lists each saved item (`saved`, with its place
+ *  in the list sent) so the page can then attach each product's picture. */
 export async function POST(req: NextRequest) {
   const auth = await getAuthUser(req);
   if (!auth) return fail('UNAUTHORIZED', 'Please log in.', 401);
@@ -37,32 +40,54 @@ export async function POST(req: NextRequest) {
     return fail('INVALID_INPUT', `Every item needs a name and a price, and you can add up to ${MAX_ITEMS} at a time.`, 400);
   }
 
-  const existing = await prisma.catalogItem.findMany({ where: { providerId: provider.id }, select: { name: true } });
-  const taken = new Set(existing.map((e) => e.name.trim().toLowerCase()));
+  const existing = await prisma.catalogItem.findMany({
+    where: { providerId: provider.id },
+    select: { id: true, name: true, description: true, category: true, imagePath: true },
+  });
+  const byName = new Map(existing.map((e) => [e.name.trim().toLowerCase(), e]));
 
-  const toCreate: typeof parsed.data.items = [];
+  const seen = new Set<string>();
   const skipped: string[] = [];
-  for (const item of parsed.data.items) {
-    const key = item.name.toLowerCase();
-    if (taken.has(key)) {
-      skipped.push(item.name);
-      continue;
+  const saved: { index: number; id: string; isNew: boolean; hasPhoto: boolean }[] = [];
+  let created = 0;
+  let updated = 0;
+
+  await prisma.$transaction(async (tx) => {
+    for (const [index, item] of parsed.data.items.entries()) {
+      const key = item.name.toLowerCase();
+      if (seen.has(key)) {
+        skipped.push(item.name);
+        continue;
+      }
+      seen.add(key);
+      const match = byName.get(key);
+      if (match) {
+        await tx.catalogItem.update({
+          where: { id: match.id },
+          data: {
+            price: item.price,
+            description: match.description?.trim() ? undefined : item.description || undefined,
+            category: match.category?.trim() ? undefined : item.category || undefined,
+          },
+        });
+        updated += 1;
+        saved.push({ index, id: match.id, isNew: false, hasPhoto: !!match.imagePath });
+      } else {
+        const row = await tx.catalogItem.create({
+          data: {
+            providerId: provider.id,
+            name: item.name,
+            price: item.price,
+            description: item.description || null,
+            category: item.category || null,
+          },
+          select: { id: true },
+        });
+        created += 1;
+        saved.push({ index, id: row.id, isNew: true, hasPhoto: false });
+      }
     }
-    taken.add(key);
-    toCreate.push(item);
-  }
+  });
 
-  if (toCreate.length > 0) {
-    await prisma.catalogItem.createMany({
-      data: toCreate.map((i) => ({
-        providerId: provider.id,
-        name: i.name,
-        price: i.price,
-        description: i.description || null,
-        category: i.category || null,
-      })),
-    });
-  }
-
-  return NextResponse.json({ success: true, data: { created: toCreate.length, skipped } }, { status: 201 });
+  return NextResponse.json({ success: true, data: { created, updated, skipped, saved } }, { status: 201 });
 }
