@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { PackageCheck, RefreshCw } from 'lucide-react';
+import { PackageCheck, RefreshCw, Bike, Phone } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,18 @@ interface Order {
   items: OrderItem[];
   provider: { businessName: string; category: string };
   rating: Rating | null;
+  paymentMethod?: 'razorpay' | 'cod';
+  deliveryCharge?: string | null;
+  deliveryJob?: {
+    id: string;
+    status: 'open' | 'accepted' | 'picked_up' | 'delivered' | 'cancelled';
+    handoverCode: string;
+    charge: string;
+    cashToCollect: string | null;
+    rating: number | null;
+    ratingComment: string | null;
+    partner: { provider: { user: { name: string; phone: string | null } } } | null;
+  } | null;
 }
 
 const STATUS_VARIANT = {
@@ -64,6 +76,7 @@ export function OrdersList({ elderUserId }: { elderUserId?: string }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [ratingOrderId, setRatingOrderId] = useState<string | null>(null);
+  const [ratingDeliveryId, setRatingDeliveryId] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
   // Keyed by catalogItemId — sourced from the elder's actual active
   // RecurringOrderTemplate rows (not a page-session-only "I just clicked this"
@@ -115,6 +128,24 @@ export function OrdersList({ elderUserId }: { elderUserId?: string }) {
       const json = await res.json();
       if (res.ok && json.success) {
         setRatingOrderId(null);
+        await load();
+      }
+    } finally {
+      setClosing(false);
+    }
+  }
+
+  async function rateDelivery(orderId: string, stars: number, comment: string) {
+    setClosing(true);
+    try {
+      const res = await fetch(`/api/v1/orders/${orderId}/delivery-rating`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ stars, comment: comment.trim() || undefined }),
+      });
+      if (res.ok) {
+        setRatingDeliveryId(null);
         await load();
       }
     } finally {
@@ -174,6 +205,67 @@ export function OrdersList({ elderUserId }: { elderUserId?: string }) {
               ))}
             </div>
             <p className="mt-2 font-bold text-text">₹{o.totalAmount}</p>
+            {o.deliveryCharge && (
+              <p className="text-xs text-text-secondary">
+                {t('elder.orders.delivery.charge').replace('{amount}', String(Number(o.deliveryCharge)))}
+              </p>
+            )}
+
+            {o.deliveryJob && o.deliveryJob.status !== 'cancelled' && (() => {
+              const job = o.deliveryJob;
+              const partner = job.partner?.provider.user;
+              const name = partner?.name ?? '';
+              const line =
+                job.status === 'open'
+                  ? t('elder.orders.delivery.waiting')
+                  : job.status === 'accepted'
+                    ? t('elder.orders.delivery.accepted').replace('{name}', name)
+                    : job.status === 'picked_up'
+                      ? t('elder.orders.delivery.pickedUp').replace('{name}', name)
+                      : t('elder.orders.delivery.delivered').replace('{name}', name);
+              return (
+                <div className="mt-3 rounded-xl border border-primary-100 bg-primary-50 p-3">
+                  <p className="flex items-center gap-2 font-semibold text-text">
+                    <Bike className="h-5 w-5 shrink-0 text-primary-600" /> {line}
+                  </p>
+                  {job.status !== 'delivered' && (
+                    <>
+                      <div className="mt-2 flex flex-wrap items-center gap-3">
+                        <span className="text-sm text-text-secondary">{t('elder.orders.delivery.code')}</span>
+                        <span className="rounded-lg bg-surface px-3 py-1 font-mono text-2xl font-bold tracking-[0.3em] text-text">{job.handoverCode}</span>
+                        {partner?.phone && (
+                          <a href={`tel:${partner.phone}`} className="ml-auto flex min-h-tap items-center gap-1.5 rounded-xl border border-border bg-surface px-3 text-sm font-semibold text-primary-600">
+                            <Phone className="h-4 w-4" /> {t('elder.orders.delivery.call')}
+                          </a>
+                        )}
+                      </div>
+                      <p className="mt-1 text-xs text-text-secondary">{t('elder.orders.delivery.codeHint')}</p>
+                      {job.cashToCollect && (
+                        <p className="mt-2 text-sm font-semibold text-text">
+                          {t('elder.orders.delivery.payCash').replace('{amount}', String(Number(job.cashToCollect)))}
+                        </p>
+                      )}
+                    </>
+                  )}
+                  {job.status === 'delivered' && job.rating === null && (
+                    ratingDeliveryId === job.id ? (
+                      <div className="mt-2">
+                        <RatingInput busy={closing} submitLabel={t('elder.orders.delivery.rate')} onSubmit={(stars, comment) => rateDelivery(o.id, stars, comment)} />
+                      </div>
+                    ) : (
+                      <Button size="sm" variant="outline" className="mt-2" onClick={() => setRatingDeliveryId(job.id)}>
+                        {t('elder.orders.delivery.rate')}
+                      </Button>
+                    )
+                  )}
+                  {job.rating !== null && (
+                    <div className="mt-2">
+                      <ProviderRatingSummaryDisplay summary={{ average: job.rating, count: 1 }} />
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {o.status === 'delivered' && (
               ratingOrderId === o.id ? (

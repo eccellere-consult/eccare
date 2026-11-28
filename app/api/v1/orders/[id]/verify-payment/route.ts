@@ -47,7 +47,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   const feePercent = await getPlatformFeePercent();
-  const totalAmount = Number(order.totalAmount);
+  // The shop's fee and share are on the goods only: the delivery charge belongs to the delivery partner.
+  const totalAmount = Number(order.totalAmount) - Number(order.deliveryCharge ?? 0);
   const platformFeeAmount = computePlatformFee(totalAmount, feePercent);
   const netAmountForProvider = Math.round((totalAmount - platformFeeAmount) * 100) / 100;
 

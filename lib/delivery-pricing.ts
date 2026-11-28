@@ -32,6 +32,8 @@ export interface RateCard {
   roadFactor: number;
   sizeMediumSurcharge: number;
   sizeLargeSurcharge: number;
+  /** The delivery partner's share of the charge, 0-100 (the rest is EC's). */
+  partnerSharePercent: number;
   /** Extra charge per item category, e.g. { food_restaurant: 15 }. */
   categorySurcharges: Record<string, number>;
 }
@@ -153,6 +155,111 @@ export function cleanSlots(slots: SlotInput[]): { ok: true; slots: SlotInput[] }
     }
   }
   return { ok: true, slots: merged };
+}
+
+const SIZE_RANK: Record<ParcelSize, number> = { small: 0, medium: 1, large: 2 };
+
+/**
+ * Weight and parcel size of a whole order from its items. Weight adds up (unknown weights
+ * count as zero). Size is the largest item's size, raised to medium above 5 kg and to large
+ * above 15 kg, because a heavy order needs a bigger bag whatever the items say.
+ */
+export function orderParcel(
+  items: { weightKg?: number | null; parcelSize?: string | null; quantity: number }[],
+): { weightKg: number; size: ParcelSize } {
+  let weightKg = 0;
+  let rank = 0;
+  for (const i of items) {
+    weightKg += positive(i.weightKg) * Math.max(0, i.quantity);
+    const r = SIZE_RANK[i.parcelSize as ParcelSize];
+    if (r !== undefined) rank = Math.max(rank, r);
+  }
+  if (weightKg > 15) rank = 2;
+  else if (weightKg > 5) rank = Math.max(rank, 1);
+  const size = (Object.keys(SIZE_RANK) as ParcelSize[]).find((k) => SIZE_RANK[k] === rank)!;
+  return { weightKg: Math.round(weightKg * 100) / 100, size };
+}
+
+/** The partner's part of a delivery charge (the rest is EC's), in rupees and paise. */
+export function partnerEarning(charge: number, partnerSharePercent: number): number {
+  const share = Math.min(100, positive(partnerSharePercent));
+  return Math.round(positive(charge) * share) / 100;
+}
+
+/** A 4-digit handover code the customer reads out at the door. */
+export function makeHandoverCode(random: () => number = Math.random): string {
+  return String(Math.floor(random() * 10000)).padStart(4, '0');
+}
+
+export type JobStatus = 'open' | 'accepted' | 'picked_up' | 'delivered' | 'cancelled';
+
+/** The only moves a delivery can make, one step at a time. */
+const NEXT: Record<JobStatus, JobStatus[]> = {
+  open: ['accepted', 'cancelled'],
+  accepted: ['picked_up', 'open', 'cancelled'],
+  picked_up: ['delivered', 'cancelled'],
+  delivered: [],
+  cancelled: [],
+};
+export function canMoveJob(from: JobStatus, to: JobStatus): boolean {
+  return NEXT[from].includes(to);
+}
+
+export interface DispatchCandidate {
+  id: string;
+  verified: boolean;
+  maxWeightKg: number;
+  radiusKm: number;
+  availableNow: boolean;
+  slots: SlotInput[];
+  /** The partner's home location from their provider profile, when they shared it. */
+  lat?: number | null;
+  lng?: number | null;
+  /** Deliveries they are already carrying (accepted or picked up). */
+  activeJobs: number;
+  /** Average delivery rating 1-5, or null before their first rating. */
+  ratingAverage: number | null;
+}
+
+export interface DispatchJob {
+  pickupLat?: number | null;
+  pickupLng?: number | null;
+  weightKg: number;
+}
+
+export const MAX_ACTIVE_JOBS = 2;
+
+/**
+ * Smart dispatch: which partners should be offered this delivery, best first.
+ * A partner qualifies when EC has approved them, they are free now (switch or weekly slot),
+ * the order is not heavier than they carry, they hold fewer than MAX_ACTIVE_JOBS deliveries,
+ * and the shop is within their distance (when both locations are known).
+ * Best = nearest, then a good rating, then the fewest deliveries already in hand. A partner
+ * whose location is unknown is placed as if at the edge of their distance.
+ */
+export function rankPartners(
+  job: DispatchJob,
+  candidates: DispatchCandidate[],
+  now: Date,
+): { id: string; distanceKm: number | null; score: number }[] {
+  const pickupKnown = typeof job.pickupLat === 'number' && typeof job.pickupLng === 'number';
+  const out: { id: string; distanceKm: number | null; score: number }[] = [];
+  for (const c of candidates) {
+    if (!c.verified) continue;
+    if (!(c.availableNow || isWithinSlots(c.slots, now))) continue;
+    if (positive(job.weightKg) > c.maxWeightKg) continue;
+    if (c.activeJobs >= MAX_ACTIVE_JOBS) continue;
+    const homeKnown = typeof c.lat === 'number' && typeof c.lng === 'number';
+    const distanceKm =
+      pickupKnown && homeKnown
+        ? Math.round(straightLineKm({ lat: c.lat!, lng: c.lng! }, { lat: job.pickupLat!, lng: job.pickupLng! }) * 10) / 10
+        : null;
+    if (distanceKm !== null && distanceKm > c.radiusKm) continue;
+    const ratingBonus = c.ratingAverage === null ? 0 : (c.ratingAverage - 3) * 0.5;
+    const score = Math.round(((distanceKm ?? c.radiusKm) - ratingBonus + c.activeJobs) * 100) / 100;
+    out.push({ id: c.id, distanceKm, score });
+  }
+  return out.sort((a, b) => a.score - b.score);
 }
 
 /** Is the partner free at this moment by their weekly slots? `at` is read in India time. */

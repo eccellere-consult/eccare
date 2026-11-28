@@ -56,6 +56,8 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
   const [paymentMethod, setPaymentMethod] = useState<'razorpay' | 'cod'>('razorpay');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // EC delivery charge, worked out by the server for this cart and elder (null = none).
+  const [delivery, setDelivery] = useState<{ total: number; roadKm: number; distanceKnown: boolean } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -81,6 +83,41 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
       }
     })();
   }, []);
+
+  const cartKey = cart.items.map((i) => `${i.catalogItemId}:${i.quantity}`).join(',');
+  useEffect(() => {
+    if (!elderUserId || !cart.providerId || cart.items.length === 0) {
+      setDelivery(null);
+      return;
+    }
+    let cancelled = false;
+    fetch('/api/v1/delivery/quote', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        elderUserId,
+        providerId: cart.providerId,
+        items: cart.items.map((i) => ({ catalogItemId: i.catalogItemId, quantity: i.quantity })),
+      }),
+    })
+      .then((r) => r.json())
+      .then((j) => {
+        if (cancelled) return;
+        setDelivery(
+          j.success && j.data.applies
+            ? { total: j.data.quote.total, roadKm: j.data.quote.roadKm, distanceKnown: j.data.distanceKnown }
+            : null,
+        );
+      })
+      .catch(() => !cancelled && setDelivery(null));
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [elderUserId, cart.providerId, cartKey]);
+
+  const grandTotal = cart.total + (delivery?.total ?? 0);
 
   function validateBeforeCheckout(): boolean {
     if (!elderUserId) {
@@ -247,9 +284,20 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                   </div>
                 </div>
               ))}
+              {delivery && (
+                <div className="flex justify-between gap-3 border-t border-border pt-3 text-sm text-text">
+                  <span>
+                    Delivery by an EC delivery partner
+                    <span className="block text-xs text-text-secondary">
+                      {delivery.distanceKnown ? `About ${delivery.roadKm} km by road` : 'Minimum charge (location not saved)'}
+                    </span>
+                  </span>
+                  <span className="font-semibold">₹{delivery.total.toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between border-t border-border pt-3 font-bold text-text">
                 <span>Total</span>
-                <span>₹{cart.total.toFixed(2)}</span>
+                <span>₹{grandTotal.toFixed(2)}</span>
               </div>
             </CardContent>
           </Card>
@@ -307,7 +355,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
               <Button size="lg" disabled={busy} onClick={handleCheckout} className="self-start">
                 {busy
                   ? paymentMethod === 'cod' ? 'Placing order…' : 'Opening payment…'
-                  : paymentMethod === 'cod' ? `Place order · Pay ₹${cart.total.toFixed(2)} on delivery` : `Pay ₹${cart.total.toFixed(2)} with Razorpay`}
+                  : paymentMethod === 'cod' ? `Place order · Pay ₹${grandTotal.toFixed(2)} on delivery` : `Pay ₹${grandTotal.toFixed(2)} with Razorpay`}
               </Button>
             </CardContent>
           </Card>

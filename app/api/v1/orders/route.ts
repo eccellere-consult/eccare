@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import { getAuthUser } from '@/lib/auth';
 import { canAccessElder } from '@/lib/family-access';
 import { createRazorpayOrder } from '@/lib/razorpay';
+import { openDeliveryJob, quoteOrderDelivery } from '@/lib/delivery-jobs';
 
 const schema = z.object({
   elderUserId: z.string(),
@@ -37,7 +38,26 @@ export async function GET(req: NextRequest) {
   // happened. It genuinely never was one.
   const orders = await prisma.order.findMany({
     where: { elderUserId, status: { in: ['paid', 'confirmed', 'delivered', 'closed', 'cancelled'] } },
-    include: { items: true, provider: { select: { businessName: true, category: true } }, rating: true },
+    include: {
+      items: true,
+      provider: { select: { businessName: true, category: true } },
+      rating: true,
+      deliveryJob: {
+        select: {
+          id: true,
+          status: true,
+          handoverCode: true,
+          charge: true,
+          cashToCollect: true,
+          rating: true,
+          ratingComment: true,
+          acceptedAt: true,
+          pickedUpAt: true,
+          deliveredAt: true,
+          partner: { select: { provider: { select: { user: { select: { name: true, phone: true } } } } } },
+        },
+      },
+    },
     orderBy: { createdAt: 'desc' },
   });
 
@@ -75,6 +95,12 @@ export async function POST(req: NextRequest) {
     return { catalogItemId: catalogItem.id, name: catalogItem.name, price: catalogItem.price, quantity: i.quantity };
   });
 
+  // EC delivery by a local delivery partner: worked out here from the shop, the elder's location
+  // and the items (never trusted from the client), and added to the order total before payment.
+  const delivery = await quoteOrderDelivery({ providerId, elderUserId, items });
+  const deliveryCharge = delivery.applies ? delivery.quote.total : null;
+  if (deliveryCharge !== null) totalAmount += deliveryCharge;
+
   // Cash on delivery skips the Razorpay round-trip entirely — there's nothing to
   // verify, so the order is confirmed immediately, same as a paid order once
   // verify-payment succeeds. Cash changes hands at delivery, outside the app.
@@ -87,11 +113,17 @@ export async function POST(req: NextRequest) {
         status: 'confirmed',
         paymentMethod: 'cod',
         totalAmount,
+        deliveryCharge,
         deliveryAddress,
         items: { create: orderItemsData },
       },
     });
-    return NextResponse.json({ success: true, data: { orderId: order.id, paymentMethod: 'cod' } }, { status: 201 });
+    // Accepted at once, so the delivery opens now. A failure here must not lose the order.
+    await openDeliveryJob(order.id).catch((err) => console.error('Opening delivery failed:', err instanceof Error ? err.message : err));
+    return NextResponse.json(
+      { success: true, data: { orderId: order.id, paymentMethod: 'cod', totalAmount, deliveryCharge } },
+      { status: 201 },
+    );
   }
 
   const order = await prisma.order.create({
@@ -101,6 +133,7 @@ export async function POST(req: NextRequest) {
       providerId,
       paymentMethod: 'razorpay',
       totalAmount,
+      deliveryCharge,
       deliveryAddress,
       items: { create: orderItemsData },
     },
@@ -118,6 +151,8 @@ export async function POST(req: NextRequest) {
           razorpayOrderId: razorpayOrder.id,
           amount: razorpayOrder.amount,
           keyId: process.env.RAZORPAY_KEY_ID,
+          totalAmount,
+          deliveryCharge,
         },
       },
       { status: 201 },

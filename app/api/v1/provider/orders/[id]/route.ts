@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { getAuthUser } from '@/lib/auth';
+import { openDeliveryJob } from '@/lib/delivery-jobs';
 
 const schema = z.object({ status: z.enum(['confirmed', 'delivered', 'cancelled']) });
 
@@ -42,6 +43,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return fail('INVALID_STATE', `Only a ${requiredCurrentStatus} order can be moved to ${parsed.data.status}.`, 409);
   }
 
+  // An order an EC delivery partner is bringing is marked delivered by the partner at the door
+  // (with the customer's handover code), not by the shop.
+  if (parsed.data.status === 'delivered') {
+    const job = await prisma.deliveryJob.findUnique({ where: { orderId: id }, select: { status: true } });
+    if (job && job.status !== 'cancelled') {
+      return fail('EC_DELIVERY', 'An EC delivery partner is bringing this order. It is marked delivered when they hand it over.', 409);
+    }
+  }
+
   const updated = await prisma.order.update({ where: { id }, data: { status: parsed.data.status } });
+
+  // Accepting the order opens its delivery (only when it has an EC delivery charge).
+  if (parsed.data.status === 'confirmed') {
+    await openDeliveryJob(id).catch((err) => console.error('Opening delivery failed:', err instanceof Error ? err.message : err));
+  }
   return NextResponse.json({ success: true, data: updated });
 }

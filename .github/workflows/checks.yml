@@ -64,6 +64,9 @@ jobs:
       - name: Delivery charges and free-time slots (never below the minimum, never negative)
         run: node --experimental-strip-types --test lib/delivery-pricing.test.mjs
 
+      - name: Emergency card (blood group list, old free-typed values read correctly)
+        run: node --experimental-strip-types --test lib/emergency-card.test.mjs
+
       - name: Type check
         run: npm run typecheck
 
