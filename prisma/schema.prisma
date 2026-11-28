@@ -2422,6 +2422,8 @@ model ServiceProvider {
   advisoryExpert AdvisoryExpert?
   propertyManagementProfile PropertyManagementProfile?
   propertySubscriptions     PropertySubscription[]
+  // Offers and paid ad space this provider has bought (lib/campaigns.ts).
+  campaigns                 Campaign[]
   ratings                   ProviderRating[]
   recurringOrderTemplates   RecurringOrderTemplate[]
   // Only for category "delivery": vehicle, free-time slots, UPI for payouts.
@@ -2816,6 +2818,73 @@ model ProviderRating {
   @@index([providerId])
 }
 
+/// An offer or a paid ad from a provider (rules in lib/campaigns.ts). The provider pays first,
+/// EC approves before anyone sees it, and a rejected one is refunded in full. Offers appear in
+/// the calm Offers section; an ad gets the one "Sponsored" card at the top of Offers or Services.
+model Campaign {
+  id                String    @id @default(cuid())
+  providerId        String
+  // offer | offers_top | services_top
+  placement         String    @default("offer")
+  title             String
+  offerText         String
+  details           String?   @db.Text
+  // Up to 4 photo URLs, in order (JSON array of strings).
+  imagePaths        Json?
+  // A YouTube / Instagram / Facebook link, opened outside EC (never plays by itself).
+  videoUrl          String?
+  contactPhone      String?
+  whatsappPhone     String?
+  days              Int       @default(30)
+  // What the provider pays, worked out when they create it (rupees).
+  price             Decimal   @db.Decimal(10, 2)
+  // draft | in_review | live | rejected | ended | taken_down
+  status            String    @default("draft")
+  razorpayOrderId   String?   @unique
+  razorpayPaymentId String?
+  paidAt            DateTime?
+  refundId          String?
+  refundedAt        DateTime?
+  startsAt          DateTime?
+  endsAt            DateTime?
+  reviewedAt        DateTime?
+  reviewedById      String?
+  adminNote         String?   @db.Text
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  provider  ServiceProvider   @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  enquiries CampaignEnquiry[]
+
+  @@index([providerId])
+  @@index([status, placement])
+}
+
+/// A question an elder or family member sent about an offer. The provider sees the name, the
+/// message and the phone number only if the person chose to share it.
+model CampaignEnquiry {
+  id         String    @id @default(cuid())
+  campaignId String
+  userId     String
+  name       String
+  phone      String?
+  message    String    @db.Text
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([userId])
+}
+
+/// The admin's price for 30 days of each placement (offer, offers_top, services_top).
+model CampaignPrice {
+  placement      String   @id
+  pricePer30Days Decimal  @db.Decimal(10, 2)
+  updatedAt      DateTime @updatedAt
+  updatedById    String?
+}
 enum RecurringOrderSuggestionStatus {
   pendingApproval
   approved

@@ -117,6 +117,7 @@ export async function deleteAccount(userId: string): Promise<void> {
     prisma.recurringOrderTemplate.deleteMany({ where: { elderUserId: id } }),
     prisma.volunteerProfile.deleteMany({ where: { userId: id } }),
     prisma.providerRating.deleteMany({ where: { raterUserId: id } }),
+    prisma.campaignEnquiry.deleteMany({ where: { userId: id } }),
 
     // Community: membership, and what they wrote for others
     prisma.neighborhoodMember.deleteMany({ where: { userId: id } }),

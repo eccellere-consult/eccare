@@ -76,5 +76,8 @@ jobs:
       - name: Committee rights rules (who may promote, remove, lend admin powers)
         run: node --experimental-strip-types --test lib/committee-powers.test.mjs
 
+      - name: Offers and ads rules (prices, video links, one ad slot, end dates)
+        run: node --experimental-strip-types --test lib/campaigns.test.mjs
+
       - name: Compile the site (production build, no database)
         run: npx next build
